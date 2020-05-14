@@ -49,6 +49,8 @@ validate_QuantileForecastMatrix <- function(qfm) {
 #'    location, forecast date, and target for each row of \code{qfm}
 #' @param col_index data frame giving the combination of model and quantile
 #'    corresponding to each column of \code{qfm}
+#' @param model_col name of column identifying model in long format
+#'    representation of forecasts; also appears in \code{col_index}
 #' @param quantile_name_col name of column for quantile probability in long
 #'    format data frame representation of forecasts
 #' @param quantile_value_col name of column for quantile value in long format
@@ -61,12 +63,14 @@ new_QuantileForecastMatrix <- function(
   qfm,
   row_index,
   col_index,
+  model_col,
   quantile_name_col,
   quantile_value_col) {
   qfm <- structure(
     qfm,
     row_index=row_index,
     col_index=col_index,
+    model_col=model_col,
     quantile_name_col=quantile_name_col,
     quantile_value_col=quantile_value_col,
     class = c('QuantileForecastMatrix', 'matrix')
@@ -164,6 +168,7 @@ new_QuantileForecastMatrix_from_df <- function(
     qfm=forecast_matrix,
     row_index=id_grid,
     col_index=col_grid,
+    model_col=model_col,
     quantile_name_col=quantile_name_col,
     quantile_value_col=quantile_value_col)
 
@@ -226,6 +231,7 @@ as.data.frame.QuantileForecastMatrix <- function(qfm) {
     NextMethod('[', drop=FALSE),
     row_index=attr(qfm, 'row_index')[i, , drop=FALSE],
     col_index=attr(qfm, 'col_index')[j, , drop=FALSE],
+    model_col=attr(qfm, 'model_col'),
     quantile_name_col=attr(qfm, 'quantile_name_col'),
     quantile_value_col=attr(qfm, 'quantile_value_col'))
 

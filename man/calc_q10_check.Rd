@@ -5,15 +5,12 @@
 \title{Compute check of whether quantile 0.1 for 1 week ahead forecast is at least
 the median of the most recent observed cumulative deaths}
 \usage{
-calc_q10_check(qfm, observed_by_unit_target_end_date, model_id_name)
+calc_q10_check(qfm, observed_by_unit_target_end_date)
 }
 \arguments{
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
 
 \item{observed_by_unit_target_end_date}{data frame of observed values}
-
-\item{model_id_name}{character name of column in forecast matrix col_index
-specifying column}
 }
 \value{
 data frame with a row for each combination of

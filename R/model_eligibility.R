@@ -20,9 +20,10 @@
 calc_model_eligibility_for_ensemble <- function(
   qfm,
   observed_by_unit_target_end_date,
-  lookback_length,
-  model_id_name
+  lookback_length
 ) {
+  model_id_name <- attr(qfm, 'model_col')
+
   # identify missing forecasts by unit, forecast week end date, and model
   missingness <- calc_forecast_missingness(qfm, lookback_length, model_id_name)
 
@@ -51,8 +52,6 @@ calc_model_eligibility_for_ensemble <- function(
 #'
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
 #' @param observed_by_unit_target_end_date data frame of observed values
-#' @param model_id_name character name of column in forecast matrix col_index
-#'   specifying column
 #'
 #' @return data frame with a row for each combination of
 #'   unit, forecast week end date, and model and a logical column called
@@ -62,8 +61,7 @@ calc_model_eligibility_for_ensemble <- function(
 #' @export
 calc_q10_check <- function(
   qfm,
-  observed_by_unit_target_end_date,
-  model_id_name
+  observed_by_unit_target_end_date
 ) {
   ## subset to forecasts for most recent week and one week ahead target,
   ## and forecasts for quantile 0.1
@@ -84,12 +82,13 @@ calc_q10_check <- function(
   ## than most recent observed value
   row_index <- attr(qfm_q10, 'row_index')
   col_index <- attr(qfm_q10, 'col_index')
+  model_id_name <- attr(qfm, 'model_col')
   observed <- row_index %>%
     dplyr::left_join(observed_by_unit_target_end_date,
       by = c('unit'='unit', 'forecast_week_end_date'='target_end_date')) %>%
     dplyr::pull(observed)
 
-  q10_less_than_obs <- sweep(qfm_q10, MARGIN = 1, FUN = `<=`, observed) %>%
+  q10_less_than_obs <- sweep(qfm_q10, MARGIN = 1, FUN = `<`, observed) %>%
     as.data.frame()
 
   q10_eligibility_by_unit_model <- purrr::map_dfr(
@@ -139,8 +138,6 @@ calc_q10_check <- function(
 #'   ensembles where no historical data is required.  If two past weeks of
 #'   forecast data are required to estimate ensemble parameters, lookback_length
 #'   should be 2
-#' @param model_id_name character name of column in forecast matrix col_index
-#'   specifying column
 #'
 #' @return data frame with a row for each combination of
 #'   unit, forecast week end date, and model and a logical column called
@@ -150,8 +147,7 @@ calc_q10_check <- function(
 #' @export
 calc_forecast_missingness <- function(
   qfm,
-  lookback_length = 0,
-  model_id_name
+  lookback_length = 0
 ) {
   # subset to rows representing forecasts within lookback_length
   row_index <- attr(qfm, 'row_index')
@@ -171,6 +167,7 @@ calc_forecast_missingness <- function(
   # and model
   row_index <- attr(qfm, 'row_index')
   col_index <- attr(qfm, 'col_index')
+  model_id_name <- attr(qfm, 'model_col')
 
   missingness_by_unit_forecast_week <- purrr::pmap_dfr(
     row_index %>% distinct(unit, forecast_week_end_date),

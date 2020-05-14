@@ -28,8 +28,7 @@ test_that("calc_forecast_missingness works: lookback_length 0, none missing", {
 
   actual <- calc_forecast_missingness(
     qfm=forecast_matrix,
-    lookback_length=0,
-    model_id_name='model'
+    lookback_length=0
   )
 
   expected <- expand.grid(
@@ -72,8 +71,7 @@ test_that("calc_forecast_missingness works: lookback_length 1, none missing", {
 
   actual <- calc_forecast_missingness(
     qfm=forecast_matrix,
-    lookback_length=1,
-    model_id_name='model'
+    lookback_length=1
   )
 
   expected <- expand.grid(
@@ -116,8 +114,7 @@ test_that("calc_forecast_missingness works: lookback_length 2, missing", {
 
   actual <- calc_forecast_missingness(
     qfm=forecast_matrix,
-    lookback_length=2,
-    model_id_name='model'
+    lookback_length=2
   )
 
   expected <- expand.grid(
@@ -179,8 +176,7 @@ test_that("calc_q10_check works", {
 
   actual <- calc_q10_check(
     qfm=forecast_matrix,
-    observed_by_unit_target_end_date=observed_by_unit_target_end_date,
-    model_id_name='model'
+    observed_by_unit_target_end_date=observed_by_unit_target_end_date
   )
 
   expected <- expand.grid(

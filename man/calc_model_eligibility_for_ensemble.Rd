@@ -8,8 +8,7 @@ that model is eligible for inclusion in an ensemble, with explanation if not}
 calc_model_eligibility_for_ensemble(
   qfm,
   observed_by_unit_target_end_date,
-  lookback_length,
-  model_id_name
+  lookback_length
 )
 }
 \arguments{
@@ -21,10 +20,10 @@ ensembles where no historical data is required.  If two past weeks of
 forecast data are required to estimate ensemble parameters, lookback_length
 should be 2}
 
+\item{forecast_matrix}{wide format matrix of forecasts}
+
 \item{model_id_name}{character name of column in forecast matrix col_index
 specifying column}
-
-\item{forecast_matrix}{wide format matrix of forecasts}
 }
 \value{
 data frame with two columns:

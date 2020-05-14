@@ -55,6 +55,7 @@ test_that("new_QuantileForecastMatrix_from_df works", {
     list(
       row_index = expected_row_index,
       col_index = expected_col_index,
+      model_col = 'model',
       quantile_name_col = 'q_prob',
       quantile_value_col = 'q_val'
     )

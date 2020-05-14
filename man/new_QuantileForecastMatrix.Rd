@@ -8,6 +8,7 @@ new_QuantileForecastMatrix(
   qfm,
   row_index,
   col_index,
+  model_col,
   quantile_name_col,
   quantile_value_col
 )
@@ -20,6 +21,9 @@ location, forecast date, and target for each row of \code{qfm}}
 
 \item{col_index}{data frame giving the combination of model and quantile
 corresponding to each column of \code{qfm}}
+
+\item{model_col}{name of column identifying model in long format
+representation of forecasts; also appears in \code{col_index}}
 
 \item{quantile_name_col}{name of column for quantile probability in long
 format data frame representation of forecasts}

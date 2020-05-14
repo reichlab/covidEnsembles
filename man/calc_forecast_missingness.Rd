@@ -4,7 +4,7 @@
 \alias{calc_forecast_missingness}
 \title{Compute forecast missingness for each combination of unit and model}
 \usage{
-calc_forecast_missingness(qfm, lookback_length = 0, model_id_name)
+calc_forecast_missingness(qfm, lookback_length = 0)
 }
 \arguments{
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
@@ -14,9 +14,6 @@ are examined for forecast missingness; 0 is appropriate for equal weight
 ensembles where no historical data is required.  If two past weeks of
 forecast data are required to estimate ensemble parameters, lookback_length
 should be 2}
-
-\item{model_id_name}{character name of column in forecast matrix col_index
-specifying column}
 }
 \value{
 data frame with a row for each combination of
