@@ -45,6 +45,7 @@ all_forecasts_and_observed <- readRDS('./data/all_covid19_forecasts.rds') %>%
     values_to = 'value') %>%
   ungroup()
 
+## TODO:
 ## Consider adding a filter to the above like
 ## lubridate::ymd(forecast_week_end_date) - lubridate::ymd(timezero) <= 3,
 ## possibly or forecast_week_end_date < max(forecast_week_end_date)
@@ -67,40 +68,35 @@ model_eligibility <- calc_model_eligibility_for_ensemble(
   model_id_name = 'model_id'
 )
 
+## from https://github.com/reichlab/covid19-forecast-hub/blob/master/code/ensemble-scripts/make_ewq_ensemble_script.R#L12
+## models to exclude due to multiple models per team
+## TODO: Maybe we should change this to a list of included models?
+models_to_exclude <- c(
+  ## CU
+  "nointerv", "60-contact", "70-contact", "80-contact",
+  "80-contact1x10p", "80-contact1x5p", "80-contactw10p", "80-contactw5p",
+  ## Imperial
+  "Ensemble1", "Ensemble2",
+  ## IowaStateLW
+  "Spatiotemporal Epidemic Modeling Daily Recover 15%",
+  ## JHU_IDD
+  "CovidScenarioPipeline-0.1", "CovidScenarioPipeline-0.2-HighEffectDistancing", "CovidScenarioPipeline-0.2-ModEffectDistancing",
+  ## UChicago
+  "CovidIL_40", "CovidIL_60", "CovidIL_80")
 
-
-
-  all_forecasts %>%
-  group_by(unit, forecast_week_end_date, model_id, model_name) %>%
-  summarize(
-    any_missing = any(is.na(.[, as.character(required_quantiles)]))
-  )
-
-
-all_end_dates <- sort(unique(all_forecasts$forecast_week_end_date))
-for(end_date in all_end_dates[5:length(all_end_dates)]) {
-  # subset to this end date
-  forecasts_this_date <- all_forecasts %>%
-    filter(forecast_week_end_date == end_date)
-
-  # for each location, keep only models with forecasts for all quantiles and
-  # all four horizons
-  all_present <- expand.grid(
-    unit = unique(forecasts_this_date$unit),
-    target = unique(forecasts_this_date$target),
-    model_name = unique(forecasts_this_date$model_name),
-    stringsAsFactors = FALSE
-  )
-  all_present$all_present <- purrr::pmap_lgl(
-    all_present,
-    function(unit, target, model_name) {
-      forecasts_unit_target_model <- forecasts_this_date %>%
-        filter(unit == UQ(unit), target == UQ(target), model_name == UQ(model_name)) %>%
-        select(as.character(required_quantiles))
-      if(nrow(forecasts_unit_target_model) == 0) {
-        return(FALSE)
-      } else {
-        return(all(!is.na(forecasts_unit_target_model)))
-      }
-    })
-}
+# convert model eligibility to wide format with human readable names,
+# excluding excluded models
+wide_model_eligibility <- model_eligibility %>%
+  left_join(
+    all_forecasts_and_observed %>% distinct(model_id, model_name),
+    by = 'model_id'
+  ) %>%
+  mutate(eligibility = (eligibility == 'eligible')) %>%
+  select(-model_id) %>%
+  pivot_wider(names_from='model_name', values_from='eligibility') %>%
+  left_join(read_csv("data-raw/state_fips_codes.csv") %>%
+    select(state = state,
+      unit = state_code), by = c("unit")) %>%
+  arrange(unit) %>%
+  select(state, 2:(ncol(.)-1)) %>%
+  select(-models_to_exclude)

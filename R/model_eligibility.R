@@ -33,20 +33,16 @@ calc_model_eligibility_for_ensemble <- function(
   # missingness takes precedent in that if both checks are violated,
   # only the failure for missingness is reported
   eligibility <- missingness %>%
-    dplyr::left_join(q10_check) %>%
-    transmute(
-      unit=unit,
-      model_id_name=UQ(model_id_name),
+    dplyr::left_join(q10_check, by = c("unit", model_id_name)) %>%
+    mutate(
       eligibility = ifelse(
         missingness_eligibility == 'eligible',
         q10_eligibility,
         missingness_eligibility
       )
     )
-  names(eligibility)[names(eligibility) == 'model_id_name'] <-
-    model_id_name
 
-  return(eligibility)
+  return(eligibility[, c('unit', model_id_name, 'eligibility'), drop=FALSE])
 }
 
 
@@ -93,7 +89,7 @@ calc_q10_check <- function(
       by = c('unit'='unit', 'forecast_week_end_date'='target_end_date')) %>%
     dplyr::pull(observed)
 
-  q10_less_than_obs <- sweep(qfm_q10, MARGIN = 1, FUN = `<`, observed) %>%
+  q10_less_than_obs <- sweep(qfm_q10, MARGIN = 1, FUN = `<=`, observed) %>%
     as.data.frame()
 
   q10_eligibility_by_unit_model <- purrr::map_dfr(
@@ -206,7 +202,8 @@ calc_forecast_missingness <- function(
         'missing required forecasts',
         'eligible'
       )
-    )
+    ) %>%
+    dplyr::ungroup()
   names(missingness_by_unit)[names(missingness_by_unit) == 'get(model_id_name)'] <-
     model_id_name
 
