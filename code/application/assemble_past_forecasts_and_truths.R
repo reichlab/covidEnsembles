@@ -19,7 +19,7 @@ all_truths <- truth(zoltar_connection, 'https://www.zoltardata.com/api/project/4
 # end date
 required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
 
-all_forecasts <- readRDS('./data/all_covid19_forecasts.rds') %>%
+all_forecasts_and_observed <- readRDS('./data/all_covid19_forecasts.rds') %>%
   dplyr::filter(
     model_name != 'ensemble',
     class == 'quantile',
@@ -29,7 +29,7 @@ all_forecasts <- readRDS('./data/all_covid19_forecasts.rds') %>%
   ) %>%
   dplyr::select(unit, timezero, target, model_id, model_name, quantile, value) %>%
   tidyr::pivot_wider(names_from = quantile, values_from = value) %>%
-#  dplyr::left_join(all_truths, by = c('timezero', 'unit', 'target')) %>%
+  dplyr::left_join(all_truths, by = c('timezero', 'unit', 'target')) %>%
   dplyr::mutate(
     horizon = as.integer(substr(target, 1, 1)),
     forecast_week_end_date = calc_forecast_week_end_date(timezero),
@@ -42,27 +42,27 @@ all_forecasts <- readRDS('./data/all_covid19_forecasts.rds') %>%
   tidyr::pivot_longer(
     cols = all_of(as.character(required_quantiles)),
     names_to = 'quantile',
-    values_to = 'value')
+    values_to = 'value') %>%
+  ungroup()
 
+## Consider adding a filter to the above like
+## lubridate::ymd(forecast_week_end_date) - lubridate::ymd(timezero) <= 3,
+## possibly or forecast_week_end_date < max(forecast_week_end_date)
+
+observed_by_unit_target_end_date <- all_forecasts_and_observed %>%
+  dplyr::distinct(unit, target_end_date, observed)
 
 forecast_matrix <- new_QuantileForecastMatrix_from_df(
-  forecast_df = all_forecasts,
+  forecast_df = all_forecasts_and_observed,
   model_col = 'model_id',
   id_cols = c('unit', 'forecast_week_end_date', 'target'),
   quantile_name_col = 'quantile',
   quantile_value_col = 'value'
 )
 
-qfm <- forecast_matrix
-lookback_length <- 1L
-model_id_name <- 'model_id'
-
-
-View(unclass(forecast_matrix))
-
 model_eligibility <- calc_model_eligibility_for_ensemble(
   qfm = forecast_matrix,
-  truth = all_truths,
+  observed_by_unit_target_end_date = observed_by_unit_target_end_date,
   lookback_length = 0,
   model_id_name = 'model_id'
 )

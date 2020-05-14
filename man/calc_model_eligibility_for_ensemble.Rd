@@ -7,13 +7,13 @@ that model is eligible for inclusion in an ensemble, with explanation if not}
 \usage{
 calc_model_eligibility_for_ensemble(
   qfm,
-  observed,
+  observed_by_unit_target_end_date,
   lookback_length,
   model_id_name
 )
 }
 \arguments{
-\item{observed}{data frame of observed values}
+\item{observed_by_unit_target_end_date}{data frame of observed values}
 
 \item{lookback_length}{non-negative integer number of historic weeks that
 are examined for forecast missingness; 0 is appropriate for equal weight

@@ -2,14 +2,15 @@
 % Please edit documentation in R/model_eligibility.R
 \name{calc_q10_check}
 \alias{calc_q10_check}
-\title{Compute forecast missingness for each combination of unit and model}
+\title{Compute check of whether quantile 0.1 for 1 week ahead forecast is at least
+the median of the most recent observed cumulative deaths}
 \usage{
-calc_q10_check(qfm, observed, model_id_name)
+calc_q10_check(qfm, observed_by_unit_target_end_date, model_id_name)
 }
 \arguments{
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
 
-\item{observed}{data frame of observed values}
+\item{observed_by_unit_target_end_date}{data frame of observed values}
 
 \item{model_id_name}{character name of column in forecast matrix col_index
 specifying column}
@@ -21,5 +22,6 @@ unit, forecast week end date, and model and a logical column called
 quantiles and targets
 }
 \description{
-Compute forecast missingness for each combination of unit and model
+Compute check of whether quantile 0.1 for 1 week ahead forecast is at least
+the median of the most recent observed cumulative deaths
 }
