@@ -23,10 +23,10 @@ calc_model_eligibility_for_ensemble <- function(
   model_id_name <- attr(qfm, 'model_col')
 
   # identify missing forecasts by unit, forecast week end date, and model
-  missingness <- calc_forecast_missingness(qfm, lookback_length, model_id_name)
+  missingness <- calc_forecast_missingness(qfm, lookback_length)
 
   # check whether 10th quantile is less than most recent observation
-  q10_check <- calc_q10_check(qfm, observed_by_unit_target_end_date, model_id_name)
+  q10_check <- calc_q10_check(qfm, observed_by_unit_target_end_date)
 
   # combine missingness and q10 eligibility check results
   # missingness takes precedent in that if both checks are violated,
