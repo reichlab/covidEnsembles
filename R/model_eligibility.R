@@ -1,15 +1,13 @@
 #' Generate a data frame with a row for each model and an indicator of whether
 #' that model is eligible for inclusion in an ensemble, with explanation if not
 #'
-#' @param forecast_matrix wide format matrix of forecasts
+#' @param qfm matrix of model forecasts of class QuantileForecastMatrix
 #' @param observed_by_unit_target_end_date data frame of observed values
 #' @param lookback_length non-negative integer number of historic weeks that
 #'   are examined for forecast missingness; 0 is appropriate for equal weight
 #'   ensembles where no historical data is required.  If two past weeks of
 #'   forecast data are required to estimate ensemble parameters, lookback_length
 #'   should be 2
-#' @param model_id_name character name of column in forecast matrix col_index
-#'   specifying column
 #'
 #' @return data frame with two columns:
 #'   * one with name given by model_id_name recording model id for each model

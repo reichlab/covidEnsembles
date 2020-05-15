@@ -10,7 +10,8 @@ validate_QuantileForecastMatrix(qfm)
 \item{qfm}{object of class QuantileForecastMatrix}
 }
 \value{
-invisible(TRUE) if ncopula is valid; otherwise, an error is thrown
+invisible(TRUE) if QuantileForecastMatrix is valid;
+otherwise, an error is thrown
 }
 \description{
 Validate QuantileForecastMatrix object

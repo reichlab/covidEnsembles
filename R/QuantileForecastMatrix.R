@@ -18,7 +18,8 @@ is.QuantileForecastMatrix <- function(qfm) {
 #'
 #' @param qfm object of class QuantileForecastMatrix
 #'
-#' @return invisible(TRUE) if ncopula is valid; otherwise, an error is thrown
+#' @return invisible(TRUE) if QuantileForecastMatrix is valid;
+#'   otherwise, an error is thrown
 validate_QuantileForecastMatrix <- function(qfm) {
   # correct class
   if(!is.QuantileForecastMatrix(qfm)) {
@@ -76,7 +77,7 @@ new_QuantileForecastMatrix <- function(
     class = c('QuantileForecastMatrix', 'matrix')
   )
 
-  validate_QuantileForecastMatrix(qfm)
+#  validate_QuantileForecastMatrix(qfm)
 
   return(qfm)
 }

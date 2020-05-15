@@ -6,5 +6,6 @@
 #' @docType package
 #' @importFrom dplyr `%>%`
 #' @name covidEnsembles
+#' @useDynLib covidEnsembles, .registration = TRUE
 #' @aliases covidEnsembles covidEnsembles-package
 NULL
