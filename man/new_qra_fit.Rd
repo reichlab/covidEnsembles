@@ -4,7 +4,7 @@
 \alias{new_qra_fit}
 \title{Create a qra_fit object}
 \usage{
-new_qra_fit(parameters, constrained)
+new_qra_fit(parameters, convex)
 }
 \arguments{
 \item{parameters}{named list with two components:
@@ -15,7 +15,7 @@ and corresponding intercepts
 and corresponding model coefficients
 }}
 
-\item{constrained}{logical; if TRUE, predictions are done by passing weights
+\item{convex}{logical; if TRUE, predictions are done by passing weights
 through a softmax transformation; otherwise, no constraint is imposed.}
 }
 \value{

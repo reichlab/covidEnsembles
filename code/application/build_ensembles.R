@@ -151,7 +151,7 @@ fit_one_group <- function(i) {
     quantile_value_col = 'value'
   )
 
-  ew_qra_fit <- estimate_qra(qfm_train = forecast_matrix, method = 'ew')
+  ew_qra_fit <- estimate_qra(qfm_train = forecast_matrix, qra_model = 'ew')
   return(ew_qra_fit)
 }
 

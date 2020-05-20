@@ -5,20 +5,12 @@
 \title{Calculate quantile score, optionally including absolute error,
 for a parametric distribution.}
 \usage{
-wis(y, qfm, quantile_probs)
+wis(y, qfm)
 }
 \arguments{
 \item{y}{vector of observations from target distribution}
 
-\item{alphas}{vector of alphas.  the score is based on several
-(1 - alpha)*100\% predictive intervals for each alpha in alphas}
-
-\item{ae}{logical.  If true, include absolute error in score}
-
-\item{family}{family for distribution; e.g. 'norm' or 'nbinom'}
-
-\item{args}{list of arguments for quantile function of parametric family,
-e.g. list(mean=0.0, sd=1.0)}
+\item{qfm}{object of class QuantileForecastMatrix}
 }
 \value{
 vector of interval scores separately for each element of x

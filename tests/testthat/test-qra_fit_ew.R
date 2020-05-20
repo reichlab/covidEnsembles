@@ -39,7 +39,7 @@ test_that("fit_qra_ew works", {
         stringsAsFactors = FALSE
       )
     ),
-    constrained=FALSE,
+    convex=FALSE,
     class='qra_fit'
   )
 

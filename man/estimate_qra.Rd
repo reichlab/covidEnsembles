@@ -4,14 +4,17 @@
 \alias{estimate_qra}
 \title{Estimate Quantile Regression Averaging model}
 \usage{
-estimate_qra(qfm_train, y_train, method = c("ew"), ...)
+estimate_qra(qfm_train, y_train, qra_model = c("ew"), backend = "optim", ...)
 }
 \arguments{
 \item{qfm_train}{QuantileForecastMatrix with training set predictions}
 
 \item{y_train}{numeric vector of responses for training set}
 
-\item{method}{estimation method: currently only 'ew' is supported}
+\item{qra_model}{quantile averaging model: currently only 'ew' is supported}
+
+\item{backend}{implementation used for estimation; currently only 'optim'
+is supported, which does estimation by calling the optim function in R}
 }
 \value{
 object of class qra_fit

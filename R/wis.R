@@ -23,37 +23,35 @@ interval_score <- function(y, l, u, alpha) {
 #' for a parametric distribution.
 #'
 #' @param y vector of observations from target distribution
-#' @param alphas vector of alphas.  the score is based on several
-#'   (1 - alpha)*100% predictive intervals for each alpha in alphas
-#' @param ae logical.  If true, include absolute error in score
-#' @param family family for distribution; e.g. 'norm' or 'nbinom'
-#' @param args list of arguments for quantile function of parametric family,
-#'   e.g. list(mean=0.0, sd=1.0)
+#' @param qfm object of class QuantileForecastMatrix
 #'
 #' @return vector of interval scores separately for each element of x
 #'
 #' @export
-wis <- function(y, qfm, quantile_probs) {
-  if(length(unique(quantile_probs)) != length(quantile_probs)) {
-    stop('quantile_probs must be unique')
+wis <- function(y, qfm) {
+  col_index <- attr(qfm, 'col_index')
+  quantile_levels <- as.numeric(col_index[[attr(qfm, 'quantile_name_col')]])
+
+  if(length(unique(quantile_levels)) != length(quantile_levels)) {
+    stop('Quantile levels must be unique.  Did you provide a quantile forecast matrix for a single model?')
   }
 
   # if median is one of the quantiles, keep track of that
-  median_ind <- which(quantile_probs == 0.5)
+  median_ind <- which(quantile_levels == 0.5)
 
   # determine number K of intervals to score, and
   # initialize score to absolute error if median provided or 0 otherwise
   if(length(median_ind) == 1) {
-    K <- (length(quantile_probs) - 1)/2
+    K <- (length(quantile_levels) - 1)/2
     score <- abs(y - qfm[, median_ind])
   } else {
-    K <- length(quantile_probs) / 2
+    K <- length(quantile_levels) / 2
     score <- rep(0.0, length(y))
   }
 
   # interval scores for each interval
   for(k in seq_len(K)) {
-    alpha <- 2*quantile_probs[k]
+    alpha <- 2*quantile_levels[k]
     score <- score + interval_score(y, qfm[, k], qfm[, ncol(qfm)+1-k], alpha)
   }
 

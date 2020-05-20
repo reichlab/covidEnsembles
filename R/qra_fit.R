@@ -32,7 +32,7 @@ validate_qra_fit <- function(qra_fit) {
 #'     and corresponding intercepts
 #'   * 'coefficients': data frame of models, optionally quantile values,
 #'     and corresponding model coefficients
-#' @param constrained logical; if TRUE, predictions are done by passing weights
+#' @param convex logical; if TRUE, predictions are done by passing weights
 #'   through a softmax transformation; otherwise, no constraint is imposed.
 #'
 #' @return qra_fit object
@@ -40,11 +40,11 @@ validate_qra_fit <- function(qra_fit) {
 #' @export
 new_qra_fit <- function(
   parameters,
-  constrained
+  convex
 ) {
   qra_fit <- structure(
     parameters,
-    constrained=constrained,
+    convex=convex,
     class = 'qra_fit'
   )
 
@@ -81,15 +81,15 @@ predict.qra_fit <- function(qra_fit, qfm) {
   ## apply softmax constraint if required
   ## note in cases with the same weight for all quantiles, we could save some
   ## compute time by doing this before repeating for all quantiles above
-  if(attr(qra_fit, 'constrained')) {
+  if(attr(qra_fit, 'convex')) {
     ### Convert to matrix where each column is one model, each row one quantile
-    dim(params) <- c(length(unique_models), length(unique_quantiles))
+    dim(params) <- c(length(unique_quantiles), length(unique_models))
 
     ### Apply softmax to each row; model weights sum to 1 within each quantile
-    softmax_matrix_rows(params)
+    params <- softmax_matrix_rows(params)
 
     ### convert back to vector
-    dim(params) <- prod(dim(params))
+    params <- as.numeric(params)
   }
 
   ## make sparse matrix of parameter values
@@ -134,7 +134,9 @@ predict.qra_fit <- function(qra_fit, qfm) {
 #'
 #' @param qfm_train QuantileForecastMatrix with training set predictions
 #' @param y_train numeric vector of responses for training set
-#' @param method estimation method: currently only 'ew' is supported
+#' @param qra_model quantile averaging model: currently only 'ew' is supported
+#' @param backend implementation used for estimation; currently only 'optim'
+#'    is supported, which does estimation by calling the optim function in R
 #'
 #' @return object of class qra_fit
 #'
@@ -142,15 +144,16 @@ predict.qra_fit <- function(qra_fit, qfm) {
 estimate_qra <- function(
   qfm_train,
   y_train,
-  method = c('ew'),
+  qra_model = c('ew', 'convex_per_model'),
+  backend = 'optim',
   ...
 ) {
-  method <- match.arg(method, choices = c('ew'))
+  qra_model <- match.arg(qra_model, choices = c('ew', 'convex_per_model'))
 
-  if(method == 'ew') {
-    result <- fit_qra_ew(qfm_train, ...)
+  if(qra_model == 'ew') {
+    result <- estimate_qra_ew(qfm_train, ...)
   } else {
-    stop('Invalid method')
+    result <- estimate_qra_optimized(qfm_train, y_train, qra_model)
   }
 
   return(result)
@@ -164,7 +167,7 @@ estimate_qra <- function(
 #' @return object of class qra_fit
 #'
 #' @export
-fit_qra_ew <- function(qfm_train, ...) {
+estimate_qra_ew <- function(qfm_train, ...) {
   col_index <- attr(qfm_train, 'col_index')
   model_col <- attr(qfm_train, 'model_col')
   unique_models <- unique(col_index[[model_col]])
@@ -179,8 +182,118 @@ fit_qra_ew <- function(qfm_train, ...) {
 
   qra_fit <- new_qra_fit(
     parameters = list(coefficients=coefficients, intercept=intercept),
-    constrained = FALSE
+    convex = FALSE
   )
 
   return(qra_fit)
 }
+
+
+#' Estimate qra parameters by optimizing weighted interval score loss
+#'
+#' @param qfm_train QuantileForecastMatrix with training set predictions from
+#'    component models
+#' @param y_train numeric vector of responses for training set
+#' @param qra_model quantile averaging model
+#'
+#' @return object of class qra_fit
+#'
+#' @export
+estimate_qra_optimized <- function(qfm_train, y_train, qra_model) {
+  init_par_constructor <- getFromNamespace(
+    paste0('init_par_constructor_', qra_model),
+    ns='covidEnsembles'
+  )
+  model_constructor <- getFromNamespace(
+    paste0('model_constructor_', qra_model),
+    ns='covidEnsembles'
+  )
+
+  init_par <- init_par_constructor(qfm_train, y_train)
+  optim_output <- optim(
+    par=init_par,
+    fn=wis_loss,
+    model_constructor=model_constructor,
+    qfm_train=qfm_train,
+    y_train=y_train,
+    method='L-BFGS-B')
+
+  if(optim_output$convergence != 0) {
+    warning('optim convergence non-zero; estimation may have failed!')
+  }
+
+  return(list(
+    optim_output = optim_output,
+    qra_fit = model_constructor(optim_output$par, qfm_train)
+  ))
+}
+
+
+#' Calculate wis_loss as a function of parameters used to construct a qra model
+#'
+#' @param par real-valued vector of parameters
+#' @param model_constructor a function that accepts a real-valued vector of
+#'    parameters and returns a model of class qra_fit
+#' @param qfm_train QuantileForecastMatrix with training set predictions from
+#'    component models
+#' @param y_train numeric vector of responses for training set
+#'
+#' @return scalar wis loss for given parameter values
+wis_loss <- function(par, model_constructor, qfm_train, y_train) {
+  qra_model <- model_constructor(par, qfm_train)
+  qfm_aggregated <- predict(qra_model, qfm_train)
+  return(sum(covidEnsembles::wis(y_train, qfm_aggregated)))
+}
+
+
+#' Initial parameter constructor for qra_convex_per_model approach
+#'
+#' @param qfm_train QuantileForecastMatrix with training set predictions from
+#'    component models
+#' @param ... mop up other arguments that are ignored
+#'
+#' @return vector of real-valued initial values for parameters
+init_par_constructor_convex_per_model <- function(qfm_train, ...) {
+  # extract number of unique models in qfm_train
+  col_index <- attr(qfm_train, 'col_index')
+  model_col <- attr(qfm_train, 'model_col')
+  unique_models <- unique(col_index[[model_col]])
+  M <- length(unique_models)
+
+  # initial parameter values are 0 for each model;
+  # after softmax, this corresponds to weight 1/M for each model
+  init_par <- rep(0.0, M)
+
+  return(init_par)
+}
+
+
+#' Model constructor for qra_convex_per_model approach
+#'
+#' @param par vector of real numbers
+#' @param qfm_train object of class QuantileForecastMatrix
+#'
+#' @return object of class qra_fit
+#'
+#' @export
+model_constructor_convex_per_model <- function(par, qfm_train) {
+  col_index <- attr(qfm_train, 'col_index')
+  model_col <- attr(qfm_train, 'model_col')
+  unique_models <- unique(col_index[[model_col]])
+
+  coefficients <- data.frame(
+    a = unique_models,
+    beta = par,
+    stringsAsFactors = FALSE
+  )
+  colnames(coefficients)[1] <- model_col
+  intercept <- data.frame(beta = 0.0, stringsAsFactors = FALSE)
+
+  qra_fit <- new_qra_fit(
+    parameters = list(coefficients=coefficients, intercept=intercept),
+    convex = TRUE
+  )
+
+  return(qra_fit)
+}
+
