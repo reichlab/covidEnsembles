@@ -4,10 +4,14 @@
 \alias{validate_QuantileForecastMatrix}
 \title{Validate QuantileForecastMatrix object}
 \usage{
-validate_QuantileForecastMatrix(qfm)
+validate_QuantileForecastMatrix(qfm, strict = FALSE)
 }
 \arguments{
 \item{qfm}{object of class QuantileForecastMatrix}
+
+\item{strict}{logical; if FALSE (default), only checks that the arguments
+satisfy minimum requirements of formatting; if TRUE, also checks
+desirable properties of a quantile forecast such as quantile crossing}
 }
 \value{
 invisible(TRUE) if QuantileForecastMatrix is valid;

@@ -17,10 +17,13 @@ is.QuantileForecastMatrix <- function(qfm) {
 #' Validate QuantileForecastMatrix object
 #'
 #' @param qfm object of class QuantileForecastMatrix
+#' @param strict logical; if FALSE (default), only checks that the arguments
+#'    satisfy minimum requirements of formatting; if TRUE, also checks
+#'    desirable properties of a quantile forecast such as quantile crossing
 #'
 #' @return invisible(TRUE) if QuantileForecastMatrix is valid;
 #'   otherwise, an error is thrown
-validate_QuantileForecastMatrix <- function(qfm) {
+validate_QuantileForecastMatrix <- function(qfm, strict=FALSE) {
   # correct class
   if(!is.QuantileForecastMatrix(qfm)) {
     stop("object is not a QuantileForecastMatrix object")
@@ -29,8 +32,8 @@ validate_QuantileForecastMatrix <- function(qfm) {
   errors <- NULL
   message('validation not yet implemented')
 
-  # validate quantile crossing per model and target
-#  if(check) {
+#  if(strict) {
+#    # validate quantile crossing per model and target
 #    errors <- c(errors, "message")
 #  }
 
@@ -40,6 +43,27 @@ validate_QuantileForecastMatrix <- function(qfm) {
     stop(paste0('Errors in validate_QuantileForecastMatrix: ',
       paste0(errors, collapse = '; ')))
   }
+}
+
+
+#' Validate quantile crossing
+#'
+#' @param qfm object of class QuantileForecastMatrix
+#'
+#' @return invisible(TRUE) if no quantile crossing; otherwise, error
+#'
+#' @export
+validate_quantile_crossing <- function(qfm) {
+  col_index <- attr(qfm, 'col_index')
+  model_col <- attr(qfm, 'model_col')
+  for(model in unique(col_index[[model_col]])) {
+    model_inds <- which(col_index[[model_col]] == model)
+    diffs <- qfm[, model_inds[-1]] - qfm[, model_inds[-length(model_inds)]]
+    if(!(all(diffs >= 0.0))) {
+      stop(paste0('Quantile crossing detected for model ', model))
+    }
+  }
+  return(invisible(TRUE))
 }
 
 

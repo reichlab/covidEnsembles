@@ -9,18 +9,30 @@
 #' @export
 get_all_project_forecasts <- function(zoltar_connection, project_url, ...) {
   all_models <- zoltr::models(zoltar_connection, project_url)
+  all_models$abbreviation <- purrr::map_chr(
+    all_models$url,
+    function(url) {
+      zoltr::model_info(zoltar_connection, url)$abbreviation
+    }
+  )
   all_forecast_refs <- purrr::pmap_dfr(
-    all_models %>% dplyr::select(id, url, name),
-    function(id, url, name) {
+    all_models %>% dplyr::select(id, url, name, abbreviation),
+    function(id, url, name, abbreviation) {
       zoltr::forecasts(zoltar_connection, url) %>%
-        dplyr::mutate(model_id = UQ(id), model_name = UQ(name))
+        dplyr::mutate(
+          model_id = UQ(id),
+          model_name = UQ(name),
+          model_abbreviation = UQ(abbreviation))
     }
   )
   all_forecasts <- purrr::pmap_dfr(
-    all_forecast_refs %>% dplyr::select(url, model_id, model_name),
-    function(url, model_id, model_name, ...) {
+    all_forecast_refs %>% dplyr::select(url, model_id, model_name, model_abbreviation),
+    function(url, model_id, model_name, model_abbreviation, ...) {
       get_one_project_forecast(zoltar_connection, url, ...) %>%
-        dplyr::mutate(model_id = model_id, model_name = model_name)
+        dplyr::mutate(
+          model_id = model_id,
+          model_name = model_name,
+          model_abbreviation = model_abbreviation)
     },
     ... = ...
   )
