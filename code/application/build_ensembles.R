@@ -3,6 +3,10 @@ library(tidyverse)
 library(covidEnsembles)
 options(warn=2, error=recover)
 
+## TODO:
+## - add fips codes to auxiliary output csvs
+## - save auxiliary output files to
+
 zoltar_connection <- new_connection()
 zoltar_authenticate(zoltar_connection, Sys.getenv("Z_USERNAME"), Sys.getenv("Z_PASSWORD"))
 
@@ -26,6 +30,9 @@ fips_codes <- read_csv("data-raw/state_fips_codes.csv") %>%
 ## from https://github.com/reichlab/covid19-forecast-hub/blob/master/code/ensemble-scripts/make_ewq_ensemble_script.R#L12
 ## models to exclude due to multiple models per team
 ## TODO: Maybe we should change this to a list of included models?
+## For 2020-05-18:
+## - JHU submitted only 1 model
+## - UChicago requests CovidIL_10_increase
 models_to_exclude <- c(
   ## Our ensemble
   'ensemble',
@@ -36,25 +43,31 @@ models_to_exclude <- c(
   "Ensemble1", "Ensemble2",
   ## IowaStateLW
   "Spatiotemporal Epidemic Modeling Daily Recover 15%",
-  ## JHU_IDD
-  "CovidScenarioPipeline-0.1", "CovidScenarioPipeline-0.2-HighEffectDistancing", "CovidScenarioPipeline-0.2-ModEffectDistancing",
   ## UChicago
-  "CovidIL_40", "CovidIL_60", "CovidIL_80")
+  "CovidIL_40", "CovidIL_60", "CovidIL_80", "CovidIL_100", "CovidIL_30_increase")
 
 # keep only quantile forecasts for requested quantiles
 # that were in the last submission from a given model for each forecast week
 # end date
 required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
 
-all_forecasts_and_observed <- readRDS('./data/all_covid19_forecasts.rds') %>%
+#acdf <- readRDS('./data/all_cum_death_forecasts.rds')
+all_forecasts_and_observed <- readRDS('./data/all_cum_death_forecasts.rds') %>%
+  dplyr::mutate(
+    model_abbreviation = ifelse(
+      model_abbreviation == 'ERDC-ERDC-SEIR',
+      'ERDC-SEIR',
+      model_abbreviation)
+  ) %>%
   dplyr::filter(
     !(model_name %in% models_to_exclude),
+    lubridate::wday(lubridate::ymd(timezero), label=TRUE) %in% c('Sun', 'Mon'),
     class == 'quantile',
-    quantile %in% required_quantiles) %>%
+    quantile %in% as.character(required_quantiles)) %>%
   mutate(
     value = as.numeric(value)
   ) %>%
-  dplyr::select(unit, timezero, target, model_id, model_name, quantile, value) %>%
+  dplyr::select(unit, timezero, target, model_id, model_name, model_abbreviation, quantile, value) %>%
   tidyr::pivot_wider(names_from = quantile, values_from = value) %>%
   dplyr::left_join(all_truths, by = c('timezero', 'unit', 'target')) %>%
   dplyr::mutate(
@@ -63,7 +76,7 @@ all_forecasts_and_observed <- readRDS('./data/all_covid19_forecasts.rds') %>%
     target_end_date = calc_target_week_end_date(timezero, horizon)
   ) %>%
   dplyr::group_by(
-    unit, target, forecast_week_end_date, model_id
+    unit, target, forecast_week_end_date, model_abbreviation
   ) %>%
   dplyr::top_n(1, timezero) %>%
   tidyr::pivot_longer(
@@ -75,16 +88,17 @@ all_forecasts_and_observed <- readRDS('./data/all_covid19_forecasts.rds') %>%
 
 ## TODO:
 ## Consider adding a filter to the above like
-## lubridate::ymd(forecast_week_end_date) - lubridate::ymd(timezero) <= 3,
-## possibly or forecast_week_end_date < max(forecast_week_end_date)
+## or forecast_week_end_date < max(forecast_week_end_date)
 
 # compute model eligibility
 observed_by_unit_target_end_date <- all_forecasts_and_observed %>%
   dplyr::distinct(unit, target_end_date, observed)
 
+this_week_forecasts_and_observed <- all_forecasts_and_observed %>%
+  filter(forecast_week_end_date == max(forecast_week_end_date))
 forecast_matrix <- new_QuantileForecastMatrix_from_df(
-  forecast_df = all_forecasts_and_observed,
-  model_col = 'model_id',
+  forecast_df = this_week_forecasts_and_observed,
+  model_col = 'model_abbreviation',
   id_cols = c('unit', 'forecast_week_end_date', 'target'),
   quantile_name_col = 'quantile',
   quantile_value_col = 'value'
@@ -94,18 +108,24 @@ model_eligibility <- calc_model_eligibility_for_ensemble(
   qfm = forecast_matrix,
   observed_by_unit_target_end_date = observed_by_unit_target_end_date,
   lookback_length = 0
-)
+) %>%
+left_join(fips_codes %>% transmute(unit=unit, location_name=state), by = 'unit')
+
+model_eligibility$eligibility[
+  model_eligibility$model_abbreviation == "GT-DeepCOVID" &
+  model_eligibility$location_name %in% c('CT', 'DC', 'MI', 'VA')
+] <- 'decreasing quantiles over time'
+
+model_eligibility$eligibility[
+  model_eligibility$model_abbreviation == 'CU-select'
+] <- 'baseline misalignment'
+
 
 # convert model eligibility to wide format logical with human readable names
 wide_model_eligibility <- model_eligibility %>%
-  left_join(
-    all_forecasts_and_observed %>% distinct(model_id, model_name),
-    by = 'model_id'
-  ) %>%
   mutate(eligibility = (eligibility == 'eligible')) %>%
-  select(-model_id) %>%
-  pivot_wider(names_from='model_name', values_from='eligibility') %>%
-  left_join(fips_codes, by = c("unit")) %>%
+  pivot_wider(names_from='model_abbreviation', values_from='eligibility') %>%
+  left_join(fips_codes, by = "unit") %>%
   arrange(unit) %>%
   select(state, 2:(ncol(.)-1))
 
@@ -124,8 +144,8 @@ fit_one_group <- function(i) {
 
   forecast_matrix <- new_QuantileForecastMatrix_from_df(
     forecast_df = all_forecasts_and_observed %>%
-      filter(model_name %in% models),
-    model_col = 'model_id',
+      filter(model_abbreviation %in% models),
+    model_col = 'model_abbreviation',
     id_cols = c('unit', 'forecast_week_end_date', 'target'),
     quantile_name_col = 'quantile',
     quantile_value_col = 'value'
@@ -153,10 +173,10 @@ predict_one_group <- function(i) {
   forecast_matrix <- new_QuantileForecastMatrix_from_df(
     forecast_df = all_forecasts_and_observed %>%
       filter(
-        model_name %in% models,
+        model_abbreviation %in% models,
         state %in% states,
         forecast_week_end_date == max(forecast_week_end_date)),
-    model_col = 'model_id',
+    model_col = 'model_abbreviation',
     id_cols = c('unit', 'forecast_week_end_date', 'target'),
     quantile_name_col = 'quantile',
     quantile_value_col = 'value'
@@ -176,36 +196,88 @@ ensemble_predictions <- purrr::map_dfr(
 
 
 # save the results in required format
-fips_codes <- read_csv("data-raw/state_fips_codes.csv") %>%
-  bind_rows(
-    data.frame(
-      state='US',
-      state_code='US',
-      state_name='United States',
-      stringsAsFactors=FALSE)) %>%
-  select(location_name = state_name, unit = state_code)
-
 formatted_ensemble_predictions <- ensemble_predictions %>%
   left_join(fips_codes, by='unit') %>%
   dplyr::transmute(
-    forecast_date = forecast_week_end_date, # a convenient lie during development
+    forecast_date = as.character(Sys.Date()),
     target = target,
     target_end_date = calc_target_week_end_date(
       forecast_week_end_date,
       as.integer(substr(target, 1, 1))),
     location = unit,
-    location_name = location_name,
+    location_name = state,
     type = 'quantile',
     quantile = quantile,
     value = value
   )
+formatted_ensemble_predictions$forecast_date <- '2020-05-18'
 
-write_csv(formatted_ensemble_predictions,
-  paste0('code/application/forecasts/COVIDhub-qra_ew/',
-         formatted_ensemble_predictions$forecast_date[1],
-         '-COVIDhub-qra_ew.csv')
+
+formatted_ensemble_predictions <- bind_rows(
+  formatted_ensemble_predictions,
+  formatted_ensemble_predictions %>%
+    filter(format(quantile, digits=3, nsmall=3) == '0.500') %>%
+    mutate(
+      type='point',
+      quantile=NA_real_
+    )
 )
 
+# reformat model weights and eligibility for output
+model_weights <- purrr::pmap_dfr(
+  state_groups %>% select(states, ew_qra_fits),
+  function(states, ew_qra_fits) {
+    temp <- ew_qra_fits$coefficients %>%
+      tidyr::pivot_wider(names_from = 'model_abbreviation', values_from = 'beta')
+
+    return(purrr::map_dfr(
+      states,
+      function(state) {
+        temp %>%
+          mutate(state = state)
+      }
+    ))
+  }
+)
+model_weights <- bind_cols(
+  model_weights %>%
+    select(location_name = state) %>%
+    left_join(fips_codes %>% transmute(location_name=state, location=unit),
+              by = 'location_name'),
+  model_weights %>% select(-state)
+) %>%
+  arrange(location)
+model_weights[is.na(model_weights)] <- 0.0
+
+
+model_eligibility <- model_eligibility %>%
+  left_join(fips_codes, by = 'unit') %>%
+  select(
+    location = unit,
+    location_name = state,
+    model_abbreviation = model_abbreviation,
+    eligibility = eligibility
+  ) %>%
+  arrange(model_abbreviation, location)
+
+
+for(root in c('code/application/forecasts/', '../covid19-forecast-hub/')) {
+  write_csv(formatted_ensemble_predictions,
+    paste0(root, 'data-processed/COVIDhub-ensemble/',
+           formatted_ensemble_predictions$forecast_date[1],
+           '-COVIDhub-ensemble.csv')
+  )
+
+  write_csv(model_eligibility,
+    paste0(root, 'ensemble-metadata/',
+      formatted_ensemble_predictions$forecast_date[1],
+      '-model-eligibility.csv'))
+
+  write_csv(model_weights,
+    paste0(root, 'ensemble-metadata/',
+      formatted_ensemble_predictions$forecast_date[1],
+      '-model-weights.csv'))
+}
 
 
 #system('alias chrome="/Applications/Google\\ \\Chrome.app/Contents/MacOS/Google\\ \\Chrome"')
@@ -215,11 +287,13 @@ write_csv(formatted_ensemble_predictions,
 # visualize
 observed <- all_truths %>%
   filter(target == '1 wk ahead cum death') %>%
-  mutate(time = calc_target_week_end_date(
-    timezero,
-    as.integer(substr(target, 1, 1))) %>%
-    lubridate::ymd()) %>%
-  left_join(fips_codes, by='unit')
+  mutate(
+    time = calc_target_week_end_date(
+      timezero,
+      as.integer(substr(target, 1, 1))) %>%
+      lubridate::ymd()
+  ) %>%
+  left_join(fips_codes %>% select(unit=unit, location_name=state), by='unit')
 
 plottable_ensemble_predictions <- formatted_ensemble_predictions %>%
   filter(quantile != 0.5) %>%
@@ -236,6 +310,7 @@ plottable_ensemble_predictions <- formatted_ensemble_predictions %>%
 pdf('code/application/prediction_plots.pdf', width=24, height=60)
 ggplot() +
   geom_line(data=observed, mapping = aes(x = time, y = observed)) +
+  geom_point(data=observed, mapping = aes(x = time, y = observed)) +
   geom_ribbon(
     data = plottable_ensemble_predictions,
     mapping = aes(x = lubridate::ymd(target_end_date),
@@ -251,5 +326,169 @@ ggplot() +
     mapping = aes(x = lubridate::ymd(target_end_date), y = value)) +
   facet_wrap(~location_name, ncol=4, scales = 'free_y') +
   theme_bw()
+dev.off()
+
+
+locations_to_investigate <- c('AK', 'CT', 'GU', 'KY', 'MP', 'MT', 'RI', 'VT', 'WY')
+locations_to_investigate <- unique(model_weights$location_name)
+#location <- 'AK'
+
+pdf('code/application/prediction_plots_suspicious_locations.pdf', width=12, height=12)
+for(location in locations_to_investigate) {
+  location_models <- model_weights %>%
+    dplyr::filter(location_name == location) %>%
+    dplyr::select(-location_name, -location) %>%
+    tidyr::pivot_longer(cols = seq_len(ncol(.)), names_to = 'model_abbreviation', values_to = 'weight') %>%
+    dplyr::filter(weight > .Machine$double.eps) %>%
+    dplyr::pull(model_abbreviation)
+
+  #location_models <- 'CU-select'
+
+  location_forecasts <- this_week_forecasts_and_observed %>%
+    dplyr::filter(
+      state == location,
+      model_abbreviation %in% location_models,
+      quantile != '0.5') %>%
+    dplyr::mutate(
+      location_name = state,
+      quantile = as.numeric(quantile),
+      endpoint_type = ifelse(quantile < 0.5, 'lower', 'upper'),
+      alpha = ifelse(
+        endpoint_type == 'lower',
+        format(2*quantile, digits=3, nsmall=3),
+        format(2*(1-quantile), digits=3, nsmall=3))
+    ) %>%
+    dplyr::select(-quantile) %>%
+    tidyr::pivot_wider(names_from='endpoint_type', values_from='value') %>%
+    dplyr::bind_rows(
+      plottable_ensemble_predictions %>%
+        mutate(
+          model_abbreviation = 'ensemble'
+        ) %>%
+        dplyr::filter(location_name == UQ(location))
+    )
+
+
+  p <- ggplot() +
+    geom_line(data=observed %>% filter(location_name == location),
+              mapping = aes(x = time, y = observed)) +
+    geom_point(data=observed %>% filter(location_name == location),
+               mapping = aes(x = time, y = observed)) +
+    geom_ribbon(
+      data = location_forecasts %>% filter(alpha == '0.050'),
+      mapping = aes(x = lubridate::ymd(target_end_date),
+                    ymin=lower, ymax=upper,
+                    fill=model_abbreviation),
+                    alpha = 0.2) +
+    # geom_line(
+    #   data = formatted_ensemble_predictions %>%
+    #     filter(quantile == 0.5),
+    #   mapping = aes(x = lubridate::ymd(target_end_date), y = value)) +
+    # geom_point(
+    #   data = formatted_ensemble_predictions %>%
+    #     filter(quantile == 0.5),
+    #   mapping = aes(x = lubridate::ymd(target_end_date), y = value)) +
+  #  facet_wrap(~location_name, ncol=4, scales = 'free_y') +
+    ggtitle(location) +
+    theme_bw()
+
+  print(p)
+
+  p <- ggplot() +
+    geom_line(data=observed %>% filter(location_name == location),
+              mapping = aes(x = time, y = observed)) +
+    geom_point(data=observed %>% filter(location_name == location),
+               mapping = aes(x = time, y = observed)) +
+    geom_ribbon(
+#      data = location_forecasts %>% filter(alpha == '0.050'),
+      data = location_forecasts %>% filter(alpha == '0.020'),
+      mapping = aes(x = lubridate::ymd(target_end_date),
+                    ymin=lower, ymax=upper,
+                    fill=model_abbreviation),
+    ) +
+    # geom_line(
+    #   data = formatted_ensemble_predictions %>%
+    #     filter(quantile == 0.5),
+    #   mapping = aes(x = lubridate::ymd(target_end_date), y = value)) +
+    # geom_point(
+    #   data = formatted_ensemble_predictions %>%
+    #     filter(quantile == 0.5),
+    #   mapping = aes(x = lubridate::ymd(target_end_date), y = value)) +
+    facet_wrap(~model_abbreviation, ncol=4, scales = 'free_y') +
+    ggtitle(location) +
+    theme_bw()
+
+  print(p)
+}
+dev.off()
+
+
+
+
+
+locations_to_investigate <- unique(model_weights$location_name)
+#location <- 'AK'
+
+pdf('code/application/prediction_plots_all_locations.pdf', width=12, height=12)
+for(location in locations_to_investigate) {
+  location_forecasts <- this_week_forecasts_and_observed %>%
+    dplyr::filter(
+      state == location,
+      model_abbreviation %in% location_models,
+      quantile != '0.5') %>%
+    dplyr::mutate(
+      location_name = state,
+      quantile = as.numeric(quantile),
+      endpoint_type = ifelse(quantile < 0.5, 'lower', 'upper'),
+      alpha = ifelse(
+        endpoint_type == 'lower',
+        format(2*quantile, digits=3, nsmall=3),
+        format(2*(1-quantile), digits=3, nsmall=3))
+    ) %>%
+    dplyr::select(-quantile) %>%
+    tidyr::pivot_wider(names_from='endpoint_type', values_from='value') %>%
+    dplyr::bind_rows(
+      plottable_ensemble_predictions %>%
+        mutate(
+          model_abbreviation = 'ensemble'
+        ) %>%
+        dplyr::filter(location_name == UQ(location))
+    )
+
+  location_models <- model_weights %>%
+    dplyr::filter(location_name == location) %>%
+    dplyr::select(-location_name, -location) %>%
+    tidyr::pivot_longer(cols = seq_len(ncol(.)), names_to = 'model_abbreviation', values_to = 'weight') %>%
+    dplyr::filter(weight > .Machine$double.eps) %>%
+    dplyr::pull(model_abbreviation)
+
+  #location_models <- 'CU-select'
+
+  p <- ggplot() +
+    geom_line(data=observed %>% filter(location_name == UQ(location)),
+              mapping = aes(x = time, y = observed)) +
+    geom_point(data=observed %>% filter(location_name == UQ(location)),
+               mapping = aes(x = time, y = observed)) +
+    geom_ribbon(
+      #      data = location_forecasts %>% filter(alpha == '0.050'),
+      data = location_forecasts %>% filter(alpha %in% c('0.020', '0.050', '0.200', '0.500')),
+                    mapping = aes(x = lubridate::ymd(target_end_date),
+                    ymin=lower, ymax=upper,
+                    fill=alpha),
+    ) +
+    # geom_line(
+    #   data = formatted_ensemble_predictions %>%
+    #     filter(quantile == 0.5),
+    #   mapping = aes(x = lubridate::ymd(target_end_date), y = value)) +
+    # geom_point(
+    #   data = formatted_ensemble_predictions %>%
+    #     filter(quantile == 0.5),
+    #   mapping = aes(x = lubridate::ymd(target_end_date), y = value)) +
+    facet_wrap(~model_abbreviation, ncol=4, scales = 'free_y') +
+    ggtitle(location) +
+    theme_bw()
+
+  print(p)
+}
 dev.off()
 
