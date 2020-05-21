@@ -144,11 +144,11 @@ predict.qra_fit <- function(qra_fit, qfm) {
 estimate_qra <- function(
   qfm_train,
   y_train,
-  qra_model = c('ew', 'convex_per_model'),
+  qra_model = c('ew', 'convex_per_model', 'unconstrained_per_model'),
   backend = 'optim',
   ...
 ) {
-  qra_model <- match.arg(qra_model, choices = c('ew', 'convex_per_model'))
+  qra_model <- match.arg(qra_model, choices = c('ew', 'convex_per_model', 'unconstrained_per_model'))
 
   if(qra_model == 'ew') {
     result <- estimate_qra_ew(qfm_train, ...)
@@ -268,7 +268,7 @@ init_par_constructor_convex_per_model <- function(qfm_train, ...) {
 }
 
 
-#' Model constructor for qra_convex_per_model approach
+#' Model constructor for convex_per_model approach
 #'
 #' @param par vector of real numbers
 #' @param qfm_train object of class QuantileForecastMatrix
@@ -292,6 +292,59 @@ model_constructor_convex_per_model <- function(par, qfm_train) {
   qra_fit <- new_qra_fit(
     parameters = list(coefficients=coefficients, intercept=intercept),
     convex = TRUE
+  )
+
+  return(qra_fit)
+}
+
+
+#' Initial parameter constructor for unconstrained_per_model approach
+#'
+#' @param qfm_train QuantileForecastMatrix with training set predictions from
+#'    component models
+#' @param ... mop up other arguments that are ignored
+#'
+#' @return vector of real-valued initial values for parameters
+init_par_constructor_unconstrained_per_model <- function(qfm_train, ...) {
+  # extract number of unique models in qfm_train
+  col_index <- attr(qfm_train, 'col_index')
+  model_col <- attr(qfm_train, 'model_col')
+  unique_models <- unique(col_index[[model_col]])
+  M <- length(unique_models)
+
+  # initial parameter values are 0 for each model;
+  # after softmax, this corresponds to weight 1/M for each model
+  init_par <- rep(0.0, 1+M)
+
+  return(init_par)
+}
+
+
+#' Model constructor for unconstrained_per_model approach
+#'
+#' @param par vector of real numbers
+#' @param qfm_train object of class QuantileForecastMatrix
+#'
+#' @return object of class qra_fit
+#'
+#' @export
+model_constructor_unconstrained_per_model <- function(par, qfm_train) {
+  col_index <- attr(qfm_train, 'col_index')
+  model_col <- attr(qfm_train, 'model_col')
+  unique_models <- unique(col_index[[model_col]])
+
+  coefficients <- data.frame(
+    a = unique_models,
+    beta = par[seq_along(unique_models)],
+    stringsAsFactors = FALSE
+  )
+  colnames(coefficients)[1] <- model_col
+  intercept <- data.frame(beta = par[length(unique_models)+1],
+                          stringsAsFactors = FALSE)
+
+  qra_fit <- new_qra_fit(
+    parameters = list(coefficients=coefficients, intercept=intercept),
+    convex = FALSE
   )
 
   return(qra_fit)

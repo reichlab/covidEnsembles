@@ -202,3 +202,27 @@ test_scores <- data.frame(model = c('DGP', 'Wide', 'Narrow', 'Bias_Wide', 'EW_QR
 test_scores
 ```
 
+
+## QRA Method 2: Convex Combination of misspecified models, one weight per model across all quantile levels
+
+```{r}
+unconstrained_qra_fit <- estimate_qra(qfm_train = train_qfm, y_train = y_train, qra_model = 'unconstrained_per_model')
+test_qfm_Unconstrained_QRA <- predict(unconstrained_qra_fit[[2]], test_qfm)
+```
+
+
+## All Test Set Scores
+
+```{r}
+all_qra_approaches <- c('DGP', 'Wide', 'Narrow', 'Bias_Wide', 'EW_QRA', 'Convex_QRA', 'Unconstrained_QRA')
+test_scores <- data.frame(model = all_qra_approaches) %>%
+  mutate(
+    wis = purrr::map_dbl(
+      model,
+      function(model) {
+        mean(wis(y_test, get(paste0('test_qfm_', model))))
+      }
+    )
+  )
+test_scores
+```
