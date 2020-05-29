@@ -1,4 +1,4 @@
-state,state_code,state_name
+location_abbreviation,location,location_name
 AK,02,Alaska
 AL,01,Alabama
 AR,05,Arkansas
@@ -56,3 +56,4 @@ WA,53,Washington
 WI,55,Wisconsin
 WV,54,West Virginia
 WY,56,Wyoming
+US,US,United States

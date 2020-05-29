@@ -4,7 +4,13 @@
 \alias{estimate_qra}
 \title{Estimate Quantile Regression Averaging model}
 \usage{
-estimate_qra(qfm_train, y_train, qra_model = c("ew"), backend = "optim", ...)
+estimate_qra(
+  qfm_train,
+  y_train,
+  qra_model = c("ew", "convex_per_model", "unconstrained_per_model"),
+  backend = c("optim", "NlcOptim"),
+  ...
+)
 }
 \arguments{
 \item{qfm_train}{QuantileForecastMatrix with training set predictions}
@@ -13,8 +19,9 @@ estimate_qra(qfm_train, y_train, qra_model = c("ew"), backend = "optim", ...)
 
 \item{qra_model}{quantile averaging model: currently only 'ew' is supported}
 
-\item{backend}{implementation used for estimation; currently only 'optim'
-is supported, which does estimation by calling the optim function in R}
+\item{backend}{implementation used for estimation; currently either
+'optim', using L-BFGS-B as provided by the optim function in R, or
+'NlcOptim', using NlcOptim::solnl}
 }
 \value{
 object of class qra_fit

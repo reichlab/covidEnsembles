@@ -8,6 +8,7 @@ that model is eligible for inclusion in an ensemble, with explanation if not}
 calc_model_eligibility_for_ensemble(
   qfm,
   observed_by_unit_target_end_date,
+  do_q10_check = TRUE,
   lookback_length
 )
 }
@@ -15,6 +16,9 @@ calc_model_eligibility_for_ensemble(
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
 
 \item{observed_by_unit_target_end_date}{data frame of observed values}
+
+\item{do_q10_check}{logical; if TRUE, check condition that quantile at
+level 0.1 is at least as large as the most recent observed value}
 
 \item{lookback_length}{non-negative integer number of historic weeks that
 are examined for forecast missingness; 0 is appropriate for equal weight

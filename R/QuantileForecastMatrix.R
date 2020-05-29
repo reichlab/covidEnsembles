@@ -112,12 +112,16 @@ new_QuantileForecastMatrix <- function(
 #'
 #' @param forecast_df data frame of forecasts from component models in 'CDC format'
 #' @param model_col character name of column in forecast_df identifying model
-#' @param id_cols character vector of columns in forecast_df identifying unique forecast
-#'   settings such as location, time zero, and horizon
-#' @param quantile_name_col character name of column in forecast_df containing probability
-#'   for quantile, e.g. 0.95
-#' @param quantile_value_col character name of column in forecast_df identifying value for
-#'   quantile, e.g. 195
+#' @param id_cols character vector of columns in forecast_df identifying unique
+#'    forecast settings such as location, time zero, and horizon
+#' @param quantile_name_col character name of column in forecast_df containing
+#'    probability for quantile, e.g. 0.95
+#' @param quantile_value_col character name of column in forecast_df
+#'    identifying value for quantile, e.g. 195
+#' @param drop_missing_id_levels logical.  If FALSE, all combinations of unique
+#'    values found in columns specified by id_cols are included, with NA values
+#'    where corresponding forecasts are not provided.  If TRUE, only the
+#'    combinations of values for id_cols in the data frame are retained.
 #'
 #' @return Object of class QuantileForecastMatrix
 #'
@@ -127,7 +131,8 @@ new_QuantileForecastMatrix_from_df <- function(
   model_col,
   id_cols,
   quantile_name_col,
-  quantile_value_col
+  quantile_value_col,
+  drop_missing_id_levels=FALSE
 ) {
   if(!all(c(model_col, id_cols, quantile_name_col, quantile_value_col) %in%
           names(forecast_df))) {
@@ -146,14 +151,18 @@ new_QuantileForecastMatrix_from_df <- function(
   ) %>%
     `colnames<-`(c(quantile_name_col, model_col))
 
-  # all unique combinations of id column values,
-  # regardless of whether they are represented in forecast_df
-  id_grid <- expand.grid(
-    purrr::map(id_cols, function(col) { unique(forecast_df[[col]]) }) %>%
-      `names<-`(id_cols),
-    KEEP.OUT.ATTRS = FALSE,
-    stringsAsFactors = FALSE
-  )
+  if(drop_missing_id_levels) {
+    id_grid <- dplyr::distinct(forecast_df[, id_cols, drop=FALSE])
+  } else {
+    # all unique combinations of id column values,
+    # regardless of whether they are represented in forecast_df
+    id_grid <- expand.grid(
+      purrr::map(id_cols, function(col) { unique(forecast_df[[col]]) }) %>%
+        `names<-`(id_cols),
+      KEEP.OUT.ATTRS = FALSE,
+      stringsAsFactors = FALSE
+    )
+  }
 
   # pivot the quantiles wider; each quantile is now in its own column
   forecast_df <- forecast_df %>%

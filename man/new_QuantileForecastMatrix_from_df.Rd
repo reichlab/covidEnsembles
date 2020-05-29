@@ -10,7 +10,8 @@ new_QuantileForecastMatrix_from_df(
   model_col,
   id_cols,
   quantile_name_col,
-  quantile_value_col
+  quantile_value_col,
+  drop_missing_id_levels = FALSE
 )
 }
 \arguments{
@@ -18,14 +19,19 @@ new_QuantileForecastMatrix_from_df(
 
 \item{model_col}{character name of column in forecast_df identifying model}
 
-\item{id_cols}{character vector of columns in forecast_df identifying unique forecast
-settings such as location, time zero, and horizon}
+\item{id_cols}{character vector of columns in forecast_df identifying unique
+forecast settings such as location, time zero, and horizon}
 
-\item{quantile_name_col}{character name of column in forecast_df containing probability
-for quantile, e.g. 0.95}
+\item{quantile_name_col}{character name of column in forecast_df containing
+probability for quantile, e.g. 0.95}
 
-\item{quantile_value_col}{character name of column in forecast_df identifying value for
-quantile, e.g. 195}
+\item{quantile_value_col}{character name of column in forecast_df
+identifying value for quantile, e.g. 195}
+
+\item{drop_missing_id_levels}{logical.  If FALSE, all combinations of unique
+values found in columns specified by id_cols are included, with NA values
+where corresponding forecasts are not provided.  If TRUE, only the
+combinations of values for id_cols in the data frame are retained.}
 }
 \value{
 Object of class QuantileForecastMatrix

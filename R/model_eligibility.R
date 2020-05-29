@@ -3,6 +3,8 @@
 #'
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
 #' @param observed_by_unit_target_end_date data frame of observed values
+#' @param do_q10_check logical; if TRUE, check condition that quantile at
+#'   level 0.1 is at least as large as the most recent observed value
 #' @param lookback_length non-negative integer number of historic weeks that
 #'   are examined for forecast missingness; 0 is appropriate for equal weight
 #'   ensembles where no historical data is required.  If two past weeks of
@@ -18,6 +20,7 @@
 calc_model_eligibility_for_ensemble <- function(
   qfm,
   observed_by_unit_target_end_date,
+  do_q10_check = TRUE,
   lookback_length
 ) {
   model_id_name <- attr(qfm, 'model_col')
@@ -26,20 +29,25 @@ calc_model_eligibility_for_ensemble <- function(
   missingness <- calc_forecast_missingness(qfm, lookback_length)
 
   # check whether 10th quantile is less than most recent observation
-  q10_check <- calc_q10_check(qfm, observed_by_unit_target_end_date)
+  if(do_q10_check) {
+    q10_check <- calc_q10_check(qfm, observed_by_unit_target_end_date)
 
-  # combine missingness and q10 eligibility check results
-  # missingness takes precedent in that if both checks are violated,
-  # only the failure for missingness is reported
-  eligibility <- missingness %>%
-    dplyr::left_join(q10_check, by = c("unit", model_id_name)) %>%
-    mutate(
-      eligibility = ifelse(
-        missingness_eligibility == 'eligible',
-        q10_eligibility,
-        missingness_eligibility
+    # combine missingness and q10 eligibility check results
+    # missingness takes precedent in that if both checks are violated,
+    # only the failure for missingness is reported
+    eligibility <- missingness %>%
+      dplyr::left_join(q10_check, by = c("unit", model_id_name)) %>%
+      mutate(
+        eligibility = ifelse(
+          missingness_eligibility == 'eligible',
+          q10_eligibility,
+          missingness_eligibility
+        )
       )
-    )
+  } else {
+    eligibility <- missingness %>%
+      mutate(eligibility = missingness_eligibility)
+  }
 
   return(eligibility[, c('unit', model_id_name, 'eligibility'), drop=FALSE])
 }

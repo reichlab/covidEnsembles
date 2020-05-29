@@ -2,7 +2,7 @@
 % Please edit documentation in R/qra_fit.R
 \name{model_constructor_convex_per_model}
 \alias{model_constructor_convex_per_model}
-\title{Model constructor for qra_convex_per_model approach}
+\title{Model constructor for convex_per_model approach}
 \usage{
 model_constructor_convex_per_model(par, qfm_train)
 }
@@ -15,5 +15,5 @@ model_constructor_convex_per_model(par, qfm_train)
 object of class qra_fit
 }
 \description{
-Model constructor for qra_convex_per_model approach
+Model constructor for convex_per_model approach
 }

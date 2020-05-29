@@ -135,8 +135,8 @@ test_that("as.data.frame.QuantileForecastMatrix works", {
   )
 
   actual <- as.data.frame(forecast_matrix) %>%
-    select(id1, id2, model, q_prob, q_val) %>%
-    arrange(id2, id1, model)
+    dplyr::select(id1, id2, model, q_prob, q_val) %>%
+    dplyr::arrange(id2, id1, model)
 
   expect_identical(
     actual,

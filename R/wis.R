@@ -43,7 +43,7 @@ wis <- function(y, qfm) {
   # initialize score to absolute error if median provided or 0 otherwise
   if(length(median_ind) == 1) {
     K <- (length(quantile_levels) - 1)/2
-    score <- abs(y - qfm[, median_ind])
+    score <- abs(y - unclass(qfm)[, median_ind])
   } else {
     K <- length(quantile_levels) / 2
     score <- rep(0.0, length(y))
@@ -52,7 +52,7 @@ wis <- function(y, qfm) {
   # interval scores for each interval
   for(k in seq_len(K)) {
     alpha <- 2*quantile_levels[k]
-    score <- score + interval_score(y, qfm[, k], qfm[, ncol(qfm)+1-k], alpha)
+    score <- score + interval_score(y, unclass(qfm)[, k], unclass(qfm)[, ncol(qfm)+1-k], alpha)
   }
 
   score <- score / (K + length(median_ind))

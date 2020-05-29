@@ -135,8 +135,9 @@ predict.qra_fit <- function(qra_fit, qfm) {
 #' @param qfm_train QuantileForecastMatrix with training set predictions
 #' @param y_train numeric vector of responses for training set
 #' @param qra_model quantile averaging model: currently only 'ew' is supported
-#' @param backend implementation used for estimation; currently only 'optim'
-#'    is supported, which does estimation by calling the optim function in R
+#' @param backend implementation used for estimation; currently either
+#'    'optim', using L-BFGS-B as provided by the optim function in R, or
+#'    'NlcOptim', using NlcOptim::solnl
 #'
 #' @return object of class qra_fit
 #'
@@ -145,15 +146,16 @@ estimate_qra <- function(
   qfm_train,
   y_train,
   qra_model = c('ew', 'convex_per_model', 'unconstrained_per_model'),
-  backend = 'optim',
+  backend = c('optim', 'NlcOptim'),
   ...
 ) {
   qra_model <- match.arg(qra_model, choices = c('ew', 'convex_per_model', 'unconstrained_per_model'))
+  backend <- match.arg(backend, choices = c('optim', 'NlcOptim'))
 
   if(qra_model == 'ew') {
     result <- estimate_qra_ew(qfm_train, ...)
   } else {
-    result <- estimate_qra_optimized(qfm_train, y_train, qra_model)
+    result <- estimate_qra_optimized(qfm_train, y_train, qra_model, backend)
   }
 
   return(result)
@@ -195,11 +197,22 @@ estimate_qra_ew <- function(qfm_train, ...) {
 #'    component models
 #' @param y_train numeric vector of responses for training set
 #' @param qra_model quantile averaging model
+#' @param backend implementation used for estimation; currently either
+#'    'optim', using L-BFGS-B as provided by the optim function in R, or
+#'    'NlcOptim', using NlcOptim::solnl
 #'
 #' @return object of class qra_fit
 #'
 #' @export
-estimate_qra_optimized <- function(qfm_train, y_train, qra_model) {
+estimate_qra_optimized <- function(
+  qfm_train,
+  y_train,
+  qra_model = c('convex_per_model', 'unconstrained_per_model'),
+  backend = c('optim', 'NlcOptim')
+) {
+  qra_model <- match.arg(qra_model, choices = c('convex_per_model', 'unconstrained_per_model'))
+  backend <- match.arg(backend, choices = c('optim', 'NlcOptim'))
+
   init_par_constructor <- getFromNamespace(
     paste0('init_par_constructor_', qra_model),
     ns='covidEnsembles'
@@ -210,16 +223,30 @@ estimate_qra_optimized <- function(qfm_train, y_train, qra_model) {
   )
 
   init_par <- init_par_constructor(qfm_train, y_train)
-  optim_output <- optim(
-    par=init_par,
-    fn=wis_loss,
-    model_constructor=model_constructor,
-    qfm_train=qfm_train,
-    y_train=y_train,
-    method='L-BFGS-B')
+  if(backend == 'optim') {
+    optim_output <- optim(
+      par=init_par,
+      fn=wis_loss,
+      model_constructor=model_constructor,
+      qfm_train=qfm_train,
+      y_train=y_train,
+      method='L-BFGS-B')
 
-  if(optim_output$convergence != 0) {
-    warning('optim convergence non-zero; estimation may have failed!')
+    if(optim_output$convergence != 0) {
+      warning('optim convergence non-zero; estimation may have failed!')
+    }
+  } else if(backend == 'NlcOptim') {
+    wis_loss_wrapper <- function(x) {
+      wis_loss(
+        x,
+        model_constructor=model_constructor,
+        qfm_train=qfm_train,
+        y_train=y_train)
+    }
+    optim_output <- NlcOptim::solnl(
+      X=init_par,
+      objfun=wis_loss_wrapper
+    )
   }
 
   return(list(
