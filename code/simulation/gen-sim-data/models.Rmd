@@ -1,0 +1,114 @@
+---
+title: "Simulation Study models"
+author: "Evan L. Ray"
+date: "5/28/2020"
+output: pdf_document
+---
+
+\def\logit{\text{logit}}
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, cache=TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+# Some Exploratory Plots
+
+```{r}
+covid <- read_csv('../../../data-raw/jhu-incident.csv')
+pops <- read_csv('../../../data-raw/location_traits.csv')
+covid <- covid %>%
+  dplyr::left_join(
+    pops %>%
+      select(
+        location_abbreviation=postalCode,
+        pop=totalpop
+      ))
+```
+
+
+```{r, fig.width=7, fig.height=9}
+ggplot(
+  data = covid,
+  mapping = aes(x = week, y = value, group=location)) +
+  geom_line() +
+  facet_wrap( ~ location_abbreviation, scales = 'free_y') +
+  ggtitle('incident deaths, vertical scale per location')
+```
+
+```{r, fig.width=7, fig.height=9}
+ggplot(
+  data = covid,
+  mapping = aes(x = week, y = value, group=location)) +
+  geom_line() +
+  facet_wrap( ~ location_abbreviation) +
+  ggtitle('incident deaths, same vertical scale')
+```
+
+```{r, fig.width=7, fig.height=9}
+ggplot(
+  data = covid,
+  mapping = aes(x = week, y = value/pop, group=location)) +
+  geom_line() +
+  facet_wrap( ~ location_abbreviation) +
+  ggtitle('incident deaths/population, same vertical scale')
+```
+
+Observations:
+
+ * We have integer counts of deaths
+ * scaling by population is helpful.
+
+
+# Models
+
+## SIRD fit separately by state
+
+Notation:
+
+ * $N$ = population for location
+ * $y(t)$ = count of deaths for location at time $t$
+ * $s(t)$ = proportion of population susceptible at time $t$
+ * $i(t)$ = proportion of population infected at time $t$
+ * $r(t)$ = proportion of population recovered at time $t$
+ * $d(t)$ = proportion of population dead at time $t$
+
+Model:
+
+\begin{align*}
+y(t) &\sim \text{Negative Binomial}\left(\{d(t) - d(t-1)\}N, \phi\right) \\
+\frac{d}{dt} s(t) &= - \beta s(t) i(t) \\
+\frac{d}{dt} i(t) &= \beta s(t) i(t) - \gamma i(t) - \mu i(t) \\
+\frac{d}{dt} r(t) &= \gamma i(t) \\
+\frac{d}{dt} d(t) &= \mu i(t) \\
+\end{align*}
+
+Priors:
+
+\begin{align*}
+d(0) &= 0.0 \\
+\tilde{s}(0) &\sim \text{Normal}(\nu_s, \sigma^2_s) \\
+\nu_s &\sim \text{Normal}(7.0, 2.0) \\
+\sigma_s &\sim \text{Gamma}(1, 1) \\
+\tilde{i}(0) &\sim \text{Normal}(\nu_s, \sigma^2_s) \\
+\nu_i &\sim \text{Normal}(0.0, 2.0) \\
+\sigma_i &\sim \text{Gamma}(1, 1) \\
+\tilde{r}(0) &= 0.0 \\
+\begin{bmatrix}s(0) \\ i(0) \\ r(0) \end{bmatrix} &= \text{softmax}\left( \begin{bmatrix}\tilde{s}(0) \\ \tilde{i}(0) \\ \tilde{r}(0) \end{bmatrix} \right) \\
+\log(\beta) &\sim \text{Normal}(\nu_{\beta}, \sigma^2_{\beta}) \\
+\nu_{\beta} &\sim \text{Normal}(0.33, 2) \\
+\sigma_{\beta} &\sim \text{Gamma}(1, 1) \\
+\log(\gamma) &\sim \text{Normal}(\nu_{\gamma}, \sigma^2_{\gamma}) \\
+\nu_{\gamma} &\sim \text{Normal}(-0.7, 2) \\
+\sigma_{\gamma} &\sim \text{Gamma}(1, 1) \\
+\log(\mu) &\sim \text{Normal}(\nu_{\mu}, \sigma^2_{\mu}) \\
+\nu_{\mu} &\sim \text{Normal}(-7.5, 2) \\
+\sigma_{\mu} &\sim \text{Gamma}(1, 1) \\
+\log(\phi) &\sim \text{Normal}(\nu_{\phi}, \sigma^2_{\phi}) \\
+\nu_{\phi} &\sim \text{Normal}(1, 2) \\
+\sigma_{\phi} &\sim \text{Gamma}(1, 1) \\
+\end{align*}
+
