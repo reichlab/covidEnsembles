@@ -5,16 +5,16 @@
 \title{Compute check of whether quantile 0.1 for 1 week ahead forecast is at least
 the median of the most recent observed cumulative deaths}
 \usage{
-calc_q10_check(qfm, observed_by_unit_target_end_date)
+calc_q10_check(qfm, observed_by_location_target_end_date)
 }
 \arguments{
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
 
-\item{observed_by_unit_target_end_date}{data frame of observed values}
+\item{observed_by_location_target_end_date}{data frame of observed values}
 }
 \value{
 data frame with a row for each combination of
-unit, forecast week end date, and model and a logical column called
+location, forecast week end date, and model and a logical column called
 'any_missing' with entry TRUE if any forecasts were missing across all
 quantiles and targets
 }

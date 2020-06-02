@@ -7,24 +7,34 @@ that model is eligible for inclusion in an ensemble, with explanation if not}
 \usage{
 calc_model_eligibility_for_ensemble(
   qfm,
-  observed_by_unit_target_end_date,
+  observed_by_location_target_end_date,
   do_q10_check = TRUE,
-  lookback_length
+  do_nondecreasing_quantile_check = TRUE,
+  lookback_length = 0,
+  decrease_tol = 1
 )
 }
 \arguments{
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
 
-\item{observed_by_unit_target_end_date}{data frame of observed values}
+\item{observed_by_location_target_end_date}{data frame of observed values}
 
 \item{do_q10_check}{logical; if TRUE, check condition that quantile at
 level 0.1 is at least as large as the most recent observed value}
+
+\item{do_nondecreasing_quantile_check}{logical; if TRUE, check condition
+that quantiles for consecutive targets (1 wk ahead, 2 wk ahead, etc) are
+non-decreasing for each combination of location, forecast_week_end_date,
+model, and quantile probability level}
 
 \item{lookback_length}{non-negative integer number of historic weeks that
 are examined for forecast missingness; 0 is appropriate for equal weight
 ensembles where no historical data is required.  If two past weeks of
 forecast data are required to estimate ensemble parameters, lookback_length
 should be 2}
+
+\item{decrease_tol}{numeric; decreases of up to specified tolerance are
+allowed}
 }
 \value{
 data frame with two columns:

@@ -2,7 +2,7 @@
 % Please edit documentation in R/model_eligibility.R
 \name{calc_forecast_missingness}
 \alias{calc_forecast_missingness}
-\title{Compute forecast missingness for each combination of unit and model}
+\title{Compute forecast missingness for each combination of location and model}
 \usage{
 calc_forecast_missingness(qfm, lookback_length = 0)
 }
@@ -17,10 +17,10 @@ should be 2}
 }
 \value{
 data frame with a row for each combination of
-unit, forecast week end date, and model and a logical column called
+location, forecast week end date, and model and a logical column called
 'any_missing' with entry TRUE if any forecasts were missing across all
 quantiles and targets
 }
 \description{
-Compute forecast missingness for each combination of unit and model
+Compute forecast missingness for each combination of location and model
 }
