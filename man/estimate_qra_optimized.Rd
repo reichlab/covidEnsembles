@@ -7,7 +7,8 @@
 estimate_qra_optimized(
   qfm_train,
   y_train,
-  qra_model = c("convex_per_model", "unconstrained_per_model"),
+  qra_model = c("convex_per_model", "unconstrained_per_model",
+    "rescaled_convex_per_model"),
   backend = c("optim", "NlcOptim")
 )
 }

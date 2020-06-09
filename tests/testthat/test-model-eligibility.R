@@ -2,7 +2,7 @@ context("model eligibility")
 library(covidEnsembles)
 library(dplyr)
 
-test_that("calc_forecast_missingness works: lookback_length 0, none missing", {
+test_that("calc_forecast_missingness works: window_size 0, none missing", {
   forecast_df <- expand.grid(
     location = letters[1:4],
     forecast_week_end_date = c('2020-04-18', '2020-04-25', '2020-05-02'),
@@ -19,7 +19,7 @@ test_that("calc_forecast_missingness works: lookback_length 0, none missing", {
   ] <- NA_real_
 
   forecast_matrix <- new_QuantileForecastMatrix_from_df(
-    forecast_df,
+    forecast_df %>% filter(forecast_week_end_date >= '2020-05-02'),
     model_col = 'model',
     id_cols = c('location', 'forecast_week_end_date'),
     quantile_name_col = 'q_prob',
@@ -27,8 +27,7 @@ test_that("calc_forecast_missingness works: lookback_length 0, none missing", {
   )
 
   actual <- calc_forecast_missingness(
-    qfm=forecast_matrix,
-    lookback_length=0
+    qfm=forecast_matrix
   )
 
   expected <- expand.grid(
@@ -45,7 +44,49 @@ test_that("calc_forecast_missingness works: lookback_length 0, none missing", {
 })
 
 
-test_that("calc_forecast_missingness works: lookback_length 1, none missing", {
+test_that("calc_forecast_missingness works: window_size 1, none missing", {
+  forecast_df <- expand.grid(
+    location = letters[1:4],
+    forecast_week_end_date = c('2020-04-18', '2020-04-25', '2020-05-02'),
+    model = paste0('m', 1:3),
+    q_prob = c(0.025, 0.5, 0.975),
+    stringsAsFactors = FALSE
+  )
+  forecast_df$q_val <- rnorm(nrow(forecast_df))
+  forecast_df$q_val[
+    forecast_df$location == 'b' &
+      forecast_df$forecast_week_end_date == '2020-04-18' &
+      forecast_df$model == 'm2' &
+      forecast_df$q_prob == 0.975
+    ] <- NA_real_
+
+  forecast_matrix <- new_QuantileForecastMatrix_from_df(
+    forecast_df %>% filter(forecast_week_end_date >= '2020-04-25'),
+    model_col = 'model',
+    id_cols = c('location', 'forecast_week_end_date'),
+    quantile_name_col = 'q_prob',
+    quantile_value_col = 'q_val'
+  )
+
+  actual <- calc_forecast_missingness(
+    qfm=forecast_matrix
+  )
+
+  expected <- expand.grid(
+    location = letters[1:4],
+    model = paste0('m', 1:3),
+    missingness_eligibility = 'eligible',
+    stringsAsFactors = FALSE
+  )
+
+  expect_equal(
+    actual,
+    expected
+  )
+})
+
+
+test_that("calc_forecast_missingness works: window_size 2, missing", {
   forecast_df <- expand.grid(
     location = letters[1:4],
     forecast_week_end_date = c('2020-04-18', '2020-04-25', '2020-05-02'),
@@ -70,51 +111,7 @@ test_that("calc_forecast_missingness works: lookback_length 1, none missing", {
   )
 
   actual <- calc_forecast_missingness(
-    qfm=forecast_matrix,
-    lookback_length=1
-  )
-
-  expected <- expand.grid(
-    location = letters[1:4],
-    model = paste0('m', 1:3),
-    missingness_eligibility = 'eligible',
-    stringsAsFactors = FALSE
-  )
-
-  expect_equal(
-    actual,
-    expected
-  )
-})
-
-
-test_that("calc_forecast_missingness works: lookback_length 2, missing", {
-  forecast_df <- expand.grid(
-    location = letters[1:4],
-    forecast_week_end_date = c('2020-04-18', '2020-04-25', '2020-05-02'),
-    model = paste0('m', 1:3),
-    q_prob = c(0.025, 0.5, 0.975),
-    stringsAsFactors = FALSE
-  )
-  forecast_df$q_val <- rnorm(nrow(forecast_df))
-  forecast_df$q_val[
-    forecast_df$location == 'b' &
-      forecast_df$forecast_week_end_date == '2020-04-18' &
-      forecast_df$model == 'm2' &
-      forecast_df$q_prob == 0.975
-    ] <- NA_real_
-
-  forecast_matrix <- new_QuantileForecastMatrix_from_df(
-    forecast_df,
-    model_col = 'model',
-    id_cols = c('location', 'forecast_week_end_date'),
-    quantile_name_col = 'q_prob',
-    quantile_value_col = 'q_val'
-  )
-
-  actual <- calc_forecast_missingness(
-    qfm=forecast_matrix,
-    lookback_length=2
+    qfm=forecast_matrix
   )
 
   expected <- expand.grid(
@@ -189,9 +186,14 @@ test_that("calc_q10_check works", {
     arrange(location, model)
 
   expected$q10_eligibility[
+    expected$location %in% c('a') &
+      expected$model == 'm1'
+    ] <- 'quantile 0.1 of forecast for horizon 1 is less than most recent observed'
+  expected$q10_eligibility[
     expected$location %in% c('b', 'c') &
       expected$model == 'm2'
     ] <- 'quantile 0.1 of forecast for horizon 1 is less than most recent observed'
+
 
   expect_equal(
     actual,

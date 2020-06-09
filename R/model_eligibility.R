@@ -9,10 +9,10 @@
 #'   that quantiles for consecutive targets (1 wk ahead, 2 wk ahead, etc) are
 #'  non-decreasing for each combination of location, forecast_week_end_date,
 #'  model, and quantile probability level
-#' @param lookback_length non-negative integer number of historic weeks that
+#' @param window_size non-negative integer number of historic weeks that
 #'   are examined for forecast missingness; 0 is appropriate for equal weight
 #'   ensembles where no historical data is required.  If two past weeks of
-#'   forecast data are required to estimate ensemble parameters, lookback_length
+#'   forecast data are required to estimate ensemble parameters, window_size
 #'   should be 2
 #' @param decrease_tol numeric; decreases of up to specified tolerance are
 #'   allowed
@@ -28,13 +28,26 @@ calc_model_eligibility_for_ensemble <- function(
   observed_by_location_target_end_date,
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
-  lookback_length = 0,
+  window_size = 0,
   decrease_tol = 1.0
 ) {
-  model_id_name <- attr(qfm, 'model_col')
+  # subset to rows representing forecasts within window_size
+  row_index <- attr(qfm, 'row_index')
+  if(window_size+1 > length(unique(row_index$forecast_week_end_date))) {
+    stop('not enough forecast weeks in qfm to support requested lookback length')
+  }
+
+  last_lookback_forecast_weeks <- row_index %>%
+    distinct(forecast_week_end_date) %>%
+    top_n(window_size+1) %>%
+    pull(forecast_week_end_date)
+  rows_to_keep <- which(
+    row_index$forecast_week_end_date %in% last_lookback_forecast_weeks)
+  qfm <- qfm[rows_to_keep, ]
 
   # identify missing forecasts by location, forecast week end date, and model
-  eligibility <- calc_forecast_missingness(qfm, lookback_length)
+  model_id_name <- attr(qfm, 'model_col')
+  eligibility <- calc_forecast_missingness(qfm)
 
   # check whether 10th quantile is less than most recent observation
   if(do_q10_check) {
@@ -93,9 +106,7 @@ calc_q10_check <- function(
   ## subset to forecasts for most recent week and one week ahead target,
   ## and forecasts for quantile 0.1
   row_index <- attr(qfm, 'row_index')
-  current_week_end_date <- max(row_index$forecast_week_end_date)
   rows_to_keep <- which(
-    row_index$forecast_week_end_date == current_week_end_date &
     row_index$target == '1 wk ahead cum death'
   )
 
@@ -118,23 +129,16 @@ calc_q10_check <- function(
   q10_less_than_obs <- sweep(qfm_q10, MARGIN = 1, FUN = `<`, observed) %>%
     as.data.frame()
 
-  q10_eligibility_by_location_model <- purrr::map_dfr(
-    unique(row_index$location),
-    function(location) {
-      row_inds <- which(row_index$location == location)
-      if(length(row_inds) > 1) {
-        # this should never happen
-        stop('Error, duplicated locations in qfm')
-      }
+  eligibility <- purrr::pmap_dfr(
+    row_index %>% distinct(location, forecast_week_end_date),
+    function(location, forecast_week_end_date) {
+      row_inds <- which(row_index$location == location &
+                          row_index$forecast_week_end_date == forecast_week_end_date)
 
       purrr::map_dfr(
         unique(col_index[[model_id_name]]),
         function(model_id) {
           col_inds <- which(col_index[[model_id_name]] == model_id)
-          if(length(col_inds) > 1) {
-            # this should never happen
-            stop('Error, duplicated models in qfm')
-          }
 
           result <- row_index[row_inds[1], ]
           result[[model_id_name]] <- model_id
@@ -152,44 +156,44 @@ calc_q10_check <- function(
     }
   )
 
-  return(q10_eligibility_by_location_model %>%
-    select(location, UQ(model_id_name), q10_eligibility))
+  # calculate q10 eligiblity for each combination of location and model
+  eligibility <- eligibility %>%
+    dplyr::group_by(location, get(model_id_name)) %>%
+    dplyr::summarize(
+      q10_eligibility = ifelse(
+        any(q10_eligibility == 'quantile 0.1 of forecast for horizon 1 is less than most recent observed'),
+        'quantile 0.1 of forecast for horizon 1 is less than most recent observed',
+        ifelse(
+          any(q10_eligibility == 'quantile 0.1 of forecast for horizon 1 is missing'),
+          'quantile 0.1 of forecast for horizon 1 is missing',
+          'eligible'
+        )
+      )
+    ) %>%
+    dplyr::ungroup()
+  names(eligibility)[names(eligibility) == 'get(model_id_name)'] <-
+    model_id_name
+
+  return(eligibility)
 }
 
 
 #' Compute forecast missingness for each combination of location and model
 #'
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
-#' @param lookback_length non-negative integer number of historic weeks that
-#'   are examined for forecast missingness; 0 is appropriate for equal weight
-#'   ensembles where no historical data is required.  If two past weeks of
-#'   forecast data are required to estimate ensemble parameters, lookback_length
-#'   should be 2
+#' @param by_week logical; if TRUE, results are returned by forecast week, and
+#'   if FALSE results are summarized across weeks.
 #'
 #' @return data frame with a row for each combination of
-#'   location, forecast week end date, and model and a logical column called
+#'   location, forecast week end date (if requestrd), and model and a logical column called
 #'   'any_missing' with entry TRUE if any forecasts were missing across all
 #'   quantiles and targets
 #'
 #' @export
 calc_forecast_missingness <- function(
   qfm,
-  lookback_length = 0
+  by_week = FALSE
 ) {
-  # subset to rows representing forecasts within lookback_length
-  row_index <- attr(qfm, 'row_index')
-  if(lookback_length+1 > length(unique(row_index$forecast_week_end_date))) {
-    stop('not enough forecast weeks in qfm to support requested lookback length')
-  }
-
-  last_lookback_forecast_weeks <- row_index %>%
-    distinct(forecast_week_end_date) %>%
-    top_n(lookback_length+1) %>%
-    pull(forecast_week_end_date)
-  rows_to_keep <- which(
-    row_index$forecast_week_end_date %in% last_lookback_forecast_weeks)
-  qfm <- qfm[rows_to_keep, ]
-
   # calculate missingness for each combination of location, forecast week end date,
   # and model
   row_index <- attr(qfm, 'row_index')
@@ -216,6 +220,10 @@ calc_forecast_missingness <- function(
       )
     }
   )
+
+  if(by_week) {
+    return(missingness_by_location_forecast_week)
+  }
 
   # calculate missingness for each combination of location and model
   missingness_by_location <- missingness_by_location_forecast_week %>%

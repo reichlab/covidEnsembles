@@ -1,12 +1,28 @@
-#' Check if object is of class qra_ew
+#' Check if object is of class qra_fit
 #'
-#' @param object an object that may be a qra_ew object
+#' @param object an object that may be a qra_fit object
 #'
-#' @return boolean; whether object is inherits qra_ew class
+#' @return boolean; whether object is inherits qra_fit class
 #'
 #' @export
 is.qra_fit <- function(object) {
   if (inherits(object, "qra_fit")) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+
+#' Check if object is of class rescaled_qra_fit
+#'
+#' @param object an object that may be a rescaled_qra_fit object
+#'
+#' @return boolean; whether object is inherits rescaled_qra_fit class
+#'
+#' @export
+is.rescaled_qra_fit <- function(object) {
+  if (inherits(object, "rescaled_qra_fit")) {
     return(TRUE)
   } else {
     return(FALSE)
@@ -22,6 +38,17 @@ is.qra_fit <- function(object) {
 #'   otherwise, an error is thrown
 validate_qra_fit <- function(qra_fit) {
   message('validate_qra_fit not yet implemented')
+}
+
+
+#' Validate rescaled_qra_fit object
+#'
+#' @param rescaled_qra_fit
+#'
+#' @return invisible(TRUE) if qra_fit is valid;
+#'   otherwise, an error is thrown
+validate_rescaled_qra_fit <- function(rescaled_qra_fit) {
+  message('validate_rescaled_qra_fit not yet implemented')
 }
 
 
@@ -51,6 +78,39 @@ new_qra_fit <- function(
 #  validate_qra_fit(qra_fit)
 
   return(qra_fit)
+}
+
+
+#' Create a rescaled_qra_fit object
+#'
+#' @param parameters named list with two components:
+#'   * 'intercept': data frame optionally with a column for quantile values,
+#'     and corresponding intercepts
+#'   * 'coefficients': data frame of models, optionally quantile values,
+#'     and corresponding model coefficients
+#' @param convex logical; if TRUE, predictions are done by passing weights
+#'   through a softmax transformation; otherwise, no constraint is imposed.
+#'   Currently, only convex=TRUE is supported.
+#'
+#' @return rescaled_qra_fit object
+#'
+#' @export
+new_rescaled_qra_fit <- function(
+  parameters,
+  convex=TRUE
+) {
+  if(!convex) {
+    stop("only convex rescaled_qra_fit is supported")
+  }
+  rescaled_qra_fit <- structure(
+    parameters,
+    convex=convex,
+    class = 'rescaled_qra_fit'
+  )
+
+  #  validate_qra_fit(rescaled_qra_fit)
+
+  return(rescaled_qra_fit)
 }
 
 
@@ -130,6 +190,107 @@ predict.qra_fit <- function(qra_fit, qfm) {
 }
 
 
+#' Predict based on a quantile regression averaging fit
+#'
+#' @param qra_fit_rescalable object of class qra_fit_rescalable
+#' @param qfm matrix of model forecasts of class QuantileForecastMatrix
+#'
+#' @return object of class QuantileForecastMatrix with quantile forecasts
+#'
+#' @export
+predict.rescaled_qra_fit <- function(qra_fit, qfm) {
+  # construct sparse matrix representing model weights across quantiles
+  ## pull out parameter values
+  col_index <- attr(qfm, 'col_index')
+  model_id_name <- attr(qfm, 'model_col')
+  eligbility_by_row <- purrr::map_dfr(
+    seq_len(nrow(qfm)),
+    function(row_ind) {
+      purrr::map_dfr(
+        unique(col_index[[model_id_name]]),
+        function(model_id) {
+          col_inds <- which(col_index[[model_id_name]] == model_id)
+
+          result <- attr(qfm, 'row_index')[row_ind, ]
+          result[[model_id_name]] <- model_id
+          result[['eligible']] <- !any(is.na(qfm[row_ind, col_inds]))
+
+          return(result)
+        }
+      )
+    }
+  )
+
+  # convert model eligibility to wide format logical with human readable names
+  wide_model_eligibility <- eligbility_by_row %>%
+    pivot_wider(names_from='model', values_from='eligible')
+
+  # group locations by which models are included per location
+  row_groups <- wide_model_eligibility %>%
+    dplyr::mutate(row_num = dplyr::row_number()) %>%
+    group_by_if(is.logical) %>%
+    summarize(
+      rows = list(row_num),
+      ids = list(.[, c('location', 'forecast_week_end_date', 'target')])
+    ) %>%
+    ungroup()
+
+  # predict separately for each row group
+  all_preds <- purrr::map(
+    seq_len(nrow(row_groups)),
+    function(i) {
+      temp <- row_groups %>% slice(i) %>% select(-rows, -ids)
+      models <- colnames(temp)[which(as.matrix(temp))]
+      col_inds <- which(col_index[[model_id_name]] %in% models)
+
+      reduced_qfm <- qfm[row_groups$rows[[i]], col_inds]
+
+      reduced_coefficients <- qra_fit$coefficients[
+        qra_fit$coefficients[[1]] %in% models, , drop = FALSE
+      ]
+
+      reduced_qra_fit <- new_qra_fit(
+        parameters = list(coefficients=reduced_coefficients,
+                          intercept=qra_fit$intercept),
+        convex = TRUE
+      )
+
+      return(predict(reduced_qra_fit, reduced_qfm))
+    }
+  )
+
+  # assemble into full matrix of results, arrange by original row
+  combined_row_index <- purrr::map_dfr(
+    all_preds,
+    function(pred_qfm) {
+      attr(pred_qfm, 'row_index')
+    })
+
+  col_index <- attr(all_preds[[1]], 'col_index')
+
+  combined_fm <- do.call(
+    rbind,
+    purrr::map(all_preds, unclass)
+  )
+
+  # sorting
+  row_idx <- sort(unlist(row_groups$rows), index.return = TRUE)$ix
+  combined_row_index <- combined_row_index[row_idx, , drop = FALSE]
+  combined_fm <- combined_fm[row_idx, , drop = FALSE]
+
+  result_qfm <- new_QuantileForecastMatrix(
+    qfm = combined_fm,
+    row_index=combined_row_index,
+    col_index=col_index,
+    model_col=attr(all_preds[[1]], 'model_col'),
+    quantile_name_col=attr(all_preds[[1]], 'quantile_name_col'),
+    quantile_value_col=attr(all_preds[[1]], 'quantile_value_col')
+  )
+
+  return(result_qfm)
+}
+
+
 #' Estimate Quantile Regression Averaging model
 #'
 #' @param qfm_train QuantileForecastMatrix with training set predictions
@@ -145,17 +306,27 @@ predict.qra_fit <- function(qra_fit, qfm) {
 estimate_qra <- function(
   qfm_train,
   y_train,
-  qra_model = c('ew', 'convex_per_model', 'unconstrained_per_model'),
-  backend = c('optim', 'NlcOptim'),
+  qra_model = c('ew', 'convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model'),
+  backend = 'optim',
   ...
 ) {
-  qra_model <- match.arg(qra_model, choices = c('ew', 'convex_per_model', 'unconstrained_per_model'))
-  backend <- match.arg(backend, choices = c('optim', 'NlcOptim'))
+  qra_model <- match.arg(qra_model, choices = c('ew', 'convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model'))
+  backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'qra'))
 
-  if(qra_model == 'ew') {
-    result <- estimate_qra_ew(qfm_train, ...)
+  if(backend == 'qra') {
+    stop("backend = 'qra' is not yet supported")
+    qra_data <-
+      result <- qra:::qra_estimate_weights(
+        x = qra_data,
+        per_quantile_weights = per_quantile_weights,
+        enforce_normalisation = grepl('convex', qra_model)
+      )
   } else {
-    result <- estimate_qra_optimized(qfm_train, y_train, qra_model, backend)
+    if(qra_model == 'ew') {
+      result <- estimate_qra_ew(qfm_train, ...)
+    } else {
+      result <- estimate_qra_optimized(qfm_train, y_train, qra_model, backend)
+    }
   }
 
   return(result)
@@ -207,10 +378,10 @@ estimate_qra_ew <- function(qfm_train, ...) {
 estimate_qra_optimized <- function(
   qfm_train,
   y_train,
-  qra_model = c('convex_per_model', 'unconstrained_per_model'),
+  qra_model = c('convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model'),
   backend = c('optim', 'NlcOptim')
 ) {
-  qra_model <- match.arg(qra_model, choices = c('convex_per_model', 'unconstrained_per_model'))
+  qra_model <- match.arg(qra_model, choices = c('convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model'))
   backend <- match.arg(backend, choices = c('optim', 'NlcOptim'))
 
   init_par_constructor <- getFromNamespace(
@@ -325,6 +496,58 @@ model_constructor_convex_per_model <- function(par, qfm_train) {
 }
 
 
+
+#' Initial parameter constructor for rescaled_convex_per_model approach
+#'
+#' @param qfm_train QuantileForecastMatrix with training set predictions from
+#'    component models
+#' @param ... mop up other arguments that are ignored
+#'
+#' @return vector of real-valued initial values for parameters
+init_par_constructor_rescaled_convex_per_model <- function(qfm_train, ...) {
+  # extract number of unique models in qfm_train
+  col_index <- attr(qfm_train, 'col_index')
+  model_col <- attr(qfm_train, 'model_col')
+  unique_models <- unique(col_index[[model_col]])
+  M <- length(unique_models)
+
+  # initial parameter values are 0 for each model;
+  # after softmax, this corresponds to weight 1/M for each model
+  init_par <- rep(0.0, M)
+
+  return(init_par)
+}
+
+#' Model constructor for rescaled_convex_per_model approach
+#'
+#' @param par vector of real numbers
+#' @param qfm_train object of class QuantileForecastMatrix
+#'
+#' @return object of class rescaled_qra_fit
+#'
+#' @export
+model_constructor_rescaled_convex_per_model <- function(par, qfm_train) {
+  col_index <- attr(qfm_train, 'col_index')
+  model_col <- attr(qfm_train, 'model_col')
+  unique_models <- unique(col_index[[model_col]])
+
+  coefficients <- data.frame(
+    a = unique_models,
+    beta = par,
+    stringsAsFactors = FALSE
+  )
+  colnames(coefficients)[1] <- model_col
+  intercept <- data.frame(beta = 0.0, stringsAsFactors = FALSE)
+
+  rescaled_qra_fit <- new_rescaled_qra_fit(
+    parameters = list(coefficients=coefficients, intercept=intercept),
+    convex = TRUE
+  )
+
+  return(rescaled_qra_fit)
+}
+
+
 #' Initial parameter constructor for unconstrained_per_model approach
 #'
 #' @param qfm_train QuantileForecastMatrix with training set predictions from
@@ -339,9 +562,8 @@ init_par_constructor_unconstrained_per_model <- function(qfm_train, ...) {
   unique_models <- unique(col_index[[model_col]])
   M <- length(unique_models)
 
-  # initial parameter values are 0 for each model;
-  # after softmax, this corresponds to weight 1/M for each model
-  init_par <- rep(0.0, 1+M)
+  # initial parameter values are 0 for intercept and 1/M for each model
+  init_par <- c(0.0, rep(1/M, M))
 
   return(init_par)
 }

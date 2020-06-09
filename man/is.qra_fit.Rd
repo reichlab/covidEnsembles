@@ -2,16 +2,16 @@
 % Please edit documentation in R/qra_fit.R
 \name{is.qra_fit}
 \alias{is.qra_fit}
-\title{Check if object is of class qra_ew}
+\title{Check if object is of class qra_fit}
 \usage{
 is.qra_fit(object)
 }
 \arguments{
-\item{object}{an object that may be a qra_ew object}
+\item{object}{an object that may be a qra_fit object}
 }
 \value{
-boolean; whether object is inherits qra_ew class
+boolean; whether object is inherits qra_fit class
 }
 \description{
-Check if object is of class qra_ew
+Check if object is of class qra_fit
 }

@@ -10,7 +10,7 @@ calc_model_eligibility_for_ensemble(
   observed_by_location_target_end_date,
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
-  lookback_length = 0,
+  window_size = 0,
   decrease_tol = 1
 )
 }
@@ -27,10 +27,10 @@ that quantiles for consecutive targets (1 wk ahead, 2 wk ahead, etc) are
 non-decreasing for each combination of location, forecast_week_end_date,
 model, and quantile probability level}
 
-\item{lookback_length}{non-negative integer number of historic weeks that
+\item{window_size}{non-negative integer number of historic weeks that
 are examined for forecast missingness; 0 is appropriate for equal weight
 ensembles where no historical data is required.  If two past weeks of
-forecast data are required to estimate ensemble parameters, lookback_length
+forecast data are required to estimate ensemble parameters, window_size
 should be 2}
 
 \item{decrease_tol}{numeric; decreases of up to specified tolerance are

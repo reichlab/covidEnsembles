@@ -4,20 +4,17 @@
 \alias{calc_forecast_missingness}
 \title{Compute forecast missingness for each combination of location and model}
 \usage{
-calc_forecast_missingness(qfm, lookback_length = 0)
+calc_forecast_missingness(qfm, by_week = FALSE)
 }
 \arguments{
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
 
-\item{lookback_length}{non-negative integer number of historic weeks that
-are examined for forecast missingness; 0 is appropriate for equal weight
-ensembles where no historical data is required.  If two past weeks of
-forecast data are required to estimate ensemble parameters, lookback_length
-should be 2}
+\item{by_week}{logical; if TRUE, results are returned by forecast week, and
+if FALSE results are summarized across weeks.}
 }
 \value{
 data frame with a row for each combination of
-location, forecast week end date, and model and a logical column called
+location, forecast week end date (if requestrd), and model and a logical column called
 'any_missing' with entry TRUE if any forecasts were missing across all
 quantiles and targets
 }
