@@ -1,6 +1,14 @@
 # covidEnsembles
 R package for building ensembles of covid forecasts
 
+## Installation
+
+You can install this package from GitHub by running
+
+```
+devtools::install_github('https://github.com/reichlab/covidEnsembles')
+```
+
 ## Overview of workflow for application
 
 Current status: equally weighted ensemble for cumulative deaths
