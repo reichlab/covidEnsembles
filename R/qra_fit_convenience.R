@@ -50,8 +50,15 @@ do_zoltar_query <- function(
     Sys.sleep(1)
   }
 
-  # retrieve and return results
+  # retrieve results
   all_forecasts <- job_data(zoltar_connection, job_url)
+
+  # remove duplicate rows if there are any
+  dup_inds <- which(duplicated(all_forecasts))
+  if(length(dup_inds) > 0) {
+    all_forecasts <- all_forecasts[-dup_inds, , drop = FALSE]
+  }
+
   return(all_forecasts)
 }
 
@@ -68,6 +75,14 @@ do_zoltar_query <- function(
 #' @param window_size size of window
 #' @param ensemble_method name of method to use: 'ew', 'convex',
 #' 'unconstrained', or 'rescaled_convex'
+#' @param quantile_groups Vector of group labels for quantiles, having the same
+#' length as the number of quantiles.  Common labels indicate that the ensemble
+#' weights for the corresponding quantile levels should be tied together.
+#' Default is rep(1,length(quantiles)), which means that a common set of
+#' ensemble weights should be used across all levels.  This is the argument
+#' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
+#' `backend = 'quantmod`
+#' @param backend back end used for optimization.
 #' @param project_url zoltar project url
 #' @param required_quantiles numeric vector of quantiles component models are
 #' required to have submitted
@@ -85,6 +100,8 @@ build_covid_ensemble_from_zoltar <- function(
   timezero_window_size = 1,
   window_size,
   ensemble_method,
+  quantile_groups,
+  backend,
   project_url = 'https://www.zoltardata.com/api/project/44/',
   required_quantiles,
   do_q10_check,
@@ -100,6 +117,7 @@ build_covid_ensemble_from_zoltar <- function(
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
     zoltr::truth(zoltar_connection, project_url) %>%
+    dplyr::filter(target %in% targets) %>%
     dplyr::transmute(
       timezero = timezero,
       location = unit,
@@ -167,6 +185,8 @@ build_covid_ensemble_from_zoltar <- function(
     forecast_week_end_date=forecast_week_end_date,
     window_size=window_size,
     ensemble_method=ensemble_method,
+    quantile_groups=quantile_groups,
+    backend=backend,
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     manual_eligibility_adjust = manual_eligibility_adjust,
@@ -192,6 +212,14 @@ build_covid_ensemble_from_zoltar <- function(
 #' @param window_size size of window
 #' @param ensemble_method name of method to use: 'ew', 'convex',
 #' 'unconstrained', or 'rescaled_convex'
+#' @param quantile_groups Vector of group labels for quantiles, having the same
+#' length as the number of quantiles.  Common labels indicate that the ensemble
+#' weights for the corresponding quantile levels should be tied together.
+#' Default is rep(1,length(quantiles)), which means that a common set of
+#' ensemble weights should be used across all levels.  This is the argument
+#' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
+#' `backend = 'quantmod`
+#' @param backend back end used for optimization.
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
 #' @param manual_eligibility_adjust character vector of model abbreviations for
@@ -208,6 +236,8 @@ get_ensemble_fit_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   ensemble_method = c('ew', 'convex', 'unconstrained', 'rescaled_convex'),
+  quantile_groups = NULL,
+  backend = 'quantmod',
   do_q10_check,
   do_nondecreasing_quantile_check,
   manual_eligibility_adjust,
@@ -224,13 +254,15 @@ get_ensemble_fit_and_predictions <- function(
     choices = c('ew', 'convex', 'unconstrained', 'rescaled_convex'),
     several.ok = FALSE)
 
-  if(ensemble_method %in% c('ew', 'convex', 'unconstrained')) {
+  if(ensemble_method %in% c('ew', 'convex', 'unconstrained') | backend == 'quantmod') {
     results <- get_by_location_group_ensemble_fits_and_predictions(
       forecasts=forecasts,
       observed_by_location_target_end_date=observed_by_location_target_end_date,
       forecast_week_end_date=forecast_week_end_date,
       window_size=window_size,
       ensemble_method=ensemble_method,
+      quantile_groups=quantile_groups,
+      backend=backend,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       manual_eligibility_adjust = manual_eligibility_adjust,
@@ -241,7 +273,12 @@ get_ensemble_fit_and_predictions <- function(
       forecasts=forecasts,
       observed_by_location_target_end_date=observed_by_location_target_end_date,
       forecast_week_end_date=forecast_week_end_date,
-      window_size=window_size)
+      window_size=window_size,
+      do_q10_check = do_q10_check,
+      do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+      manual_eligibility_adjust = manual_eligibility_adjust,
+      return_eligibility=return_eligibility,
+      return_all=return_all)
   }
 
   return(results)
@@ -259,6 +296,14 @@ get_ensemble_fit_and_predictions <- function(
 #' @param window_size size of window
 #' @param ensemble_method name of method to use: 'ew', 'convex', or
 #' 'unconstrained'
+#' @param quantile_groups Vector of group labels for quantiles, having the same
+#' length as the number of quantiles.  Common labels indicate that the ensemble
+#' weights for the corresponding quantile levels should be tied together.
+#' Default is rep(1,length(quantiles)), which means that a common set of
+#' ensemble weights should be used across all levels.  This is the argument
+#' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
+#' `backend = 'quantmod`
+#' @param backend back end used for optimization.
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
 #' @param return_all if TRUE, return all quantities; if FALSE, return only some
@@ -272,6 +317,8 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   ensemble_method = c('ew', 'convex', 'unconstrained'),
+  quantile_groups = NULL,
+  backend = 'quantmod',
   do_q10_check,
   do_nondecreasing_quantile_check,
   manual_eligibility_adjust,
@@ -335,13 +382,6 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
     apply(as.matrix(location_groups %>% select(-locations)), 1, sum) > 0,
     , drop = FALSE]
 
-  # drop location groups with 0 or 1 eligible models making forecasts
-  #inds_to_drop <- location_groups %>%
-  #  select(-locations) %>%
-  #  apply(1, function(x) {sum(x) <= 1}) %>%
-  #  which()
-  #location_groups <- location_groups[-inds_to_drop, , drop=FALSE]
-
   # train/test set up:
   #
   # train:
@@ -398,15 +438,9 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
 
       covidEnsembles::new_QuantileForecastMatrix_from_df(
         forecast_df = this_week_forecasts_test %>%
-#          dplyr::left_join(
-#            observed_by_location_target_end_date %>%
-#              dplyr::filter(base_target == paste0('wk ahead cum death')),
-#            by = c('location', 'target_end_date')) %>%
           dplyr::filter(
             model %in% models,
             location %in% locations),
-#            forecast_week_end_date == max(forecast_week_end_date),
-#            !is.na(observed)),
         model_col = 'model',
         id_cols = c('location', 'forecast_week_end_date', 'target'),
         quantile_name_col = 'quantile',
@@ -425,27 +459,10 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
           )
         ) %>%
         dplyr::left_join(
-          observed_by_location_target_end_date %>%
-            dplyr::filter(base_target == paste0('wk ahead cum death')),
+          observed_by_location_target_end_date,
           by = c('location', 'target_end_date')) %>%
         dplyr::pull(observed)
     })
-
-#  location_groups$y_test <- purrr::map(
-#    location_groups$qfm_test,
-#    function(qfm) {
-#      attr(qfm, 'row_index') %>%
-#        dplyr::mutate(
-#          target_end_date = as.character(
-#            lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
-#          )
-#        ) %>%
-#        dplyr::left_join(
-#          observed_by_location_target_end_date %>%
-#            dplyr::filter(base_target == paste0('wk ahead cum death')),
-#          by = c('location', 'target_end_date')) %>%
-#        dplyr::pull(observed)
-#    })
 
   # fit ensembles and obtain predictions per group
   if(ensemble_method == 'ew') {
@@ -453,59 +470,17 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
       location_groups$qfm_train,
       estimate_qra,
       qra_model = 'ew')
-#    location_groups[['qra_forecast']] <- purrr::map(
-#      seq_len(nrow(location_groups)),
-#      function(i) {
-#        predict(location_groups$qra_fit[[i]], location_groups$qfm_test[[i]])
-#      }
-#    )
-#    location_groups[['ew_qra_wis']] <- purrr::map(
-#      seq_len(nrow(location_groups)),
-#      function(i) {
-#        wis(location_groups$y_test[[i]],
-#            location_groups$ew_qra_forecast[[i]])
-#      }
-#    )
-  } else if(ensemble_method == 'convex') {
+  } else {
     location_groups[['qra_fit']] <- purrr::pmap(
       location_groups %>% select(qfm_train, y_train),
       function(qfm_train, y_train) {
         estimate_qra(
           qfm_train = qfm_train,
           y_train = y_train,
-          qra_model = 'convex_per_model',
-          backend = 'optim')[[2]]
+          qra_model = ensemble_method,
+          quantile_groups = quantile_groups,
+          backend = backend)
       })
-#    location_groups[['convex_qra_wis']] <- purrr::map(
-#      seq_len(nrow(location_groups)),
-#      function(i) {
-#        wis(location_groups$y_test[[i]],
-#            location_groups$convex_qra_forecast[[i]])
-#      }
-#    )
-  } else if(ensemble_method == 'unconstrained') {
-    location_groups[['unconstrained_qra_fit']] <- purrr::pmap(
-      location_groups %>% select(qfm_train, y_train),
-      function(qfm_train, y_train) {
-        estimate_qra(
-          qfm_train = qfm_train,
-          y_train = y_train,
-          qra_model = 'unconstrained_per_model',
-          backend = 'optim')[[2]]
-      })
-#    location_groups[['unconstrained_qra_forecast']] <- purrr::pmap(
-#      location_groups %>% dplyr::select(unconstrained_qra_fit, qfm_test),
-#      function(unconstrained_qra_fit, qfm_test) {
-#        predict(unconstrained_qra_fit, qfm_test)
-#      }
-#    )
-#    location_groups[['unconstrained_qra_wis']] <- purrr::map(
-#      seq_len(nrow(location_groups)),
-#      function(i) {
-#        wis(location_groups$y_test[[i]],
-#            location_groups$unconstrained_qra_forecast[[i]])
-#      }
-#    )
   }
 
   # obtain predictions
@@ -534,37 +509,13 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
     } else {
       result <- dplyr::bind_rows(location_groups[['qra_forecast']])
     }
-#     result <- purrr::map_dfr(
-#       seq_len(nrow(location_groups)),
-#       function(i) {
-#         result <- attr(location_groups$qfm_test[[i]], 'row_index') %>%
-#           mutate(
-# #            ew_qra_wis = location_groups$ew_qra_wis[[i]],
-#             num_models_in_group = length(unique(
-#               attr(location_groups$qfm_train[[i]], 'col_index')[['model']]
-#             )),
-#             num_locations_in_group = length(location_groups$locations[[i]])
-#           )
-# #        if(window_size >= 1) {
-# #          result <- result %>%
-# #            mutate(
-# #              convex_qra_wis = location_groups$convex_qra_wis[[i]],
-# #              unconstrained_qra_wis = location_groups$unconstrained_qra_wis[[i]]
-# #            )
-# #        }
-#         return(result)
-#       }
-#     ) %>%
-#       mutate(
-#         window_size = window_size
-#       )
   }
 
   return(result)
 }
 
 
-#' Calculate ensemble fits separately by location group
+#' Calculate rescaled convex ensemble fit, renormalizing in case of missing models
 #'
 #' @param forecasts data frame with columns 'model', 'location',
 #' 'forecast_week_end_date', 'target', 'quantile', and 'value'
@@ -575,36 +526,111 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
 #' @param window_size size of window
 #'
 #' @return tibble or data frame with ensemble fits and results
-get_rescaled_ensemble_fits_and_predictions_one_week_and_window_size <- function(
+get_rescaled_ensemble_fits_and_predictions <- function(
   forecasts,
   observed_by_location_target_end_date,
   forecast_week_end_date,
-  window_size) {
+  window_size,
+  do_q10_check,
+  do_nondecreasing_quantile_check,
+  manual_eligibility_adjust,
+  return_all=FALSE,
+  return_eligibility = TRUE) {
   # for development/debugging
   #forecast_week_end_date <- lubridate::ymd("2020-05-02")
   #window_size <- 2L
 
-  # subset to relevant data for specified forecast_week_end_date and window_size
-  this_week_forecasts <- all_forecasts %>%
-    filter(forecast_week_end_date %in%
-             UQ(as.character(
-               forecast_week_end_date + seq(from = -window_size, to = 0)*7
-             )))
-
-  if(window_size >= 1) {
-    this_week_forecasts_train <-
-      forecasts %>%
-      filter(target_end_date <= UQ(forecast_week_end_date))
-  } else if(window_size == 0) {
-    this_week_forecasts_train <- forecasts %>%
-      filter(horizon == 1)
+  if(window_size == 0) {
+    stop("window size must be >= 1 for rescaled convex ensemble!")
   }
+
+  # obtain model eligibility for each model in the current week.
+  # - drop forecasts for all weeks from models that are not eligible for any
+  #   location in the current week
+  # - drop forecasts for the current week for model-location combinations where
+  #   the model is ineligible
+  forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
+    forecast_df = forecasts %>%
+      filter(forecast_week_end_date == UQ(forecast_week_end_date)),
+    model_col = 'model',
+    id_cols = c('location', 'forecast_week_end_date', 'target'),
+    quantile_name_col = 'quantile',
+    quantile_value_col = 'value'
+  )
+
+  model_eligibility <- covidEnsembles::calc_model_eligibility_for_ensemble(
+    qfm = forecast_matrix,
+    observed_by_location_target_end_date =
+      observed_by_location_target_end_date,
+    do_q10_check = do_q10_check,
+    do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+    window_size = 0,
+    decrease_tol = 0.0
+  )
+
+  models_ineligible_all_locations <- model_eligibility %>%
+    group_by(model) %>%
+    summarize(all_ineligible = all(overall_eligibility != 'eligible')) %>%
+    filter(all_ineligible) %>%
+    pull(model)
+
+  forecasts <- forecasts %>%
+    dplyr::filter(!(model %in% models_ineligible_all_locations)) %>%
+    dplyr::left_join(model_eligibility %>%
+      dplyr::filter(!(model %in% models_ineligible_all_locations)) %>%
+      dplyr::select(location, model, overall_eligibility)) %>%
+    dplyr::filter(overall_eligibility == 'eligible' |
+      forecast_week_end_date != UQ(forecast_week_end_date)) %>%
+    dplyr::select(-overall_eligibility)
+
+  # obtain model eligibility for each model separately for past weeks in the
+  # window.
+  # - drop forecasts for that week for model-location combinations where
+  #   the model is ineligible
+  for(w in seq_len(window_size)) {
+    forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
+      forecast_df = forecasts %>%
+        filter(forecast_week_end_date == UQ(forecast_week_end_date) - 7*w),
+      model_col = 'model',
+      id_cols = c('location', 'forecast_week_end_date', 'target'),
+      quantile_name_col = 'quantile',
+      quantile_value_col = 'value'
+    )
+
+    model_eligibility <- covidEnsembles::calc_model_eligibility_for_ensemble(
+      qfm = forecast_matrix,
+      observed_by_location_target_end_date =
+        observed_by_location_target_end_date %>%
+        dplyr::filter(base_target == paste0('wk ahead cum death')),
+      do_q10_check = do_q10_check,
+      do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+      window_size = 0,
+      decrease_tol = 0.0
+    )
+
+    forecasts <- forecasts %>%
+      dplyr::filter(!(model %in% models_ineligible_all_locations)) %>%
+      dplyr::left_join(model_eligibility %>%
+                         dplyr::filter(!(model %in% models_ineligible_all_locations)) %>%
+                         dplyr::select(location, model, overall_eligibility)) %>%
+      dplyr::filter(overall_eligibility == 'eligible' |
+                      forecast_week_end_date != UQ(forecast_week_end_date) - 7*w) %>%
+      dplyr::select(-overall_eligibility)
+  }
+
+
+  # create training and test sets
+  this_week_forecasts_train <-
+    forecasts %>%
+    filter(target_end_date <= UQ(forecast_week_end_date))
+
   this_week_forecasts_test <-
     forecasts %>%
     filter(
       forecast_week_end_date == UQ(forecast_week_end_date),
       model %in% this_week_forecasts_train$model
     )
+
   this_week_forecasts_train <- this_week_forecasts_train %>%
     filter(model %in% this_week_forecasts_test$model)
 
@@ -644,34 +670,18 @@ get_rescaled_ensemble_fits_and_predictions_one_week_and_window_size <- function(
       by = c('location', 'target_end_date')) %>%
     dplyr::pull(observed)
 
-  y_test <- attr(qfm_test, 'row_index') %>%
-    dplyr::mutate(
-      target_end_date = as.character(
-        lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
-      )
-    ) %>%
-    dplyr::left_join(
-      observed_by_location_target_end_date %>%
-        dplyr::filter(base_target == paste0('wk ahead cum death')),
-      by = c('location', 'target_end_date')) %>%
-    dplyr::pull(observed)
-
   rescaled_convex_qra_fit <- estimate_qra(
     qfm_train = qfm_train,
     y_train = y_train,
     qra_model = 'rescaled_convex_per_model',
     backend = 'optim')[[2]]
 
-  ew_rescaled_convex_qra_fit <- rescaled_convex_qra_fit
-  ew_rescaled_convex_qra_fit$coefficients$beta <- 0.0
-
   return(
-    attr(qfm_test, 'row_index') %>%
-      mutate(
-        window_size = window_size,
-        rescaled_convex_qra_wis = wis(y_test, predict(rescaled_convex_qra_fit, qfm_test)),
-        ew_rescaled_convex_qra_wis = wis(y_test, predict(ew_rescaled_convex_qra_fit, qfm_test))
-      )
+    list(
+      rescaled_convex_qra_fit = rescaled_convex_qra_fit,
+      qfm_test = qfm_test,
+      predicted_test = predict(rescaled_convex_qra_fit, qfm_test)
+    )
   )
 }
 

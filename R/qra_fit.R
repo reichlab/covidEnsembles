@@ -225,13 +225,13 @@ predict.rescaled_qra_fit <- function(qra_fit, qfm) {
   wide_model_eligibility <- eligbility_by_row %>%
     pivot_wider(names_from='model', values_from='eligible')
 
-  # group locations by which models are included per location
+  # group locations by which models are included per row
   row_groups <- wide_model_eligibility %>%
     dplyr::mutate(row_num = dplyr::row_number()) %>%
     group_by_if(is.logical) %>%
     summarize(
-      rows = list(row_num),
-      ids = list(.[, c('location', 'forecast_week_end_date', 'target')])
+      rows = list(row_num)#,
+#      ids = list(.[, c('location', 'forecast_week_end_date', 'target')])
     ) %>%
     ungroup()
 
@@ -239,7 +239,7 @@ predict.rescaled_qra_fit <- function(qra_fit, qfm) {
   all_preds <- purrr::map(
     seq_len(nrow(row_groups)),
     function(i) {
-      temp <- row_groups %>% slice(i) %>% select(-rows, -ids)
+      temp <- row_groups %>% slice(i) %>% select(-rows)#, -ids)
       models <- colnames(temp)[which(as.matrix(temp))]
       col_inds <- which(col_index[[model_id_name]] %in% models)
 
@@ -296,9 +296,17 @@ predict.rescaled_qra_fit <- function(qra_fit, qfm) {
 #' @param qfm_train QuantileForecastMatrix with training set predictions
 #' @param y_train numeric vector of responses for training set
 #' @param qra_model quantile averaging model: currently only 'ew' is supported
+#' @param quantile_groups Vector of group labels for quantiles, having the same
+#' length as the number of quantiles.  Common labels indicate that the ensemble
+#' weights for the corresponding quantile levels should be tied together.
+#' Default is rep(1,length(quantiles)), which means that a common set of
+#' ensemble weights should be used across all levels.  This is the argument
+#' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
+#' `backend = 'quantmod`
 #' @param backend implementation used for estimation; currently either
-#'    'optim', using L-BFGS-B as provided by the optim function in R, or
-#'    'NlcOptim', using NlcOptim::solnl
+#'    'optim', using L-BFGS-B as provided by the optim function in R;
+#'    'NlcOptim', using NlcOptim::solnl; or 'quantmod', using
+#'    quantmod::quantile_ensemble
 #'
 #' @return object of class qra_fit
 #'
@@ -307,13 +315,21 @@ estimate_qra <- function(
   qfm_train,
   y_train,
   qra_model = c('ew', 'convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model'),
+  quantile_groups = NULL,
   backend = 'optim',
   ...
 ) {
   qra_model <- match.arg(qra_model, choices = c('ew', 'convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model'))
-  backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'qra'))
+  backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'qra', 'quantmod'))
 
-  if(backend == 'qra') {
+  if(backend == 'quantmod') {
+    result <- estimate_qra_quantmod(
+      qfm_train=qfm_train,
+      y_train=y_train,
+      qra_model=qra_model,
+      quantile_groups=quantile_groups)
+    col_index <- attr(qfm_train, 'col_index')
+  } else if(backend == 'qra') {
     stop("backend = 'qra' is not yet supported")
     qra_data <-
       result <- qra:::qra_estimate_weights(
@@ -420,10 +436,7 @@ estimate_qra_optimized <- function(
     )
   }
 
-  return(list(
-    optim_output = optim_output,
-    qra_fit = model_constructor(optim_output$par, qfm_train)
-  ))
+  return(model_constructor(optim_output$par, qfm_train))
 }
 
 
@@ -599,3 +612,99 @@ model_constructor_unconstrained_per_model <- function(par, qfm_train) {
   return(qra_fit)
 }
 
+
+#' Estimate qra model using quantmod package as backend
+#'
+#' @param qfm_train QuantileForecastMatrix with training set predictions
+#' @param y_train numeric vector of responses for training set
+#' @param qra_model quantile averaging model: currently only 'ew' is supported
+#' @param quantile_groups Vector of group labels for quantiles, having the same
+#' length as the number of quantiles.  Common labels indicate that the ensemble
+#' weights for the corresponding quantile levels should be tied together.
+#' Default is rep(1,length(quantiles)), which means that a common set of
+#' ensemble weights should be used across all levels.  This is the argument
+#' `tau_groups` for `quantmod::quantile_ensemble`
+#'
+#' @return object of class qra_fit
+estimate_qra_quantmod <- function(qfm_train, y_train, qra_model, quantile_groups) {
+  # unpack and process arguments
+  col_index <- attr(qfm_train, 'col_index')
+  model_col <- attr(qfm_train, 'model_col')
+  quantile_name_col <- attr(qfm_train, 'quantile_name_col')
+
+  models <- unique(col_index[[model_col]])
+  num_models <- length(models)
+
+  quantiles <- sort(unique(col_index[[quantile_name_col]]))
+  num_quantiles <- length(quantiles)
+
+  if(grepl('convex', qra_model)) {
+    quantmod_intercept = FALSE
+    quantmod_nonneg = TRUE
+    quantmod_unit_sum = TRUE
+  } else {
+    quantmod_intercept = TRUE
+    quantmod_nonneg = TRUE
+    quantmod_unit_sum = FALSE
+  }
+
+
+  # reformat training set predictive quantiles from component models as 3d
+  # array in format required for quantmod package
+  qarr_train <- unclass(qfm_train)
+  dim(qarr_train) <- c(nrow(qarr_train), num_quantiles, num_models)
+  qarr_train <- aperm(qarr_train, c(1, 3, 2))
+
+
+  # estimate ensemble parameters
+  quantmod_fit <- quantmod::quantile_ensemble(
+    qarr=qarr_train,
+    y=y_train,
+    tau=as.numeric(quantiles),
+    tau_groups=quantile_groups,
+    intercept = quantmod_intercept,
+    nonneg = quantmod_nonneg,
+    unit_sum = quantmod_unit_sum,
+    noncross = TRUE,
+    verbose=FALSE
+  )
+
+
+  # unpack result from quantmod and store in our format
+  if(length(unique(quantile_groups)) > 1) {
+    if(quantmod_intercept) {
+      intercept <- data.frame(
+        q = quantiles,
+        beta = quantmod_fit$alpha[1, ],
+        stringsAsFactors = FALSE)
+      colnames(intercept)[1] <- quantile_name_col
+      coefficients <- col_index %>%
+        mutate(
+          beta = as.vector(t(quantmod_fit$alpha[-1, , drop = FALSE]))
+        )
+    } else {
+      intercept <- data.frame(beta = 0.0, stringsAsFactors = FALSE)
+      coefficients <- col_index %>%
+        mutate(
+          beta = as.vector(t(quantmod_fit$alpha))
+        )
+    }
+  } else {
+    if(quantmod_intercept) {
+      intercept <- data.frame(beta = quantmod_fit$alpha[1], stringsAsFactors = FALSE)
+      coefficients <- data.frame(model=models, beta = quantmod_fit$alpha[-1], stringsAsFactors = FALSE)
+      names(coefficients)[1] <- model_col
+    } else {
+      intercept <- data.frame(beta = 0.0, stringsAsFactors = FALSE)
+      coefficients <- data.frame(model=models, beta = quantmod_fit$alpha, stringsAsFactors = FALSE)
+      names(coefficients)[1] <- model_col
+    }
+  }
+
+  qra_fit <- new_qra_fit(
+    parameters = list(coefficients=coefficients, intercept=intercept),
+    convex = FALSE
+  )
+
+  return(qra_fit)
+}

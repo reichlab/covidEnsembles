@@ -10,7 +10,13 @@ get_ensemble_fit_and_predictions(
   forecast_week_end_date,
   window_size,
   ensemble_method = c("ew", "convex", "unconstrained", "rescaled_convex"),
-  return_eligibility = TRUE
+  quantile_groups = NULL,
+  backend = "quantmod",
+  do_q10_check,
+  do_nondecreasing_quantile_check,
+  manual_eligibility_adjust,
+  return_eligibility = TRUE,
+  return_all = FALSE
 )
 }
 \arguments{
@@ -28,7 +34,26 @@ of the forecast week; week-ahead targets are with respect to this date}
 \item{ensemble_method}{name of method to use: 'ew', 'convex',
 'unconstrained', or 'rescaled_convex'}
 
+\item{quantile_groups}{Vector of group labels for quantiles, having the same
+length as the number of quantiles.  Common labels indicate that the ensemble
+weights for the corresponding quantile levels should be tied together.
+Default is rep(1,length(quantiles)), which means that a common set of
+ensemble weights should be used across all levels.  This is the argument
+\code{tau_groups} for \code{quantmod::quantile_ensemble}, and may only be supplied if
+\verb{backend = 'quantmod}}
+
+\item{backend}{back end used for optimization.}
+
+\item{do_q10_check}{if TRUE, do q10 check}
+
+\item{do_nondecreasing_quantile_check}{if TRUE, do nondecreasing quantile check}
+
+\item{manual_eligibility_adjust}{character vector of model abbreviations for
+models eliminated based on visual inspection}
+
 \item{return_eligibility}{if TRUE, return model eligibility}
+
+\item{return_all}{if TRUE, return model fits}
 }
 \value{
 tibble or data frame with ensemble fits and results

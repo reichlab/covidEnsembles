@@ -10,6 +10,11 @@ get_by_location_group_ensemble_fits_and_predictions(
   forecast_week_end_date,
   window_size,
   ensemble_method = c("ew", "convex", "unconstrained"),
+  quantile_groups = NULL,
+  backend = "quantmod",
+  do_q10_check,
+  do_nondecreasing_quantile_check,
+  manual_eligibility_adjust,
   return_all = FALSE,
   return_eligibility = TRUE
 )
@@ -28,6 +33,20 @@ of the forecast week; week-ahead targets are with respect to this date}
 
 \item{ensemble_method}{name of method to use: 'ew', 'convex', or
 'unconstrained'}
+
+\item{quantile_groups}{Vector of group labels for quantiles, having the same
+length as the number of quantiles.  Common labels indicate that the ensemble
+weights for the corresponding quantile levels should be tied together.
+Default is rep(1,length(quantiles)), which means that a common set of
+ensemble weights should be used across all levels.  This is the argument
+\code{tau_groups} for \code{quantmod::quantile_ensemble}, and may only be supplied if
+\verb{backend = 'quantmod}}
+
+\item{backend}{back end used for optimization.}
+
+\item{do_q10_check}{if TRUE, do q10 check}
+
+\item{do_nondecreasing_quantile_check}{if TRUE, do nondecreasing quantile check}
 
 \item{return_all}{if TRUE, return all quantities; if FALSE, return only some
 useful summaries}
