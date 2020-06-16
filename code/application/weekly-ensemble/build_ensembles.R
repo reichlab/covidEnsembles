@@ -5,7 +5,7 @@ library(covidEnsembles)
 library(googledrive)
 options(warn=2, error=recover)
 
-final_run <- FALSE
+final_run <- TRUE
 
 
 current_wday <- lubridate::wday(Sys.Date(), label = TRUE)
@@ -15,15 +15,17 @@ forecast_date <- if(current_wday == 'Mon') {
   Sys.Date() - 1
 }
 
-candidate_model_abbreviations_to_include <- c(
-  "IHME-CurveFit", "UMass-MechBayes", "YYG-ParamSearch", "LANL-GrowthRate",
-  "CovidAnalytics-DELPHI", "UCLA-SuEIR", "UT-Mobility",
-  "Geneva-DeterministicGrowth", "UA-EpiCovDA", "CU-select",
-  "IowaStateLW-STEM", "JHU_IDD-CovidSP", "Imperial-Ensemble2", "Auquan-SEIR",
-  "NotreDame-FRED", "USACE-ERDC_SEIR", "UChicago-CovidIL", "GT-DeepCOVID",
-  "MOBS-GLEAM_COVID", "SWC-TerminusCM", "PSI-DRAFT", "CAN-SEIR_CAN",
-  "GT_CHHS-COVID19", "Covid19Sim-Simulator", "ISUandPKU-vSEIdR", "STH-3PU",
-  "epiforecasts-ensemble1")
+#stop("Add NotreDame-mobility")
+
+candidate_model_abbreviations_to_include <-
+  c("Auquan-SEIR", "CAN-SEIR_CAN", "Covid19Sim-Simulator", "CovidAnalytics-DELPHI",
+    "CU-select", "epiforecasts-ensemble1", "Geneva-DeterministicGrowth",
+    "GT_CHHS-COVID19", "GT-DeepCOVID", "IHME-CurveFit", "Imperial-Ensemble2",
+    "IowaStateLW-STEM", "ISUandPKU-vSEIdR", "JHU_IDD-CovidSP", "LANL-GrowthRate",
+    "MOBS-GLEAM_COVID", "NotreDame-FRED", "OliverWyman-Navigator",
+    "PSI-DRAFT", "STH-3PU", "SWC-TerminusCM", "UA-EpiCovDA", "UChicago-CovidIL",
+    "UCLA-SuEIR", "UMass-MechBayes", "USACE-ERDC_SEIR", "UT-Mobility",
+    "YYG-ParamSearch")
 
 ## get observed_by_location_target_end_date
 zoltar_connection <- new_connection()
@@ -50,16 +52,31 @@ for(response_var in c('cum_death', 'inc_death')) {
   if(response_var == 'cum_death') {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
 
-    # adjustments for 2020-06-08
-    manual_eligibility_adjust <- c(
-      "Auquan-SEIR", "CAN-SEIR_CAN", "UA-EpiCovDA", "SWC-TerminusCM"
-    )
+    # adjustments based on plots
+    if(forecast_date == '2020-06-08') {
+      manual_eligibility_adjust <- c(
+        "Auquan-SEIR", "CAN-SEIR_CAN", "UA-EpiCovDA", "SWC-TerminusCM"
+      )
+    } else if(forecast_date == '2020-06-15') {
+      manual_eligibility_adjust <- "Auquan-SEIR"
+    } else {
+      manual_eligibility_adjust <- NULL
+    }
   } else {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
 
-    manual_eligibility_adjust <- c(
-      "CAN-SEIR_CAN", "SWC-TerminusCM", "USACE-ERDC_SEIR", "IHME-CurveFit"
-    )
+    # adjustments based on plots
+    if(forecast_date == '2020-06-08') {
+      manual_eligibility_adjust <- c(
+        "CAN-SEIR_CAN", "SWC-TerminusCM", "USACE-ERDC_SEIR", "IHME-CurveFit"
+      )
+    } else if(forecast_date == '2020-06-15') {
+      manual_eligibility_adjust <- c(
+        "USACE-ERDC_SEIR", "LANL-GrowthRate"
+      )
+    } else {
+      manual_eligibility_adjust <- NULL
+    }
   }
 
   c(model_eligibility, wide_model_eligibility, location_groups, component_forecasts) %<-%
