@@ -472,11 +472,12 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
       qra_model = 'ew')
   } else {
     location_groups[['qra_fit']] <- purrr::pmap(
-      location_groups %>% select(qfm_train, y_train),
-      function(qfm_train, y_train) {
+      location_groups %>% select(qfm_train, y_train, qfm_test),
+      function(qfm_train, y_train, qfm_test) {
         estimate_qra(
           qfm_train = qfm_train,
           y_train = y_train,
+          qfm_test = qfm_test,
           qra_model = ensemble_method,
           quantile_groups = quantile_groups,
           backend = backend)

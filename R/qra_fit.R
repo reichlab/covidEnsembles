@@ -295,6 +295,7 @@ predict.rescaled_qra_fit <- function(qra_fit, qfm) {
 #'
 #' @param qfm_train QuantileForecastMatrix with training set predictions
 #' @param y_train numeric vector of responses for training set
+#' @param qfm_test QuantileForecastMatrix with test set predictions
 #' @param qra_model quantile averaging model: currently only 'ew' is supported
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
@@ -314,6 +315,7 @@ predict.rescaled_qra_fit <- function(qra_fit, qfm) {
 estimate_qra <- function(
   qfm_train,
   y_train,
+  qfm_test = NULL,
   qra_model = c('ew', 'convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model'),
   quantile_groups = NULL,
   backend = 'optim',
@@ -326,6 +328,7 @@ estimate_qra <- function(
     result <- estimate_qra_quantmod(
       qfm_train=qfm_train,
       y_train=y_train,
+      qfm_test=qfm_test,
       qra_model=qra_model,
       quantile_groups=quantile_groups)
     col_index <- attr(qfm_train, 'col_index')
@@ -617,6 +620,7 @@ model_constructor_unconstrained_per_model <- function(par, qfm_train) {
 #'
 #' @param qfm_train QuantileForecastMatrix with training set predictions
 #' @param y_train numeric vector of responses for training set
+#' @param qfm_test QuantileForecastMatrix with test set predictions
 #' @param qra_model quantile averaging model: currently only 'ew' is supported
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
@@ -626,7 +630,7 @@ model_constructor_unconstrained_per_model <- function(par, qfm_train) {
 #' `tau_groups` for `quantmod::quantile_ensemble`
 #'
 #' @return object of class qra_fit
-estimate_qra_quantmod <- function(qfm_train, y_train, qra_model, quantile_groups) {
+estimate_qra_quantmod <- function(qfm_train, y_train, qfm_test, qra_model, quantile_groups) {
   # unpack and process arguments
   col_index <- attr(qfm_train, 'col_index')
   model_col <- attr(qfm_train, 'model_col')
@@ -655,6 +659,20 @@ estimate_qra_quantmod <- function(qfm_train, y_train, qra_model, quantile_groups
   dim(qarr_train) <- c(nrow(qarr_train), num_quantiles, num_models)
   qarr_train <- aperm(qarr_train, c(1, 3, 2))
 
+  if(missing(qfm_test) || is.null(qfm_test)) {
+    q0 <- qarr_train
+  } else {
+    qarr_test <- unclass(qfm_test)
+    dim(qarr_test) <- c(nrow(qarr_test), num_quantiles, num_models)
+    qarr_test <- aperm(qarr_test, c(1, 3, 2))
+
+    n_train <- dim(qarr_train)[1]
+    n_test <- dim(qarr_test)[1]
+
+    q0 <- array(dim = c(n_train + n_test, num_models, num_quantiles))
+    q0[seq_len(n_train), , ] <- qarr_train
+    q0[n_train + seq_len(n_test), , ] <- qarr_test
+  }
 
   # estimate ensemble parameters
   quantmod_fit <- quantmod::quantile_ensemble(
@@ -666,6 +684,7 @@ estimate_qra_quantmod <- function(qfm_train, y_train, qra_model, quantile_groups
     nonneg = quantmod_nonneg,
     unit_sum = quantmod_unit_sum,
     noncross = TRUE,
+    q0 = q0,
     verbose=FALSE
   )
 

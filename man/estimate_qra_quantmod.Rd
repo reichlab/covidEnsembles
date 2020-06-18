@@ -4,12 +4,14 @@
 \alias{estimate_qra_quantmod}
 \title{Estimate qra model using quantmod package as backend}
 \usage{
-estimate_qra_quantmod(qfm_train, y_train, qra_model, quantile_groups)
+estimate_qra_quantmod(qfm_train, y_train, qfm_test, qra_model, quantile_groups)
 }
 \arguments{
 \item{qfm_train}{QuantileForecastMatrix with training set predictions}
 
 \item{y_train}{numeric vector of responses for training set}
+
+\item{qfm_test}{QuantileForecastMatrix with test set predictions}
 
 \item{qra_model}{quantile averaging model: currently only 'ew' is supported}
 

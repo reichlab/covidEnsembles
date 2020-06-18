@@ -7,6 +7,7 @@
 estimate_qra(
   qfm_train,
   y_train,
+  qfm_test = NULL,
   qra_model = c("ew", "convex_per_model", "unconstrained_per_model",
     "rescaled_convex_per_model"),
   quantile_groups = NULL,
@@ -18,6 +19,8 @@ estimate_qra(
 \item{qfm_train}{QuantileForecastMatrix with training set predictions}
 
 \item{y_train}{numeric vector of responses for training set}
+
+\item{qfm_test}{QuantileForecastMatrix with test set predictions}
 
 \item{qra_model}{quantile averaging model: currently only 'ew' is supported}
 
