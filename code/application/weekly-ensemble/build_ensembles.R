@@ -15,14 +15,12 @@ forecast_date <- if(current_wday == 'Mon') {
   Sys.Date() - 1
 }
 
-#stop("Add NotreDame-mobility")
-
 candidate_model_abbreviations_to_include <-
   c("Auquan-SEIR", "CAN-SEIR_CAN", "Covid19Sim-Simulator", "CovidAnalytics-DELPHI",
     "CU-select", "epiforecasts-ensemble1", "Geneva-DeterministicGrowth",
     "GT_CHHS-COVID19", "GT-DeepCOVID", "IHME-CurveFit", "Imperial-Ensemble2",
     "IowaStateLW-STEM", "ISUandPKU-vSEIdR", "JHU_IDD-CovidSP", "LANL-GrowthRate",
-    "MOBS-GLEAM_COVID", "NotreDame-FRED", "OliverWyman-Navigator",
+    "MOBS-GLEAM_COVID", "NotreDame-FRED", "NotreDame-mobility", "OliverWyman-Navigator",
     "PSI-DRAFT", "STH-3PU", "SWC-TerminusCM", "UA-EpiCovDA", "UChicago-CovidIL",
     "UCLA-SuEIR", "UMass-MechBayes", "USACE-ERDC_SEIR", "UT-Mobility",
     "YYG-ParamSearch")
@@ -86,7 +84,10 @@ for(response_var in c('cum_death', 'inc_death')) {
       forecast_week_end_date = forecast_date - 2,
       timezero_window_size = 1,
       window_size = 0,
-      ensemble_method = 'ew',
+      intercept = FALSE,
+      constraint = 'ew',
+      quantile_groups = rep(1, 23),
+      missingness = 'by_location_group',
       backend = NA,
       project_url = 'https://www.zoltardata.com/api/project/44/',
       required_quantiles = c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99),
