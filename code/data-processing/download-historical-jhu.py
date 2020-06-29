@@ -27,16 +27,13 @@ commit_dates = [
     commit['commit']['author']['date'][0:10] for commit in all_commits
 ]
 
-# index of last commit made each day
-commit_inds_to_get = {}
-for index, value in enumerate(commit_dates):
-    if value not in commit_inds_to_get:
-        commit_inds_to_get[value] = index
-
 # sha for the last commit made each day
-commit_shas_to_get = {
-    value: all_commits[index]['sha'] for value, index in commit_inds_to_get.items()
-}
+commit_shas_to_get = {}
+for index, value in enumerate(commit_dates):
+    result_path =  '../../data-raw/JHU/' + value + \
+        '_time_series_covid19_deaths_US.csv'
+    if (value not in commit_shas_to_get) and (not os.path.isfile(result_path)):
+        commit_shas_to_get[value] = all_commits[index]['sha']
 
 # download and save the csvs
 for commit_date, commit_sha in commit_shas_to_get.items():
