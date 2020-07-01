@@ -73,8 +73,9 @@ do_zoltar_query <- function(
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
-#' @param ensemble_method name of method to use: 'ew', 'convex',
-#' 'unconstrained', or 'rescaled_convex'
+#' @param intercept logical specifying whether an intercept is included
+#' @param constraint character specifying constraints on parameters; 'ew',
+#' 'convex', 'positive' or 'unconstrained'
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -82,6 +83,10 @@ do_zoltar_query <- function(
 #' ensemble weights should be used across all levels.  This is the argument
 #' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
 #' `backend = 'quantmod`
+#' @param missingness character specifying approach to handling missing
+#' forecasts: 'by_location_group', 'rescale', or 'impute'
+#' @param impute_method character string specifying method for imputing missing
+#' forecasts; currently only 'mean' is supported.
 #' @param backend back end used for optimization.
 #' @param project_url zoltar project url
 #' @param required_quantiles numeric vector of quantiles component models are
@@ -99,8 +104,11 @@ build_covid_ensemble_from_zoltar <- function(
   forecast_week_end_date,
   timezero_window_size = 1,
   window_size,
-  ensemble_method,
+  intercept=FALSE,
+  constraint,
   quantile_groups,
+  missingness,
+  impute_method,
   backend,
   project_url = 'https://www.zoltardata.com/api/project/44/',
   required_quantiles,
@@ -116,18 +124,34 @@ build_covid_ensemble_from_zoltar <- function(
 
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
-    zoltr::truth(zoltar_connection, project_url) %>%
-    dplyr::filter(target %in% targets) %>%
-    dplyr::transmute(
-      timezero = timezero,
-      location = unit,
-      horizon = as.integer(substr(target, 1, 1)),
-      base_target = substr(target, 3, nchar(target)),
-      observed = value,
-      forecast_week_end_date = calc_forecast_week_end_date(timezero),
-      target_end_date = calc_target_week_end_date(timezero, horizon)
+    covidEnsembles::historical_truths(
+      issue_date = as.character(lubridate::ymd(forecast_week_end_date)+1),
+      spatial_resolution = c('state', 'national'),
+      temporal_resolution = 'weekly'
     ) %>%
-    dplyr::distinct(location, base_target, target_end_date, observed)
+    tidyr::pivot_longer(
+      cols = c('cum_deaths', 'inc_deaths'),
+      names_to = 'base_target',
+      values_to = 'observed') %>%
+    dplyr::transmute(
+      location = location,
+      base_target = ifelse(base_target == 'cum_deaths', 'wk ahead cum death', 'wk ahead inc death'),
+      target_end_date = date,
+      observed = observed
+    )
+  # observed_by_location_target_end_date <-
+  #   zoltr::truth(zoltar_connection, project_url) %>%
+  #   dplyr::filter(target %in% targets) %>%
+  #   dplyr::transmute(
+  #     timezero = timezero,
+  #     location = unit,
+  #     horizon = as.integer(substr(target, 1, 1)),
+  #     base_target = substr(target, 3, nchar(target)),
+  #     observed = value,
+  #     forecast_week_end_date = calc_forecast_week_end_date(timezero),
+  #     target_end_date = calc_target_week_end_date(timezero, horizon)
+  #   ) %>%
+  #   dplyr::distinct(location, base_target, target_end_date, observed)
 
   # Dates specifying mondays when forecasts were submitted that are relevant to
   # this analysis.  If forecast_week_end_date is a Saturday, + 2 is a Monday;
@@ -184,8 +208,11 @@ build_covid_ensemble_from_zoltar <- function(
     observed_by_location_target_end_date=observed_by_location_target_end_date,
     forecast_week_end_date=forecast_week_end_date,
     window_size=window_size,
-    ensemble_method=ensemble_method,
+    intercept=intercept,
+    constraint=constraint,
     quantile_groups=quantile_groups,
+    missingness=missingness,
+    impute_method=impute_method,
     backend=backend,
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
@@ -201,7 +228,7 @@ build_covid_ensemble_from_zoltar <- function(
 }
 
 
-#' Calculate ensemble fits for a single location and window size
+#' Calculate ensemble fits for a single window size
 #'
 #' @param forecasts data frame with columns 'model', 'location',
 #' 'forecast_week_end_date', 'target', 'quantile', and 'value'
@@ -210,8 +237,9 @@ build_covid_ensemble_from_zoltar <- function(
 #' @param forecast_week_end_date Date object: date of the saturday for the end
 #' of the forecast week; week-ahead targets are with respect to this date
 #' @param window_size size of window
-#' @param ensemble_method name of method to use: 'ew', 'convex',
-#' 'unconstrained', or 'rescaled_convex'
+#' @param intercept logical specifying whether an intercept is included
+#' @param constraint character specifying constraints on parameters; 'ew',
+#' 'convex', 'positive' or 'unconstrained'
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -219,6 +247,10 @@ build_covid_ensemble_from_zoltar <- function(
 #' ensemble weights should be used across all levels.  This is the argument
 #' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
 #' `backend = 'quantmod`
+#' @param missingness character specifying approach to handling missing
+#' forecasts: 'by_location_group', 'rescale', and 'impute'
+#' @param impute_method character string specifying method for imputing missing
+#' forecasts; currently only 'mean' is supported.
 #' @param backend back end used for optimization.
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
@@ -235,8 +267,11 @@ get_ensemble_fit_and_predictions <- function(
   observed_by_location_target_end_date,
   forecast_week_end_date,
   window_size,
-  ensemble_method = c('ew', 'convex', 'unconstrained', 'rescaled_convex'),
+  intercept = FALSE,
+  constraint = c('ew', 'convex', 'positive', 'unconstrained'),
   quantile_groups = NULL,
+  missingness = c('by_location_group', 'rescale', 'mean_impute'),
+  impute_method = 'mean',
   backend = 'quantmod',
   do_q10_check,
   do_nondecreasing_quantile_check,
@@ -249,18 +284,19 @@ get_ensemble_fit_and_predictions <- function(
     stop("The arguments `forecasts`, `forecast_week_end_date`, and `window_size` must all be provided.")
   }
 
-  ensemble_method <- match.arg(
-    ensemble_method,
-    choices = c('ew', 'convex', 'unconstrained', 'rescaled_convex'),
+  constraint <- match.arg(
+    constraint,
+    choices = c('ew', 'convex', 'positive', 'unconstrained'),
     several.ok = FALSE)
 
-  if(ensemble_method %in% c('ew', 'convex', 'unconstrained') | backend == 'quantmod') {
+  if(missingness == 'by_location_group') {
     results <- get_by_location_group_ensemble_fits_and_predictions(
       forecasts=forecasts,
       observed_by_location_target_end_date=observed_by_location_target_end_date,
       forecast_week_end_date=forecast_week_end_date,
       window_size=window_size,
-      ensemble_method=ensemble_method,
+      intercept=intercept,
+      constraint=constraint,
       quantile_groups=quantile_groups,
       backend=backend,
       do_q10_check = do_q10_check,
@@ -268,7 +304,23 @@ get_ensemble_fit_and_predictions <- function(
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility=return_eligibility,
       return_all=return_all)
-  } else if(ensemble_method %in% 'rescaled_convex') {
+  } else if(missingness == 'impute') {
+    results <- get_imputed_ensemble_fits_and_predictions(
+      forecasts=forecasts,
+      observed_by_location_target_end_date=observed_by_location_target_end_date,
+      forecast_week_end_date=forecast_week_end_date,
+      window_size=window_size,
+      intercept=intercept,
+      constraint=constraint,
+      quantile_groups=quantile_groups,
+      impute_method=impute_method,
+      backend=backend,
+      do_q10_check = do_q10_check,
+      do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+      manual_eligibility_adjust = manual_eligibility_adjust,
+      return_eligibility=return_eligibility,
+      return_all=return_all)
+  } else if(missingness == 'rescale') {
     results <- get_rescaled_ensemble_fits_and_predictions(
       forecasts=forecasts,
       observed_by_location_target_end_date=observed_by_location_target_end_date,
@@ -279,6 +331,8 @@ get_ensemble_fit_and_predictions <- function(
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility=return_eligibility,
       return_all=return_all)
+  } else {
+    stop('invalid value for argument missingness')
   }
 
   return(results)
@@ -294,8 +348,9 @@ get_ensemble_fit_and_predictions <- function(
 #' @param forecast_week_end_date Date object: date of the saturday for the end
 #' of the forecast week; week-ahead targets are with respect to this date
 #' @param window_size size of window
-#' @param ensemble_method name of method to use: 'ew', 'convex', or
-#' 'unconstrained'
+#' @param intercept logical specifying whether an intercept is included
+#' @param constraint character specifying constraints on parameters; 'ew',
+#' 'convex', 'positive' or 'unconstrained'
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -316,7 +371,8 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   observed_by_location_target_end_date,
   forecast_week_end_date,
   window_size,
-  ensemble_method = c('ew', 'convex', 'unconstrained'),
+  intercept = FALSE,
+  constraint = c('ew', 'convex', 'positive', 'unconstrained'),
   quantile_groups = NULL,
   backend = 'quantmod',
   do_q10_check,
@@ -330,9 +386,9 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
     stop("The arguments `forecasts`, `forecast_week_end_date`, and `window_size` must all be provided.")
   }
 
-  ensemble_method <- match.arg(
-    ensemble_method,
-    choices = c('ew', 'convex', 'unconstrained'),
+  constraint <- match.arg(
+    constraint,
+    choices = c('ew', 'convex', 'positive', 'unconstrained'),
     several.ok = TRUE)
 
   # obtain model eligibility by location
@@ -358,9 +414,14 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   )
 
   if(length(manual_eligibility_adjust) > 0) {
-    model_eligibility$overall_eligibility[
-      model_eligibility$model %in% manual_eligibility_adjust] <-
+    for(i in seq_len(nrow(manual_eligibility_adjust))) {
+      el_inds <- which(
+        model_eligibility$model == manual_eligibility_adjust$model[i] &
+          model_eligibility$location == manual_eligibility_adjust$location[i]
+      )
+      model_eligibility$overall_eligibility[el_inds] <-
         'Visual misalignment of predictive quantiles with JHU reference data.'
+    }
   }
 
   # convert model eligibility to wide format logical with human readable names
@@ -456,20 +517,21 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
         dplyr::mutate(
           target_end_date = as.character(
             lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
-          )
+          ),
+          base_target = substr(target, 3, nchar(target))
         ) %>%
         dplyr::left_join(
           observed_by_location_target_end_date,
-          by = c('location', 'target_end_date')) %>%
+          by = c('location', 'target_end_date', 'base_target')) %>%
         dplyr::pull(observed)
     })
 
   # fit ensembles and obtain predictions per group
-  if(ensemble_method == 'ew') {
+  if(constraint == 'ew') {
     location_groups$qra_fit <- purrr::map(
       location_groups$qfm_train,
       estimate_qra,
-      qra_model = 'ew')
+      constraint = 'ew')
   } else {
     location_groups[['qra_fit']] <- purrr::pmap(
       location_groups %>% select(qfm_train, y_train, qfm_test),
@@ -478,7 +540,8 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
           qfm_train = qfm_train,
           y_train = y_train,
           qfm_test = qfm_test,
-          qra_model = ensemble_method,
+          intercept = intercept,
+          constraint = constraint,
           quantile_groups = quantile_groups,
           backend = backend)
       })
@@ -510,6 +573,302 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
     } else {
       result <- dplyr::bind_rows(location_groups[['qra_forecast']])
     }
+  }
+
+  return(result)
+}
+
+
+#' Impute missing values for each quantile level in a quantile forecast matrix
+#' It is assumed that in each row, all quantiles for a given model are either
+#' missing or available.
+#'
+#' @param qfm a QuantileForecastMatrix
+#' @param impute_method character string specifying method for imputing;
+#' currently only 'mean' is supported
+#'
+#' @return list of two items:
+#' 1. 'qfm_imputed' the input QuantileForecastMatrix object with missing values
+#' imputed
+#' 2. 'weight_transfer' a square matrix of dimension equal to the number of
+#' unique models in qfm.  Entry [i, j] is the proportion of imputed observations
+#' for model j that are attributable to model i.
+#'
+#' @export
+impute_missing_per_quantile <- function(qfm, impute_method = 'mean') {
+  col_index <- attr(qfm, 'col_index')
+  model_col <- attr(qfm, 'model_col')
+  quantile_name_col <- attr(qfm, 'quantile_name_col')
+  quantile_levels <- col_index[[quantile_name_col]]
+  unique_quantile_levels <- unique(quantile_levels)
+  num_models <- length(unique(col_index[[model_col]]))
+
+  X_na <- is.na(qfm)
+
+  missingness_groups <- X_na %>%
+    as.data.frame() %>%
+    mutate(row_num = dplyr::row_number()) %>%
+    dplyr::group_by_at(seq_len(ncol(.) - 1)) %>%
+    dplyr::summarise(row_inds = list(row_num))
+
+  qfm_imputed <- qfm
+  qfm_imputed[is.na(qfm_imputed)] <- 0.0
+
+  weight_transfer <- matrix(0, nrow = num_models, ncol = num_models)
+
+  for(i in seq_len(nrow(missingness_groups))) {
+    row_inds <- missingness_groups$row_inds[[i]]
+
+    impute_mat <- diag(num_models)
+
+    col_inds <- which(quantile_levels == unique_quantile_levels[1])
+    temp <- !is.na(unclass(qfm)[row_inds[1], col_inds])
+    temp <- temp / sum(temp)
+
+    for(j_ind in seq_along(col_inds)) {
+      j <- col_inds[j_ind]
+      if(is.na(qfm[row_inds[1], j])) {
+        impute_mat[, j_ind] <- temp
+      }
+    }
+
+    for(quantile_level in unique_quantile_levels) {
+      col_inds <- which(quantile_levels == quantile_level)
+      qfm_imputed[row_inds, col_inds] <-
+        qfm_imputed[row_inds, col_inds, drop = FALSE] %*% impute_mat
+    }
+
+    weight_transfer <- weight_transfer + length(row_inds) * impute_mat
+  }
+  weight_transfer <- weight_transfer / nrow(qfm)
+
+  return(list(
+    qfm_imputed = qfm_imputed,
+    weight_transfer = weight_transfer
+  ))
+}
+
+
+#' Calculate ensemble fits after imputing missing forecasts
+#'
+#' @param forecasts data frame with columns 'model', 'location',
+#' 'forecast_week_end_date', 'target', 'quantile', and 'value'
+#' @param observed_by_location_target_end_date data frame with columns
+#' 'location', 'base_target', 'target_end_date', and 'observed'
+#' @param forecast_week_end_date Date object: date of the saturday for the end
+#' of the forecast week; week-ahead targets are with respect to this date
+#' @param window_size size of window
+#' @param intercept logical specifying whether an intercept is included
+#' @param constraint character specifying constraints on parameters; 'ew',
+#' 'convex', 'positive' or 'unconstrained'
+#' @param quantile_groups Vector of group labels for quantiles, having the same
+#' length as the number of quantiles.  Common labels indicate that the ensemble
+#' weights for the corresponding quantile levels should be tied together.
+#' Default is rep(1,length(quantiles)), which means that a common set of
+#' ensemble weights should be used across all levels.  This is the argument
+#' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
+#' `backend = 'quantmod`
+#' @param impute_method character string specifying method for imputing missing
+#' forecasts; currently only 'mean' is supported.
+#' @param backend back end used for optimization.
+#' @param do_q10_check if TRUE, do q10 check
+#' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
+#' @param return_all if TRUE, return all quantities; if FALSE, return only some
+#' useful summaries
+#' @param return_eligibility if TRUE, return model eligibility
+#'
+#' @return tibble or data frame with ensemble fits and results
+#'
+#' @export
+get_imputed_ensemble_fits_and_predictions <- function(
+  forecasts,
+  observed_by_location_target_end_date,
+  forecast_week_end_date,
+  window_size,
+  intercept = FALSE,
+  constraint = c('ew', 'convex', 'positive', 'unconstrained'),
+  quantile_groups = NULL,
+  impute_method = 'mean',
+  backend = 'quantmod',
+  do_q10_check,
+  do_nondecreasing_quantile_check,
+  manual_eligibility_adjust,
+  return_all=FALSE,
+  return_eligibility = TRUE) {
+  if(missing(forecasts) ||
+     missing(forecast_week_end_date) ||
+     missing(window_size)) {
+    stop("The arguments `forecasts`, `forecast_week_end_date`, and `window_size` must all be provided.")
+  }
+
+  constraint <- match.arg(
+    constraint,
+    choices = c('ew', 'convex', 'positive', 'unconstrained'),
+    several.ok = TRUE)
+
+  # obtain model eligibility by location
+  # since we have not yet filtered by horizon/target, eligibility is based on
+  # all four targets 1 - 4 wk ahead cum deaths
+  forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
+    forecast_df = forecasts,
+    model_col = 'model',
+    id_cols = c('location', 'forecast_week_end_date', 'target'),
+    quantile_name_col = 'quantile',
+    quantile_value_col = 'value'
+  )
+
+  model_eligibility <- covidEnsembles::calc_model_eligibility_for_ensemble(
+    qfm = forecast_matrix,
+    observed_by_location_target_end_date =
+      observed_by_location_target_end_date %>%
+      dplyr::filter(base_target == paste0('wk ahead cum death')),
+    do_q10_check = do_q10_check,
+    do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+    window_size = window_size,
+    decrease_tol = 0.0
+  )
+
+  if(length(manual_eligibility_adjust) > 0) {
+    for(i in seq_len(nrow(manual_eligibility_adjust))) {
+      el_inds <- which(
+        model_eligibility$model == manual_eligibility_adjust$model[i] &
+          model_eligibility$location == manual_eligibility_adjust$location[i]
+      )
+      model_eligibility$overall_eligibility[el_inds] <-
+        'Visual misalignment of predictive quantiles with JHU reference data.'
+    }
+  }
+
+  # convert model eligibility to wide format logical with human readable names
+  wide_model_eligibility <- model_eligibility %>%
+    dplyr::transmute(
+      model = model,
+      location = location,
+      eligibility = (overall_eligibility == 'eligible')) %>%
+    tidyr::pivot_wider(names_from='model', values_from='eligibility')
+
+  # keep only models that are eligible for inclusion in at least one location
+  models_to_keep <- apply(
+    wide_model_eligibility %>% select(-location),
+    2,
+    function(el) {any(el != FALSE)}) %>%
+    which() %>%
+    names()
+
+  wide_model_eligibility <- wide_model_eligibility[, c('location', models_to_keep)]
+
+  col_index <- attr(forecast_matrix, 'col_index')
+  cols_to_keep <- which(col_index[['model']] %in% models_to_keep)
+  forecast_matrix <- forecast_matrix[, cols_to_keep]
+
+  # drop rows with no eligible models
+  rows_to_keep <- apply(forecast_matrix, 1, function(qfm_row) any(!is.na(qfm_row))) %>%
+    which()
+
+  if(length(rows_to_keep) != nrow(forecast_matrix)) {
+#    dropped_rows <- forecast_matrix[-rows_to_keep, ]
+    forecast_matrix <- forecast_matrix[rows_to_keep, ]
+  }
+
+  # get train/test inds
+  # train:
+  #  - if window_size >= 1, training set comprises only forecasts where
+  # target_end_date <= forecast_week_end_date
+  #  - else if window_size == 0, just keep horizon 1 for train set
+  col_index <- attr(forecast_matrix, 'col_index')
+  row_index <- attr(forecast_matrix, 'row_index')
+  if(window_size >= 1) {
+    target_end_date <- row_index %>%
+      dplyr::mutate(
+        target_end_date = as.character(
+          lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
+        )
+      ) %>%
+      pull(target_end_date)
+
+    train_row_inds <- which(target_end_date < forecast_week_end_date)
+    test_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
+  } else {
+    train_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
+    test_row_inds <- which(substr(row_index$target, 1, 4) == '1 wk')
+  }
+
+  # training set and test set QuantileForecastMatrix
+  qfm_train <- forecast_matrix[train_row_inds, ]
+  qfm_test <- forecast_matrix[test_row_inds, ]
+
+  # impute missing values
+  c(imputed_qfm_train, weight_transfer) %<-% impute_missing_per_quantile(
+    qfm=qfm_train,
+    impute_method = 'mean')
+  c(imputed_qfm_test, test_weight_transfer) %<-% impute_missing_per_quantile(
+    qfm=qfm_test,
+    impute_method = 'mean')
+
+  # observed responses to date
+  y_train <- attr(qfm_train, 'row_index') %>%
+    dplyr::mutate(
+      target_end_date = as.character(
+        lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
+      ),
+      base_target = substr(target, 3, nchar(target))
+    ) %>%
+    dplyr::left_join(
+      observed_by_location_target_end_date,
+      by = c('location', 'target_end_date', 'base_target')
+    ) %>%
+    dplyr::pull(observed)
+
+  # fit ensembles and obtain predictions per group
+  if(constraint == 'ew') {
+    qra_fit <- estimate_qra(imputed_qfm_train, constraint = 'ew')
+  } else {
+    qra_fit <- estimate_qra(
+      qfm_train = imputed_qfm_train,
+      y_train = y_train,
+      qfm_test = imputed_qfm_test,
+      intercept = intercept,
+      constraint = constraint,
+      quantile_groups = quantile_groups,
+      backend = backend)
+
+    # do weight transfer among models
+    if(nrow(qra_fit$coefficients) == nrow(weight_transfer)) {
+      # single weight per model
+      qra_fit$coefficients$beta <-
+        weight_transfer %*% matrix(qra_fit$coefficients$beta)
+    } else {
+      # weight per quantile; adjust by iterating through quantile levels
+      qs <- qra_fit[[attr(qfm_train, 'quantile_name_col')]]
+      for(q in unique(qs)) {
+        row_inds <- which(qs == q)
+        qra_fit$coefficients$beta[row_inds] <-
+          weight_transfer %*% matrix(qra_fit$coefficients$beta[row_inds])
+      }
+    }
+  }
+
+  # obtain predictions
+  qra_forecast <- predict(qra_fit, imputed_qfm_test) %>% as.data.frame()
+
+  # return
+  if(return_all) {
+    result <- list(
+      model_eligibility = model_eligibility,
+      wide_model_eligibility = wide_model_eligibility,
+      location_groups = list(
+        locations = unique(attr(qfm_train, 'row_index')[['location']]),
+        qfm_train = qfm_train,
+        qfm_test = qfm_test,
+        imputed_qfm_train = imputed_qfm_train,
+        imputed_qfm_test = imputed_qfm_test,
+        qra_fit = qra_fit,
+        qra_forecast = qra_forecast
+      ),
+      weight_transfer = weight_transfer
+    )
+  } else {
+    stop('unsupported option for deprecated parameter return_all')
   }
 
   return(result)
@@ -663,12 +1022,13 @@ get_rescaled_ensemble_fits_and_predictions <- function(
     dplyr::mutate(
       target_end_date = as.character(
         lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
-      )
+      ),
+      base_target = substr(target, 3, nchar(target))
     ) %>%
     dplyr::left_join(
       observed_by_location_target_end_date %>%
         dplyr::filter(base_target == paste0('wk ahead cum death')),
-      by = c('location', 'target_end_date')) %>%
+      by = c('location', 'target_end_date', 'base_target')) %>%
     dplyr::pull(observed)
 
   rescaled_convex_qra_fit <- estimate_qra(

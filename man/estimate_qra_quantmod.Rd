@@ -4,7 +4,14 @@
 \alias{estimate_qra_quantmod}
 \title{Estimate qra model using quantmod package as backend}
 \usage{
-estimate_qra_quantmod(qfm_train, y_train, qfm_test, qra_model, quantile_groups)
+estimate_qra_quantmod(
+  qfm_train,
+  y_train,
+  qfm_test,
+  intercept,
+  constraint,
+  quantile_groups
+)
 }
 \arguments{
 \item{qfm_train}{QuantileForecastMatrix with training set predictions}
@@ -13,7 +20,10 @@ estimate_qra_quantmod(qfm_train, y_train, qfm_test, qra_model, quantile_groups)
 
 \item{qfm_test}{QuantileForecastMatrix with test set predictions}
 
-\item{qra_model}{quantile averaging model: currently only 'ew' is supported}
+\item{intercept}{logical specifying whether an intercept is included}
+
+\item{constraint}{character specifying constraints on parameters; 'convex',
+'positive' or 'unconstrained'}
 
 \item{quantile_groups}{Vector of group labels for quantiles, having the same
 length as the number of quantiles.  Common labels indicate that the ensemble

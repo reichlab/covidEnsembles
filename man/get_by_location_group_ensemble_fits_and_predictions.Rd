@@ -9,7 +9,8 @@ get_by_location_group_ensemble_fits_and_predictions(
   observed_by_location_target_end_date,
   forecast_week_end_date,
   window_size,
-  ensemble_method = c("ew", "convex", "unconstrained"),
+  intercept = FALSE,
+  constraint = c("ew", "convex", "positive", "unconstrained"),
   quantile_groups = NULL,
   backend = "quantmod",
   do_q10_check,
@@ -31,8 +32,10 @@ of the forecast week; week-ahead targets are with respect to this date}
 
 \item{window_size}{size of window}
 
-\item{ensemble_method}{name of method to use: 'ew', 'convex', or
-'unconstrained'}
+\item{intercept}{logical specifying whether an intercept is included}
+
+\item{constraint}{character specifying constraints on parameters; 'ew',
+'convex', 'positive' or 'unconstrained'}
 
 \item{quantile_groups}{Vector of group labels for quantiles, having the same
 length as the number of quantiles.  Common labels indicate that the ensemble

@@ -296,7 +296,9 @@ predict.rescaled_qra_fit <- function(qra_fit, qfm) {
 #' @param qfm_train QuantileForecastMatrix with training set predictions
 #' @param y_train numeric vector of responses for training set
 #' @param qfm_test QuantileForecastMatrix with test set predictions
-#' @param qra_model quantile averaging model: currently only 'ew' is supported
+#' @param intercept logical specifying whether an intercept is included
+#' @param constraint character specifying constraints on parameters; 'ew',
+#' 'convex', 'positive' or 'unconstrained'
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -316,12 +318,13 @@ estimate_qra <- function(
   qfm_train,
   y_train,
   qfm_test = NULL,
-  qra_model = c('ew', 'convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model'),
+  intercept = FALSE,
+  constraint = c('ew', 'convex', 'positive', 'unconstrained'),
   quantile_groups = NULL,
   backend = 'optim',
   ...
 ) {
-  qra_model <- match.arg(qra_model, choices = c('ew', 'convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model'))
+  constraint <- match.arg(constraint, choices = c('ew', 'convex', 'positive', 'unconstrained'))
   backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'qra', 'quantmod'))
 
   if(backend == 'quantmod') {
@@ -329,7 +332,8 @@ estimate_qra <- function(
       qfm_train=qfm_train,
       y_train=y_train,
       qfm_test=qfm_test,
-      qra_model=qra_model,
+      intercept=intercept,
+      constraint=constraint,
       quantile_groups=quantile_groups)
     col_index <- attr(qfm_train, 'col_index')
   } else if(backend == 'qra') {
@@ -338,13 +342,14 @@ estimate_qra <- function(
       result <- qra:::qra_estimate_weights(
         x = qra_data,
         per_quantile_weights = per_quantile_weights,
-        enforce_normalisation = grepl('convex', qra_model)
+        enforce_normalisation = (constraint == 'convex')
       )
   } else {
-    if(qra_model == 'ew') {
+    if(constraint == 'ew') {
       result <- estimate_qra_ew(qfm_train, ...)
     } else {
-      result <- estimate_qra_optimized(qfm_train, y_train, qra_model, backend)
+      stop('backend not supported')
+      result <- estimate_qra_optimized(qfm_train, y_train, constraint, backend)
     }
   }
 
@@ -621,7 +626,9 @@ model_constructor_unconstrained_per_model <- function(par, qfm_train) {
 #' @param qfm_train QuantileForecastMatrix with training set predictions
 #' @param y_train numeric vector of responses for training set
 #' @param qfm_test QuantileForecastMatrix with test set predictions
-#' @param qra_model quantile averaging model: currently only 'ew' is supported
+#' @param intercept logical specifying whether an intercept is included
+#' @param constraint character specifying constraints on parameters; 'convex',
+#' 'positive' or 'unconstrained'
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -630,7 +637,7 @@ model_constructor_unconstrained_per_model <- function(par, qfm_train) {
 #' `tau_groups` for `quantmod::quantile_ensemble`
 #'
 #' @return object of class qra_fit
-estimate_qra_quantmod <- function(qfm_train, y_train, qfm_test, qra_model, quantile_groups) {
+estimate_qra_quantmod <- function(qfm_train, y_train, qfm_test, intercept, constraint, quantile_groups) {
   # unpack and process arguments
   col_index <- attr(qfm_train, 'col_index')
   model_col <- attr(qfm_train, 'model_col')
@@ -642,16 +649,18 @@ estimate_qra_quantmod <- function(qfm_train, y_train, qfm_test, qra_model, quant
   quantiles <- sort(unique(col_index[[quantile_name_col]]))
   num_quantiles <- length(quantiles)
 
-  if(grepl('convex', qra_model)) {
-    quantmod_intercept = FALSE
+  quantmod_intercept <- intercept
+
+  if(constraint == 'convex') {
     quantmod_nonneg = TRUE
     quantmod_unit_sum = TRUE
-  } else {
-    quantmod_intercept = TRUE
+  } else if(constraint == 'positive') {
     quantmod_nonneg = TRUE
     quantmod_unit_sum = FALSE
+  } else if(constraint == 'unconstrained') {
+    quantmod_nonneg = FALSE
+    quantmod_unit_sum = FALSE
   }
-
 
   # reformat training set predictive quantiles from component models as 3d
   # array in format required for quantmod package

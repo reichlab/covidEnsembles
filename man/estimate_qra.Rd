@@ -8,8 +8,8 @@ estimate_qra(
   qfm_train,
   y_train,
   qfm_test = NULL,
-  qra_model = c("ew", "convex_per_model", "unconstrained_per_model",
-    "rescaled_convex_per_model"),
+  intercept = FALSE,
+  constraint = c("ew", "convex", "positive", "unconstrained"),
   quantile_groups = NULL,
   backend = "optim",
   ...
@@ -22,7 +22,10 @@ estimate_qra(
 
 \item{qfm_test}{QuantileForecastMatrix with test set predictions}
 
-\item{qra_model}{quantile averaging model: currently only 'ew' is supported}
+\item{intercept}{logical specifying whether an intercept is included}
+
+\item{constraint}{character specifying constraints on parameters; 'ew',
+'convex', 'positive' or 'unconstrained'}
 
 \item{quantile_groups}{Vector of group labels for quantiles, having the same
 length as the number of quantiles.  Common labels indicate that the ensemble

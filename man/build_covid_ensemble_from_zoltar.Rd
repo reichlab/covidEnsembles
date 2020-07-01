@@ -10,8 +10,11 @@ build_covid_ensemble_from_zoltar(
   forecast_week_end_date,
   timezero_window_size = 1,
   window_size,
-  ensemble_method,
+  intercept = FALSE,
+  constraint,
   quantile_groups,
+  missingness,
+  impute_method,
   backend,
   project_url = "https://www.zoltardata.com/api/project/44/",
   required_quantiles,
@@ -36,8 +39,10 @@ c('1 wk ahead cum death', '2 wk ahead cum death')}
 
 \item{window_size}{size of window}
 
-\item{ensemble_method}{name of method to use: 'ew', 'convex',
-'unconstrained', or 'rescaled_convex'}
+\item{intercept}{logical specifying whether an intercept is included}
+
+\item{constraint}{character specifying constraints on parameters; 'ew',
+'convex', 'positive' or 'unconstrained'}
 
 \item{quantile_groups}{Vector of group labels for quantiles, having the same
 length as the number of quantiles.  Common labels indicate that the ensemble
@@ -46,6 +51,12 @@ Default is rep(1,length(quantiles)), which means that a common set of
 ensemble weights should be used across all levels.  This is the argument
 \code{tau_groups} for \code{quantmod::quantile_ensemble}, and may only be supplied if
 \verb{backend = 'quantmod}}
+
+\item{missingness}{character specifying approach to handling missing
+forecasts: 'by_location_group', 'rescale', or 'impute'}
+
+\item{impute_method}{character string specifying method for imputing missing
+forecasts; currently only 'mean' is supported.}
 
 \item{backend}{back end used for optimization.}
 
