@@ -2,6 +2,7 @@ library(zoltr)
 library(tidyverse)
 library(zeallot)
 library(covidEnsembles)
+library(googledrive)
 
 submissions_root <- '~/Documents/research/epi/covid/upstream-covid19-forecast-hub/covid19-forecast-hub/data-processed/'
 #submissions_root <- '~/Documents/research/epi/covid/covidEnsembles/code/application/weekly-ensemble/forecasts/data-processed/'
@@ -185,4 +186,23 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
     }
   }
 }
+
+# Upload to google drive
+gdrive_plot_folders <- googledrive::drive_ls(
+  path = googledrive::as_id("1lvEs1dHYANygB2EE-bHl1MIZyJbgMLr-"))
+if(forecast_date %in% gdrive_plot_folders$name) {
+  gdrive_plots_root <- gdrive_plot_folders %>%
+    filter(name == forecast_date)
+} else {
+  gdrive_plots_root <- googledrive::drive_mkdir(
+    name = as.character(forecast_date),
+    path = googledrive::as_id("1lvEs1dHYANygB2EE-bHl1MIZyJbgMLr-"))
+}
+
+for(local_file in Sys.glob(paste0(day_plots_root, '*'))) {
+  googledrive::drive_put(
+    media = local_file,
+    path = gdrive_plots_root)
+}
+
 
