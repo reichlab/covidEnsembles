@@ -1,7 +1,7 @@
 library(zoltr)
 library(tidyverse)
 library(zeallot)
-library(covidEnsembles)
+library(covidData)
 library(googledrive)
 
 submissions_root <- '~/Documents/research/epi/covid/upstream-covid19-forecast-hub/covid19-forecast-hub/data-processed/'
@@ -76,7 +76,11 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
       value = col_double()
     ))
 
-  if(!(min(results$target_end_date) == (forecast_week_end_date + 7))) {
+  one_week_target_date <- results %>%
+    dplyr::filter(grepl('^1 wk', target)) %>%
+    dplyr::pull(target_end_date) %>%
+    tail(1)
+  if(!(one_week_target_date == (forecast_week_end_date + 7))) {
     # forecast file targets wrong week
     next
   }
