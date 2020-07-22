@@ -44,9 +44,34 @@ model_info <- purrr::map_dfr(
   }
 )
 
+model_info$team_model_designation[model_info$model_abbr == 'COVIDhub-ensemble'] <- 'primary'
+
 candidate_model_abbreviations_to_include <- model_info %>%
   dplyr::filter(team_model_designation %in% c('primary', 'secondary', 'proposed')) %>%
   dplyr::pull(model_abbr)
+
+fips_codes <- covidData::fips_codes %>%
+  dplyr::mutate(
+    state_code = ifelse(
+      nchar(location > 2),
+      substr(location, 1, 2),
+      location
+    )
+  ) %>%
+  dplyr::left_join(
+    covidData::fips_codes %>%
+      dplyr::filter(nchar(location) == 2) %>%
+      dplyr::select(state_code = location, state_abbr = abbreviation),
+    by = 'state_code'
+  ) %>%
+  dplyr::mutate(
+    location_name = ifelse(
+      nchar(location) > 2,
+      paste0(location_name, ', ', state_abbr),
+      location_name
+    )
+  ) %>%
+  dplyr::select(location, location_name)
 
 
 for(model_abbr in candidate_model_abbreviations_to_include) {
@@ -74,7 +99,8 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
       type = col_character(),
       quantile = col_double(),
       value = col_double()
-    ))
+    )) %>%
+    dplyr::left_join(fips_codes, by = 'location')
 
   one_week_target_date <- results %>%
     dplyr::filter(grepl('^1 wk', target)) %>%
@@ -93,7 +119,8 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
           issue_date = as.character(forecast_week_end_date + 1),
           spatial_resolution = c('state', 'national'),
           temporal_resolution = 'weekly',
-          measure = measure)
+          measure = measure) %>%
+          dplyr::left_join(fips_codes, by = 'location')
         horizon <- 4L
         types <- c('inc', 'cum')
         required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
@@ -102,18 +129,22 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
           issue_date = as.character(forecast_week_end_date + 1),
           spatial_resolution = c('county', 'state', 'national'),
           temporal_resolution = 'weekly',
-          measure = measure)
+          measure = measure) %>%
+          dplyr::left_join(fips_codes, by = 'location')
         horizon <- 8L
         types <- 'inc'
         required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
       }
 
+      results <- results %>%
+        dplyr::filter(target_end_date <= UQ(forecast_week_end_date) + 7 * horizon)
+
       location_batches <- results %>%
         dplyr::filter(grepl(substr(measure, 1, nchar(measure) - 1), target)) %>%
-        dplyr::distinct(location) %>%
-        dplyr::arrange(nchar(location), location) %>%
+        dplyr::distinct(location, location_name) %>%
+        dplyr::arrange(nchar(location), location_name) %>%
         dplyr::mutate(
-          location = factor(location, levels = location),
+          location_name = factor(location_name, levels = location_name),
           batch = rep(seq_len(ceiling(nrow(.)/30)), each = 30)[seq_len(nrow(.))]
         )
 
@@ -122,10 +153,10 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
 
       for(batch_val in unique(location_batches$batch)) {
         print(batch_val)
-        batch_locations <- location_batches$location[location_batches$batch == batch_val]
+        batch_locations <- location_batches$location_name[location_batches$batch == batch_val]
         plottable_predictions <- results %>%
           dplyr::filter(
-            location %in% batch_locations,
+            location_name %in% batch_locations,
             grepl(substr(measure, 1, nchar(measure) - 1), target)) %>%
           dplyr::mutate(
             endpoint_type = ifelse(quantile < 0.5, 'lower', 'upper'),
@@ -138,11 +169,9 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
           dplyr::select(-quantile) %>%
           tidyr::pivot_wider(names_from='endpoint_type', values_from='value')
 
-        #  batch_locations <- c('05', '10')
-
         for(type in types) {
           type_intervals <- plottable_predictions %>%
-            dplyr::filter(location %in% batch_locations) %>%
+            dplyr::filter(location_name %in% batch_locations) %>%
             filter(alpha != "1.000", grepl(UQ(type), target))
 
           if(nrow(type_intervals) > 0) {
@@ -150,33 +179,30 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
             p <- ggplot() +
               geom_line(data=data %>%
                           dplyr::mutate(date = lubridate::ymd(date)) %>%
-                          dplyr::filter(location %in% batch_locations),
-                        mapping = aes_string(x = "date", y = type, group = "location")) +
+                          dplyr::filter(location_name %in% batch_locations),
+                        mapping = aes_string(x = "date", y = type, group = "location_name")) +
               geom_point(data=data %>%
                            dplyr::mutate(date = lubridate::ymd(date)) %>%
-                           dplyr::filter(location %in% batch_locations),
-                         mapping = aes_string(x = "date", y = type, group = "location")) +
+                           dplyr::filter(location_name %in% batch_locations),
+                         mapping = aes_string(x = "date", y = type, group = "location_name")) +
               geom_ribbon(
                 data = type_intervals,
                 mapping = aes(x = target_end_date,
                               ymin=lower, ymax=upper,
                               fill=alpha)) +
               geom_line(
-                data = results %>% dplyr::filter(location %in% batch_locations) %>%
-                  filter(quantile == 0.5,
-                         grepl(UQ(type), target),
-                         grepl(substr(measure, 1, nchar(measure) - 1), target)) %>%
-                  mutate(
-                    horizon = as.integer(substr(target, 1, 1)),
-                    target_end_date = forecast_week_end_date + 7*horizon),
-                mapping = aes(x = target_end_date, y = value)) +
-              geom_point(
-                data = results %>% dplyr::filter(location %in% batch_locations) %>%
+                data = results %>% dplyr::filter(location_name %in% batch_locations) %>%
                   filter(quantile == 0.5,
                          grepl(UQ(type), target),
                          grepl(substr(measure, 1, nchar(measure) - 1), target)),
                 mapping = aes(x = target_end_date, y = value)) +
-              facet_wrap(~location, ncol=6, scales = 'free_y') +
+              geom_point(
+                data = results %>% dplyr::filter(location_name %in% batch_locations) %>%
+                  filter(quantile == 0.5,
+                         grepl(UQ(type), target),
+                         grepl(substr(measure, 1, nchar(measure) - 1), target)),
+                mapping = aes(x = target_end_date, y = value)) +
+              facet_wrap(~location_name, ncol=6, scales = 'free_y') +
               ggtitle(paste(type, measure, as.character(forecast_week_end_date))) +
               theme_bw()
             print(p)
@@ -194,19 +220,28 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
 # Upload to google drive
 gdrive_plot_folders <- googledrive::drive_ls(
   path = googledrive::as_id("1lvEs1dHYANygB2EE-bHl1MIZyJbgMLr-"))
-if(forecast_date %in% gdrive_plot_folders$name) {
+if(as.character(forecast_date) %in% gdrive_plot_folders$name) {
   gdrive_plots_root <- gdrive_plot_folders %>%
-    filter(name == forecast_date)
+    dplyr::filter(name == as.character(forecast_date))
+  existing_uploaded <- googledrive::drive_ls(path = gdrive_plots_root)$name
 } else {
   gdrive_plots_root <- googledrive::drive_mkdir(
     name = as.character(forecast_date),
     path = googledrive::as_id("1lvEs1dHYANygB2EE-bHl1MIZyJbgMLr-"))
+  existing_uploaded <- NULL
 }
 
-for(local_file in Sys.glob(paste0(day_plots_root, '*'))) {
-  googledrive::drive_put(
-    media = local_file,
-    path = gdrive_plots_root)
+current_wd <- getwd()
+setwd(day_plots_root)
+
+
+for(local_file in Sys.glob('*')) {
+  if(!(local_file %in% existing_uploaded)) {
+    googledrive::drive_put(
+      media = local_file,
+      path = gdrive_plots_root)
+  }
 }
 
+setwd(current_wd)
 
