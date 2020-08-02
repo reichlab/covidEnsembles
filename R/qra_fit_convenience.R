@@ -63,6 +63,210 @@ do_zoltar_query <- function(
 }
 
 
+#' load covid forecasts from local file
+#'
+#' @param model_abbrs Character vector of model abbreviations
+#' @param last_timezero The last timezero date of forecasts to retrieve
+#' @param timezero_window_size The number of days back to go.  A window size of
+#' 0 will retrieve only forecasts submitted on the `last_timezero` date.
+#' @param targets character vector of targets to retrieve, for example
+#' c('1 wk ahead cum death', '2 wk ahead cum death')
+#' @param submissions_root path to the data-processed folder of the
+#' covid19-forecast-hub repository
+#'
+#' @return data frame with columns model, timezero, location, target, quantile,
+#' value
+#'
+#' @export
+load_covid_forecasts <- function(
+  model_abbrs,
+  last_timezero,
+  timezero_window_size,
+  targets,
+  submissions_root) {
+  submission_dates <- as.character(last_timezero +
+    seq(from = -timezero_window_size, to = 0, by = 1))
+
+  results <- purrr::map_dfr(
+    model_abbrs,
+    function(model_abbr) {
+      results_path <- paste0(submissions_root, model_abbr, '/',
+                             submission_dates, '-', model_abbr, '.csv')
+      results_path <- results_path[file.exists(results_path)]
+      results_path <- tail(results_path, 1)
+
+      if(length(results_path) == 0) {
+        return(NULL)
+      }
+
+      readr::read_csv(results_path,
+        col_types = cols(
+          forecast_date = col_date(format = ""),
+          target = col_character(),
+          target_end_date = col_date(format = ""),
+          location = col_character(),
+          type = col_character(),
+          quantile = col_double(),
+          value = col_double()
+        )) %>%
+        dplyr::filter(
+          tolower(type) == 'quantile',
+          tolower(target) %in% targets) %>%
+        dplyr::transmute(
+          model = model_abbr,
+          timezero = forecast_date,
+          location = location,
+          target = tolower(target),
+          quantile = quantile,
+          value = value
+        )
+    }
+  )
+
+  return(results)
+}
+
+#' Read in covid forecasts from local files and fit one ensemble
+#'
+#' @param candidate_model_abbreviations_to_include List of model abbreviations
+#' for models that may be included in ensemble forecast
+#' @param targets character vector of targets to retrieve, for example
+#' c('1 wk ahead cum death', '2 wk ahead cum death')
+#' @param forecast_week_end_date date of a s
+#' @param timezero_window_size The number of days back to go.  A window size of
+#' 0 will retrieve only forecasts submitted on the `last_timezero` date.
+#' @param window_size size of window
+#' @param intercept logical specifying whether an intercept is included
+#' @param constraint character specifying constraints on parameters; 'ew',
+#' 'convex', 'positive' or 'unconstrained'
+#' @param quantile_groups Vector of group labels for quantiles, having the same
+#' length as the number of quantiles.  Common labels indicate that the ensemble
+#' weights for the corresponding quantile levels should be tied together.
+#' Default is rep(1,length(quantiles)), which means that a common set of
+#' ensemble weights should be used across all levels.  This is the argument
+#' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
+#' `backend = 'quantmod`
+#' @param missingness character specifying approach to handling missing
+#' forecasts: 'by_location_group', 'rescale', or 'impute'
+#' @param impute_method character string specifying method for imputing missing
+#' forecasts; currently only 'mean' is supported.
+#' @param backend back end used for optimization.
+#' @param submissions_root path to the data-processed folder of the
+#' covid19-forecast-hub repository
+#' @param required_quantiles numeric vector of quantiles component models are
+#' required to have submitted
+#' @param do_q10_check if TRUE, do q10 check
+#' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
+#' @param return_eligibility if TRUE, return model eligibility
+#'
+#' @return data frame with ensemble forecasts by location
+#'
+#' @export
+build_covid_ensemble_from_local_files <- function(
+  candidate_model_abbreviations_to_include,
+  spatial_resolution,
+  targets,
+  forecast_week_end_date,
+  timezero_window_size = 1,
+  window_size,
+  intercept=FALSE,
+  constraint,
+  quantile_groups,
+  missingness,
+  impute_method,
+  backend,
+  submissions_root,
+  required_quantiles,
+  do_q10_check,
+  do_nondecreasing_quantile_check,
+  do_baseline_check,
+  baseline_tol = 1.2,
+  manual_eligibility_adjust,
+  return_eligibility = TRUE,
+  return_all = TRUE
+) {
+  # Get observed values ("truth" in Zoltar's parlance)
+  observed_by_location_target_end_date <-
+    get_observed_by_location_target_end_date(
+      issue_date = as.character(lubridate::ymd(forecast_week_end_date)+1),
+      targets = targets,
+      spatial_resolution = spatial_resolution
+    )
+
+  # Dates specifying mondays when forecasts were submitted that are relevant to
+  # this analysis.  If forecast_week_end_date is a Saturday, + 2 is a Monday;
+  # we then add in the previous window_size weeks
+  monday_dates <- forecast_week_end_date + 2 +
+    seq(from = -window_size, to = 0, by = 1) * 7
+
+  # obtain the quantile forecasts for required quantiles,
+  # and the filter to last submission from each model for each week
+  forecasts <-
+    # get forecasts from zoltar
+    purrr::map_dfr(
+      monday_dates,
+      load_covid_forecasts,
+      model_abbrs = candidate_model_abbreviations_to_include,
+      timezero_window_size = timezero_window_size,
+      targets = targets,
+      submissions_root = submissions_root
+    ) %>%
+    # keep only required quantiles
+    dplyr::filter(
+      format(quantile, digits=3, nsmall=3) %in%
+        format(required_quantiles, digits=3, nsmall=3)) %>%
+    # put quantiles in columns
+    tidyr::pivot_wider(names_from = quantile, values_from = value) %>%
+    # create columns for horizon, forecast week end date of the forecast, and
+    # target end date of the forecast
+    dplyr::mutate(
+      horizon = as.integer(substr(target, 1, 1)),
+      forecast_week_end_date = calc_forecast_week_end_date(timezero),
+      target_end_date = calc_target_week_end_date(timezero, horizon)
+    ) %>%
+    # keep only the last submission for each model for a given location, target,
+    # and forecast week end date
+    dplyr::group_by(
+      location, target, forecast_week_end_date, model
+    ) %>%
+    dplyr::top_n(1, timezero) %>%
+    # pivot longer; quantiles are in rows again
+    tidyr::pivot_longer(
+      cols = all_of(as.character(required_quantiles)),
+      names_to = 'quantile',
+      values_to = 'value') %>%
+    ungroup() %>%
+    # add columns with location name and abbreviation
+    left_join(fips_codes, by = 'location')
+
+  # obtain ensemble fit(s)
+  results <- get_ensemble_fit_and_predictions(
+    forecasts=forecasts,
+    observed_by_location_target_end_date=observed_by_location_target_end_date,
+    forecast_week_end_date=forecast_week_end_date,
+    window_size=window_size,
+    intercept=intercept,
+    constraint=constraint,
+    quantile_groups=quantile_groups,
+    missingness=missingness,
+    impute_method=impute_method,
+    backend=backend,
+    do_q10_check = do_q10_check,
+    do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+    do_baseline_check = do_baseline_check,
+    baseline_tol = baseline_tol,
+    manual_eligibility_adjust = manual_eligibility_adjust,
+    return_eligibility = return_eligibility,
+    return_all = return_all)
+
+  # return
+  return(c(
+    results,
+    list(forecasts = forecasts)
+  ))
+}
+
+
 #' Download covid forecasts from zoltar and fit one ensemble
 #'
 #' @param candidate_model_abbreviations_to_include List of model abbreviations
@@ -114,6 +318,8 @@ build_covid_ensemble_from_zoltar <- function(
   required_quantiles,
   do_q10_check,
   do_nondecreasing_quantile_check,
+  do_baseline_check,
+  baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
   return_all = TRUE
@@ -124,34 +330,11 @@ build_covid_ensemble_from_zoltar <- function(
 
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
-    covidEnsembles::historical_truths(
+    get_observed_by_location_target_end_date(
       issue_date = as.character(lubridate::ymd(forecast_week_end_date)+1),
-      spatial_resolution = c('state', 'national'),
-      temporal_resolution = 'weekly'
-    ) %>%
-    tidyr::pivot_longer(
-      cols = c('cum_deaths', 'inc_deaths'),
-      names_to = 'base_target',
-      values_to = 'observed') %>%
-    dplyr::transmute(
-      location = location,
-      base_target = ifelse(base_target == 'cum_deaths', 'wk ahead cum death', 'wk ahead inc death'),
-      target_end_date = date,
-      observed = observed
+      targets = targets,
+      spatial_resolution = c('national', 'state')
     )
-  # observed_by_location_target_end_date <-
-  #   zoltr::truth(zoltar_connection, project_url) %>%
-  #   dplyr::filter(target %in% targets) %>%
-  #   dplyr::transmute(
-  #     timezero = timezero,
-  #     location = unit,
-  #     horizon = as.integer(substr(target, 1, 1)),
-  #     base_target = substr(target, 3, nchar(target)),
-  #     observed = value,
-  #     forecast_week_end_date = calc_forecast_week_end_date(timezero),
-  #     target_end_date = calc_target_week_end_date(timezero, horizon)
-  #   ) %>%
-  #   dplyr::distinct(location, base_target, target_end_date, observed)
 
   # Dates specifying mondays when forecasts were submitted that are relevant to
   # this analysis.  If forecast_week_end_date is a Saturday, + 2 is a Monday;
@@ -216,6 +399,8 @@ build_covid_ensemble_from_zoltar <- function(
     backend=backend,
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+    do_baseline_check = do_baseline_check,
+    baseline_tol = baseline_tol,
     manual_eligibility_adjust = manual_eligibility_adjust,
     return_eligibility = return_eligibility,
     return_all = return_all)
@@ -268,13 +453,15 @@ get_ensemble_fit_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  constraint = c('ew', 'convex', 'positive', 'unconstrained'),
+  constraint = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
   quantile_groups = NULL,
   missingness = c('by_location_group', 'rescale', 'mean_impute'),
   impute_method = 'mean',
   backend = 'quantmod',
   do_q10_check,
   do_nondecreasing_quantile_check,
+  do_baseline_check,
+  baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
   return_all = FALSE) {
@@ -286,7 +473,7 @@ get_ensemble_fit_and_predictions <- function(
 
   constraint <- match.arg(
     constraint,
-    choices = c('ew', 'convex', 'positive', 'unconstrained'),
+    choices = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
     several.ok = FALSE)
 
   if(missingness == 'by_location_group') {
@@ -301,6 +488,8 @@ get_ensemble_fit_and_predictions <- function(
       backend=backend,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+      do_baseline_check = do_baseline_check,
+      baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility=return_eligibility,
       return_all=return_all)
@@ -317,6 +506,8 @@ get_ensemble_fit_and_predictions <- function(
       backend=backend,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+      do_baseline_check = do_baseline_check,
+      baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility=return_eligibility,
       return_all=return_all)
@@ -328,6 +519,8 @@ get_ensemble_fit_and_predictions <- function(
       window_size=window_size,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+      do_baseline_check = do_baseline_check,
+      baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility=return_eligibility,
       return_all=return_all)
@@ -350,7 +543,7 @@ get_ensemble_fit_and_predictions <- function(
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
 #' @param constraint character specifying constraints on parameters; 'ew',
-#' 'convex', 'positive' or 'unconstrained'
+#' 'convex', 'positive', 'unconstrained', or 'median'
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -372,11 +565,13 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  constraint = c('ew', 'convex', 'positive', 'unconstrained'),
+  constraint = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
   quantile_groups = NULL,
   backend = 'quantmod',
   do_q10_check,
   do_nondecreasing_quantile_check,
+  do_baseline_check,
+  baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_all=FALSE,
   return_eligibility = TRUE) {
@@ -388,7 +583,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
 
   constraint <- match.arg(
     constraint,
-    choices = c('ew', 'convex', 'positive', 'unconstrained'),
+    choices = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
     several.ok = TRUE)
 
   # obtain model eligibility by location
@@ -402,13 +597,20 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
     quantile_value_col = 'value'
   )
 
+  forecast_base_targets <- substr(
+    forecasts$target,
+    regexpr(' ', forecasts$target) + 1,
+    nchar(forecasts$target)
+  )
   model_eligibility <- covidEnsembles::calc_model_eligibility_for_ensemble(
     qfm = forecast_matrix,
     observed_by_location_target_end_date =
       observed_by_location_target_end_date %>%
-        dplyr::filter(base_target == paste0('wk ahead cum death')),
+        dplyr::filter(base_target %in% forecast_base_targets),
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+    do_baseline_check = do_baseline_check,
+    baseline_tol = baseline_tol,
     window_size = window_size,
     decrease_tol = 0.0
   )
@@ -532,6 +734,10 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
       location_groups$qfm_train,
       estimate_qra,
       constraint = 'ew')
+  } else if(constraint == 'median') {
+    location_groups$qra_fit <- purrr::map(
+      location_groups$qfm_train,
+      new_median_qra_fit)
   } else {
     location_groups[['qra_fit']] <- purrr::pmap(
       location_groups %>% select(qfm_train, y_train, qfm_test),
@@ -692,6 +898,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
   backend = 'quantmod',
   do_q10_check,
   do_nondecreasing_quantile_check,
+  do_baseline_check,
+  baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_all=FALSE,
   return_eligibility = TRUE) {
@@ -717,13 +925,20 @@ get_imputed_ensemble_fits_and_predictions <- function(
     quantile_value_col = 'value'
   )
 
+  forecast_base_targets <- substr(
+    forecasts$target,
+    regexpr(' ', forecasts$target) + 1,
+    nchar(forecasts$target)
+  )
   model_eligibility <- covidEnsembles::calc_model_eligibility_for_ensemble(
     qfm = forecast_matrix,
     observed_by_location_target_end_date =
       observed_by_location_target_end_date %>%
-      dplyr::filter(base_target == paste0('wk ahead cum death')),
+      dplyr::filter(base_target %in% forecast_base_targets),
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+    do_baseline_check = do_baseline_check,
+    baseline_tol = baseline_tol,
     window_size = window_size,
     decrease_tol = 0.0
   )
@@ -893,6 +1108,8 @@ get_rescaled_ensemble_fits_and_predictions <- function(
   window_size,
   do_q10_check,
   do_nondecreasing_quantile_check,
+  do_baseline_check = do_baseline_check,
+  baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_all=FALSE,
   return_eligibility = TRUE) {
@@ -924,6 +1141,8 @@ get_rescaled_ensemble_fits_and_predictions <- function(
       observed_by_location_target_end_date,
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+    do_baseline_check = do_baseline_check,
+    baseline_tol = baseline_tol,
     window_size = 0,
     decrease_tol = 0.0
   )
@@ -964,6 +1183,8 @@ get_rescaled_ensemble_fits_and_predictions <- function(
         dplyr::filter(base_target == paste0('wk ahead cum death')),
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+      do_baseline_check = do_baseline_check,
+      baseline_tol = baseline_tol,
       window_size = 0,
       decrease_tol = 0.0
     )

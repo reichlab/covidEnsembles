@@ -30,6 +30,22 @@ is.rescaled_qra_fit <- function(object) {
 }
 
 
+#' Check if object is of class median_qra_fit
+#'
+#' @param object an object that may be a median_qra_fit object
+#'
+#' @return boolean; whether object is inherits median_qra_fit class
+#'
+#' @export
+is.median_qra_fit <- function(object) {
+  if (inherits(object, "median_qra_fit")) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+
 #' Validate qra_fit object
 #'
 #' @param qra_fit
@@ -111,6 +127,23 @@ new_rescaled_qra_fit <- function(
   #  validate_qra_fit(rescaled_qra_fit)
 
   return(rescaled_qra_fit)
+}
+
+
+#' Create a median_qra_fit object
+#'
+#' @param ... any arguments are ignored
+#'
+#' @return median_qra_fit object
+#'
+#' @export
+new_median_qra_fit <- function(...) {
+  median_qra_fit <- structure(
+    NA,
+    class = 'median_qra_fit'
+  )
+
+  return(median_qra_fit)
 }
 
 
@@ -285,6 +318,60 @@ predict.rescaled_qra_fit <- function(qra_fit, qfm) {
     model_col=attr(all_preds[[1]], 'model_col'),
     quantile_name_col=attr(all_preds[[1]], 'quantile_name_col'),
     quantile_value_col=attr(all_preds[[1]], 'quantile_value_col')
+  )
+
+  return(result_qfm)
+}
+
+
+
+#' Predict based on a quantile regression averaging fit
+#'
+#' @param qra_fit object of class median_qra_fit
+#' @param qfm matrix of model forecasts of class QuantileForecastMatrix
+#'
+#' @return object of class QuantileForecastMatrix with quantile forecasts
+#'
+#' @export
+predict.median_qra_fit <- function(qra_fit, qfm) {
+  # construct sparse matrix representing model weights across quantiles
+  ## pull out parameter values
+  row_index <- attr(qfm, 'row_index')
+  col_index <- attr(qfm, 'col_index')
+  unique_models <- unique(col_index[[attr(qfm, 'model_col')]])
+  unique_quantiles <- unique(col_index[[attr(qfm, 'quantile_name_col')]])
+
+  col_inds <- rep(seq_along(unique_quantiles), times=length(unique_models))
+
+  # Compute result as per-quantile median of component forecasts
+  result_matrix <- matrix(
+    NA_real_,
+    nrow = nrow(row_index),
+    ncol = length(unique_quantiles)
+  )
+
+  for(quantile_ind in seq_along(unique_quantiles)) {
+    result_matrix[, quantile_ind] <- apply(
+      unclass(qfm)[, which(col_inds == quantile_ind), drop = FALSE],
+      1,
+      median,
+      na.rm = TRUE
+    )
+  }
+
+  # Create QuantileForecastMatrix with result and return
+  model_col <- attr(qfm, 'model_col')
+  new_col_index <- col_index[
+    col_index[[model_col]] == col_index[[model_col]][1], ]
+  new_col_index[[model_col]] <- 'qra'
+
+  result_qfm <- new_QuantileForecastMatrix(
+    qfm = result_matrix,
+    row_index=row_index,
+    col_index=new_col_index,
+    model_col=attr(qfm, 'model_col'),
+    quantile_name_col=attr(qfm, 'quantile_name_col'),
+    quantile_value_col=attr(qfm, 'quantile_value_col')
   )
 
   return(result_qfm)

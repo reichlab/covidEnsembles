@@ -59,3 +59,48 @@ wis <- function(y, qfm) {
 
   return(score)
 }
+
+
+#' compute wis and contributions to wis from each interval level
+#'
+#' @param qfm QuantileForecastMatrix with predictions to score
+#' @param observed_by_location_target_end_date data frame of observed values
+#'
+#' @return data frame with column per component of wis
+#'
+#' @export
+get_all_wis_components <- function(
+  qfm,
+  observed_by_location_target_end_date) {
+
+  row_index <- attr(qfm, 'row_index')
+
+  y_test <- row_index %>%
+    dplyr::mutate(
+      horizon = as.integer(substr(target, 1, 1)),
+      base_target = substr(target, 3, nchar(target)),
+      target_end_date = as.character(lubridate::ymd(forecast_week_end_date) + 7*horizon)
+    ) %>%
+    dplyr::left_join(
+      observed_by_location_target_end_date,
+      by = c('location', 'target_end_date', 'base_target')
+    ) %>%
+    pull(observed)
+
+  row_index$wis <- covidEnsembles::wis(y_test, qfm)
+
+  col_index <- attr(qfm, 'col_index')
+  for(i in seq_len((nrow(col_index) - 1)/2)) {
+    wis_name <- paste0('wis_', format(as.numeric(col_index$quantile[i]) * 2,
+                                      nsmall=2, digits=2))
+    row_index[[wis_name]] <- covidEnsembles::wis(
+      y_test, qfm[, c(i, nrow(col_index) + 1 - i)])
+  }
+
+  i <- i + 1
+  row_index[['wis_1']] <- abs(y_test - unclass(qfm)[, i])
+
+  return(row_index[!is.na(y_test), ])
+}
+
+

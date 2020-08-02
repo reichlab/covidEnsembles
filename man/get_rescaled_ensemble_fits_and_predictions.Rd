@@ -11,6 +11,8 @@ get_rescaled_ensemble_fits_and_predictions(
   window_size,
   do_q10_check,
   do_nondecreasing_quantile_check,
+  do_baseline_check = do_baseline_check,
+  baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_all = FALSE,
   return_eligibility = TRUE

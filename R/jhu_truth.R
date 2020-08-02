@@ -86,6 +86,7 @@ historical_truths <- function(
       dplyr::mutate(location_name = Province_State) %>%
       dplyr::group_by(location_name, date) %>%
       dplyr::summarize(cum_deaths = sum(cum_deaths)) %>%
+      dplyr::group_by(location_name) %>%
       dplyr::mutate(inc_deaths = cum_deaths - dplyr::lag(cum_deaths, 1L)) %>%
       dplyr::left_join(covidEnsembles::fips_codes, by = 'location_name') %>%
       dplyr::select(location, location_name, location_abbreviation, date, cum_deaths, inc_deaths) %>%
@@ -111,4 +112,69 @@ historical_truths <- function(
   }
 
   return(results)
+}
+
+
+
+
+#' get observed cases and/or deaths
+#'
+#' @param issue_date character issue date (i.e. report date) to use for
+#' constructing truths in format 'yyyy-mm-dd'
+#' @param targets character vector of targets to retrieve, for example
+#' c('1 wk ahead cum death', '2 wk ahead cum death')
+#' @param spatial_resolution character vector specifying spatial unit types to
+#' include: 'county', 'state' and/or 'national'
+#'
+#' @return data frame with columns location, base_target, target_end_date, and
+#' observed
+#'
+#' @export
+get_observed_by_location_target_end_date <- function(
+  issue_date,
+  targets,
+  spatial_resolution
+) {
+  types_and_measures <- purrr::map_dfr(
+    targets,
+    function(target) {
+      split_res <- strsplit(target, ' ', fixed = TRUE)[[1]]
+      data.frame(
+        type = split_res[4],
+        measure = split_res[5],
+        stringsAsFactors = FALSE
+      )
+    }
+  ) %>%
+    dplyr::distinct(type, measure)
+
+
+  observed_by_location_target_end_date <-
+    purrr::map_dfr(
+      unique(types_and_measures$measure),
+      function(measure) {
+        types <- types_and_measures %>%
+          dplyr::filter(measure == UQ(measure)) %>%
+          dplyr::pull(type)
+        covidData::load_jhu_data(
+          issue_date = issue_date,
+          spatial_resolution = spatial_resolution,
+          temporal_resolution = 'weekly',
+          measure = measure
+        ) %>%
+          tidyr::pivot_longer(
+            cols = c('cum', 'inc'),
+            names_to = 'type',
+            values_to = 'observed') %>%
+          dplyr::filter(type %in% types) %>%
+          dplyr::transmute(
+            location = location,
+            base_target = paste('wk ahead', type, measure),
+            target_end_date = date,
+            observed = observed
+          )
+      }
+    )
+
+  return(observed_by_location_target_end_date)
 }

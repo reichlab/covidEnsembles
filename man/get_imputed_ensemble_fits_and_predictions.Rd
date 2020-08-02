@@ -16,6 +16,8 @@ get_imputed_ensemble_fits_and_predictions(
   backend = "quantmod",
   do_q10_check,
   do_nondecreasing_quantile_check,
+  do_baseline_check,
+  baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_all = FALSE,
   return_eligibility = TRUE

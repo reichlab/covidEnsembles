@@ -7,8 +7,10 @@
 #'   level 0.1 is at least as large as the most recent observed value
 #' @param do_nondecreasing_quantile_check logical; if TRUE, check condition
 #'   that quantiles for consecutive targets (1 wk ahead, 2 wk ahead, etc) are
-#'  non-decreasing for each combination of location, forecast_week_end_date,
-#'  model, and quantile probability level
+#'   non-decreasing for each combination of location, forecast_week_end_date,
+#'   model, and quantile probability level
+#' @param do_baseline_check logical; if TRUE, check condition that WIS for model
+#'   is within specified tolerance of WIS for baseline
 #' @param window_size non-negative integer number of historic weeks that
 #'   are examined for forecast missingness; 0 is appropriate for equal weight
 #'   ensembles where no historical data is required.  If two past weeks of
@@ -16,6 +18,9 @@
 #'   should be 2
 #' @param decrease_tol numeric; decreases of up to specified tolerance are
 #'   allowed
+#' @param baseline_tol numeric; for baseline check, model's mean WIS for
+#'   forecasts within the window size must be at most baseline_tol times the
+#'   mean wis for the baseline model on the corresponding forecasts
 #'
 #' @return data frame with two columns:
 #'   * one with name given by model_id_name recording model id for each model
@@ -28,13 +33,15 @@ calc_model_eligibility_for_ensemble <- function(
   observed_by_location_target_end_date,
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
+  do_baseline_check = FALSE,
   window_size = 0,
-  decrease_tol = 1.0
+  decrease_tol = 1.0,
+  baseline_tol = 1.2
 ) {
   # subset to rows representing forecasts within window_size
   row_index <- attr(qfm, 'row_index')
   if(window_size+1 > length(unique(row_index$forecast_week_end_date))) {
-    stop('not enough forecast weeks in qfm to support requested lookback length')
+    stop('not enough forecast weeks in qfm to support requested window size')
   }
 
   last_lookback_forecast_weeks <- row_index %>%
@@ -75,10 +82,26 @@ calc_model_eligibility_for_ensemble <- function(
     eligibility$nondecreasing_quantiles_eligibility <- 'NA'
   }
 
+  # check for forecast skill comparable to baseline
+  if(do_baseline_check) {
+    baseline_check <- calc_baseline_check(
+      qfm,
+      observed_by_location_target_end_date,
+      baseline_tol)
+
+    # combine eligibility check results
+    eligibility <- eligibility %>%
+      dplyr::left_join(baseline_check,
+                       by = c("location", model_id_name))
+  } else {
+    eligibility$baseline_eligibility <- 'NA'
+  }
+
   eligibility$overall_eligibility <- ifelse(
     eligibility$missingness_eligibility == 'eligible' &
       eligibility$q10_eligibility %in% c('eligible', 'NA') &
-      eligibility$nondecreasing_quantiles_eligibility %in% c('eligible', 'NA'),
+      eligibility$nondecreasing_quantiles_eligibility %in% c('eligible', 'NA') &
+      eligibility$baseline_eligibility %in% c('eligible', 'NA'),
     'eligible',
     'ineligible'
   )
@@ -316,6 +339,116 @@ calc_nondecreasing_quantile_check <- function(
     dplyr::ungroup()
   names(eligibility)[names(eligibility) == 'get(model_id_name)'] <-
     model_id_name
+
+  return(eligibility)
+}
+
+
+#' Compute check of whether predictive performance is comparable to a baseline
+#' model
+#'
+#' @param qfm matrix of model forecasts of class QuantileForecastMatrix
+#' @param observed_by_location_target_end_date data frame of observed values
+#' @param baseline_tol numeric; for baseline check, model's mean WIS for
+#'   forecasts within the window size must be at most baseline_tol times the
+#'   mean wis for the baseline model on the corresponding forecasts
+#'
+#' @return data frame with a row for each combination of
+#'   location and model, and a character column called
+#'   'baseline_eligibility' with entry 'windowed wis greater than baseline'
+#'   if the mean wis for forecasts made by this model in the past window weeks
+#'   is greater than the mean wis for the corresponding forecasts from a
+#'   baseline model
+#'
+#' @export
+calc_baseline_check <- function(
+  qfm,
+  observed_by_location_target_end_date,
+  baseline_tol = 1
+) {
+  row_index <- attr(qfm, 'row_index')
+  col_index <- attr(qfm, 'col_index')
+  model_id_name <- attr(qfm, 'model_col')
+
+  all_locations <- unique(row_index$location)
+  forecast_week_end_dates <- unique(row_index$forecast_week_end_date)
+
+  baseline_scores <- purrr::map_dfr(
+    covidEnsembles::baseline_forecasts %>%
+      dplyr::filter(forecast_week_end_date %in% forecast_week_end_dates) %>%
+      pull(forecasts),
+    function(forecast_df) {
+      baseline_qfm <- covidEnsembles::new_QuantileForecastMatrix_from_df(
+        forecast_df = forecast_df,
+        model_col = 'model',
+        id_cols = c('location', 'forecast_week_end_date', 'target'),
+        quantile_name_col = 'quantile',
+        quantile_value_col = 'value',
+        drop_missing_id_levels = TRUE
+      )
+
+      get_all_wis_components(
+        qfm = baseline_qfm,
+        observed_by_location_target_end_date = observed_by_location_target_end_date)
+    }
+  )
+
+  eligibility <- purrr::map_dfr(
+    unique(col_index[[model_id_name]]),
+    function(model_id) {
+      # keep predictions from this model
+      col_inds <- which(col_index[[model_id_name]] == model_id)
+      qfm <- qfm[, col_inds]
+
+      # keep only locations/targets where the model submitted all 23 quantiles
+      rows_to_keep <- apply(
+        unclass(qfm),
+        1,
+        function(qfm_row) {
+          all(!is.na(qfm_row))
+        }
+      ) %>% which()
+      qfm <- qfm[rows_to_keep, ]
+
+      if(nrow(qfm) == 0) {
+        return(data.frame(
+          model = model_id,
+          location = all_locations,
+          baseline_eligibility = 'missing forecasts',
+          stringsAsFactors = FALSE
+        ))
+      } else {
+        wis_ratio <- get_all_wis_components(
+            qfm = qfm,
+            observed_by_location_target_end_date = observed_by_location_target_end_date) %>%
+          dplyr::mutate(model = model_id) %>%
+          dplyr::select(model, location, forecast_week_end_date, target, wis) %>%
+          dplyr::mutate(base_target = substr(target, 3, nchar(target))) %>%
+          dplyr::left_join(
+            baseline_scores %>%
+              dplyr::select(location, forecast_week_end_date, target, wis),
+            by = c('location', 'forecast_week_end_date', 'target')) %>%
+          dplyr::ungroup() %>%
+          dplyr::summarize(
+            mean_wis_model = mean(wis.x),
+            mean_wis_baseline = mean(wis.y)) %>%
+          dplyr::mutate(wis_ratio_model_to_baseline = mean_wis_model/mean_wis_baseline) %>%
+          dplyr::pull(wis_ratio_model_to_baseline)
+
+        return(data.frame(
+          model = model_id,
+          location = all_locations,
+          baseline_eligibility = ifelse(
+            wis_ratio <= baseline_tol,
+            'eligible',
+            'mean wis for model > mean wis for baseline'
+          ),
+          stringsAsFactors = FALSE
+        ))
+      }
+    })
+
+  names(eligibility)[names(eligibility) == 'model'] <- model_id_name
 
   return(eligibility)
 }

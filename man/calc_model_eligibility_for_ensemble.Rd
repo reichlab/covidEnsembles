@@ -10,8 +10,10 @@ calc_model_eligibility_for_ensemble(
   observed_by_location_target_end_date,
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
+  do_baseline_check = FALSE,
   window_size = 0,
-  decrease_tol = 1
+  decrease_tol = 1,
+  baseline_tol = 1.2
 )
 }
 \arguments{
@@ -27,6 +29,9 @@ that quantiles for consecutive targets (1 wk ahead, 2 wk ahead, etc) are
 non-decreasing for each combination of location, forecast_week_end_date,
 model, and quantile probability level}
 
+\item{do_baseline_check}{logical; if TRUE, check condition that WIS for model
+is within specified tolerance of WIS for baseline}
+
 \item{window_size}{non-negative integer number of historic weeks that
 are examined for forecast missingness; 0 is appropriate for equal weight
 ensembles where no historical data is required.  If two past weeks of
@@ -35,6 +40,10 @@ should be 2}
 
 \item{decrease_tol}{numeric; decreases of up to specified tolerance are
 allowed}
+
+\item{baseline_tol}{numeric; for baseline check, model's mean WIS for
+forecasts within the window size must be at most baseline_tol times the
+mean wis for the baseline model on the corresponding forecasts}
 }
 \value{
 data frame with two columns:

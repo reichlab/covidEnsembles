@@ -10,11 +10,13 @@ get_by_location_group_ensemble_fits_and_predictions(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  constraint = c("ew", "convex", "positive", "unconstrained"),
+  constraint = c("ew", "convex", "positive", "unconstrained", "median"),
   quantile_groups = NULL,
   backend = "quantmod",
   do_q10_check,
   do_nondecreasing_quantile_check,
+  do_baseline_check,
+  baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_all = FALSE,
   return_eligibility = TRUE
@@ -35,7 +37,7 @@ of the forecast week; week-ahead targets are with respect to this date}
 \item{intercept}{logical specifying whether an intercept is included}
 
 \item{constraint}{character specifying constraints on parameters; 'ew',
-'convex', 'positive' or 'unconstrained'}
+'convex', 'positive', 'unconstrained', or 'median'}
 
 \item{quantile_groups}{Vector of group labels for quantiles, having the same
 length as the number of quantiles.  Common labels indicate that the ensemble
