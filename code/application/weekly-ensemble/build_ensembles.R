@@ -8,7 +8,16 @@ options(error=recover)
 
 final_run <- TRUE
 
-submissions_root = '~/Documents/research/epi/covid/upstream-covid19-forecast-hub/covid19-forecast-hub/data-processed/'
+# Where to find component model submissions
+submissions_root <- '~/Documents/research/epi/covid/upstream-covid19-forecast-hub/covid19-forecast-hub/data-processed/'
+
+# Where to save ensemble forecasts
+save_roots <- c('code/application/weekly-ensemble/forecasts/',
+                '../forked-covid19-forecast-hub/covid19-forecast-hub/')
+
+# Where to save plots
+plots_root <- 'code/application/weekly-ensemble/plots/COVIDhub-ensemble/'
+
 
 # List of candidate models for inclusion in ensemble
 model_dirs <- Sys.glob(paste0(submissions_root, '*'), dirmark = TRUE)
@@ -170,7 +179,7 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
       quantile_groups = rep(1, 23),
       missingness = 'by_location_group',
       backend = NA,
-      submissions_root = '~/Documents/research/epi/covid/upstream-covid19-forecast-hub/covid19-forecast-hub/data-processed/',
+      submissions_root = submissions_root,
       required_quantiles = required_quantiles,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
@@ -180,6 +189,8 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
       return_all = TRUE
     )
 
+  # subset ensemble forecasts to only locations where more than 1
+  # component model contributed.
   model_counts <- apply(
     location_groups %>% select_if(is.logical),
     1,
@@ -261,7 +272,7 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
     )
   }
 
-  for(root in c('code/application/weekly-ensemble/forecasts/', '../covid19-forecast-hub/')) {
+  for(root in save_roots) {
     if(final_run) {
       write_csv(all_formatted_ensemble_predictions %>% select(-location_name),
                 paste0(root, 'data-processed/COVIDhub-ensemble/',
@@ -288,7 +299,6 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
 
 
 # make plots of ensemble submission
-plots_root <- 'code/application/weekly-ensemble/plots/COVIDhub-ensemble/'
 submissions_root <- paste0(root, 'data-processed/')
 
 submission_dates <- forecast_date + seq(from = -6, to = 0)

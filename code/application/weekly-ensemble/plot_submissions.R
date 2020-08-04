@@ -3,10 +3,12 @@ library(tidyverse)
 library(zeallot)
 library(covidData)
 library(googledrive)
+library(yaml)
 
+# Location of main covid19-forecast-hub repo where component model submissions can be found
 submissions_root <- '~/Documents/research/epi/covid/upstream-covid19-forecast-hub/covid19-forecast-hub/data-processed/'
-#submissions_root <- '~/Documents/research/epi/covid/covidEnsembles/code/application/weekly-ensemble/forecasts/data-processed/'
 
+# Where we want to save the plots
 plots_root <- 'code/application/weekly-ensemble/plots/'
 
 # Figure out what day it is.
@@ -44,13 +46,13 @@ model_info <- purrr::map_dfr(
   }
 )
 
-model_info$team_model_designation[model_info$model_abbr == 'COVIDhub-ensemble'] <- 'primary'
-
 candidate_model_abbreviations_to_include <- model_info %>%
   dplyr::filter(team_model_designation %in% c('primary', 'secondary', 'proposed')) %>%
   dplyr::pull(model_abbr)
 
+# Put this into covidData instead of here
 fips_codes <- covidData::fips_codes %>%
+  # Extract which state each county belongs to
   dplyr::mutate(
     state_code = ifelse(
       nchar(location > 2),
@@ -58,12 +60,14 @@ fips_codes <- covidData::fips_codes %>%
       location
     )
   ) %>%
+  # For all locations, add a state abbreviation
   dplyr::left_join(
     covidData::fips_codes %>%
       dplyr::filter(nchar(location) == 2) %>%
       dplyr::select(state_code = location, state_abbr = abbreviation),
     by = 'state_code'
   ) %>%
+  # Create "county, state" format for county names
   dplyr::mutate(
     location_name = ifelse(
       nchar(location) > 2,
@@ -71,10 +75,12 @@ fips_codes <- covidData::fips_codes %>%
       location_name
     )
   ) %>%
+  # Drop extra columns we created above
   dplyr::select(location, location_name)
 
 
 for(model_abbr in candidate_model_abbreviations_to_include) {
+  # Find a submission file for this model abbreviation
   results_path <- paste0(submissions_root, model_abbr, '/',
     submission_dates, '-', model_abbr, '.csv')
   results_path <- results_path[file.exists(results_path)]
@@ -111,7 +117,8 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
     next
   }
 
-  for(measure in c('deaths', 'cases')) {
+#  for(measure in c('deaths', 'cases')) {
+  for(measure in 'deaths') {
     plot_path <- paste0(day_plots_root, model_abbr, '-', model_forecast_date, '-', measure, '.pdf')
     if(!file.exists(plot_path)) {
       if(measure == 'deaths') {
@@ -121,6 +128,8 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
           temporal_resolution = 'weekly',
           measure = measure) %>%
           dplyr::left_join(fips_codes, by = 'location')
+
+        # maximum horizon to plot
         horizon <- 4L
         types <- c('inc', 'cum')
         required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
@@ -131,6 +140,8 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
           temporal_resolution = 'weekly',
           measure = measure) %>%
           dplyr::left_join(fips_codes, by = 'location')
+
+        # maximum horizon to plot
         horizon <- 8L
         types <- 'inc'
         required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
