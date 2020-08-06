@@ -30,11 +30,10 @@ test_that("calc_forecast_missingness works: window_size 0, none missing", {
     qfm=forecast_matrix
   )
 
-  expected <- expand.grid(
+  expected <- tidyr::expand_grid(
     location = letters[1:4],
     model = paste0('m', 1:3),
-    missingness_eligibility = 'eligible',
-    stringsAsFactors = FALSE
+    missingness_eligibility = 'eligible'
   )
 
   expect_equal(
@@ -72,11 +71,10 @@ test_that("calc_forecast_missingness works: window_size 1, none missing", {
     qfm=forecast_matrix
   )
 
-  expected <- expand.grid(
+  expected <- tidyr::expand_grid(
     location = letters[1:4],
     model = paste0('m', 1:3),
-    missingness_eligibility = 'eligible',
-    stringsAsFactors = FALSE
+    missingness_eligibility = 'eligible'
   )
 
   expect_equal(
@@ -114,11 +112,10 @@ test_that("calc_forecast_missingness works: window_size 2, missing", {
     qfm=forecast_matrix
   )
 
-  expected <- expand.grid(
+  expected <- tidyr::expand_grid(
     location = letters[1:4],
     model = paste0('m', 1:3),
-    missingness_eligibility = 'eligible',
-    stringsAsFactors = FALSE
+    missingness_eligibility = 'eligible'
   )
   expected$missingness_eligibility[
     expected$location == 'b' &
@@ -176,12 +173,10 @@ test_that("calc_q10_check works", {
     observed_by_location_target_end_date=observed_by_location_target_end_date
   )
 
-  expected <- expand.grid(
+  expected <- tidyr::expand_grid(
     location = letters[1:4],
     model = paste0('m', 1:3),
-    q10_eligibility = 'eligible',
-    KEEP.OUT.ATTRS = FALSE,
-    stringsAsFactors = FALSE
+    q10_eligibility = 'eligible'
   ) %>%
     arrange(location, model)
 
@@ -240,12 +235,10 @@ test_that("calc_nondecreasing_quantile_check works", {
     qfm=forecast_matrix
   )
 
-  expected <- expand.grid(
+  expected <- tidyr::expand_grid(
     location = letters[1:4],
     model = paste0('m', 1:3),
-    nondecreasing_quantiles_eligibility = 'eligible',
-    KEEP.OUT.ATTRS = FALSE,
-    stringsAsFactors = FALSE
+    nondecreasing_quantiles_eligibility = 'eligible'
   ) %>%
     arrange(location, model)
 

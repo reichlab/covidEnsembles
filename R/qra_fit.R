@@ -391,12 +391,12 @@ predict.median_qra_fit <- function(qra_fit, qfm) {
 #' weights for the corresponding quantile levels should be tied together.
 #' Default is rep(1,length(quantiles)), which means that a common set of
 #' ensemble weights should be used across all levels.  This is the argument
-#' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
-#' `backend = 'quantmod`
+#' `tau_groups` for `quantgen::quantile_ensemble`, and may only be supplied if
+#' `backend = 'quantgen`
 #' @param backend implementation used for estimation; currently either
 #'    'optim', using L-BFGS-B as provided by the optim function in R;
-#'    'NlcOptim', using NlcOptim::solnl; or 'quantmod', using
-#'    quantmod::quantile_ensemble
+#'    'NlcOptim', using NlcOptim::solnl; or 'quantgen', using
+#'    quantgen::quantile_ensemble
 #'
 #' @return object of class qra_fit
 #'
@@ -412,10 +412,10 @@ estimate_qra <- function(
   ...
 ) {
   constraint <- match.arg(constraint, choices = c('ew', 'convex', 'positive', 'unconstrained'))
-  backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'qra', 'quantmod'))
+  backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'qra', 'quantgen'))
 
-  if(backend == 'quantmod') {
-    result <- estimate_qra_quantmod(
+  if(backend == 'quantgen') {
+    result <- estimate_qra_quantgen(
       qfm_train=qfm_train,
       y_train=y_train,
       qfm_test=qfm_test,
@@ -708,7 +708,7 @@ model_constructor_unconstrained_per_model <- function(par, qfm_train) {
 }
 
 
-#' Estimate qra model using quantmod package as backend
+#' Estimate qra model using quantgen package as backend
 #'
 #' @param qfm_train QuantileForecastMatrix with training set predictions
 #' @param y_train numeric vector of responses for training set
@@ -721,10 +721,10 @@ model_constructor_unconstrained_per_model <- function(par, qfm_train) {
 #' weights for the corresponding quantile levels should be tied together.
 #' Default is rep(1,length(quantiles)), which means that a common set of
 #' ensemble weights should be used across all levels.  This is the argument
-#' `tau_groups` for `quantmod::quantile_ensemble`
+#' `tau_groups` for `quantgen::quantile_ensemble`
 #'
 #' @return object of class qra_fit
-estimate_qra_quantmod <- function(qfm_train, y_train, qfm_test, intercept, constraint, quantile_groups) {
+estimate_qra_quantgen <- function(qfm_train, y_train, qfm_test, intercept, constraint, quantile_groups) {
   # unpack and process arguments
   col_index <- attr(qfm_train, 'col_index')
   model_col <- attr(qfm_train, 'model_col')
@@ -736,21 +736,21 @@ estimate_qra_quantmod <- function(qfm_train, y_train, qfm_test, intercept, const
   quantiles <- sort(unique(col_index[[quantile_name_col]]))
   num_quantiles <- length(quantiles)
 
-  quantmod_intercept <- intercept
+  quantgen_intercept <- intercept
 
   if(constraint == 'convex') {
-    quantmod_nonneg = TRUE
-    quantmod_unit_sum = TRUE
+    quantgen_nonneg = TRUE
+    quantgen_unit_sum = TRUE
   } else if(constraint == 'positive') {
-    quantmod_nonneg = TRUE
-    quantmod_unit_sum = FALSE
+    quantgen_nonneg = TRUE
+    quantgen_unit_sum = FALSE
   } else if(constraint == 'unconstrained') {
-    quantmod_nonneg = FALSE
-    quantmod_unit_sum = FALSE
+    quantgen_nonneg = FALSE
+    quantgen_unit_sum = FALSE
   }
 
   # reformat training set predictive quantiles from component models as 3d
-  # array in format required for quantmod package
+  # array in format required for quantgen package
   qarr_train <- unclass(qfm_train)
   dim(qarr_train) <- c(nrow(qarr_train), num_quantiles, num_models)
   qarr_train <- aperm(qarr_train, c(1, 3, 2))
@@ -771,47 +771,47 @@ estimate_qra_quantmod <- function(qfm_train, y_train, qfm_test, intercept, const
   }
 
   # estimate ensemble parameters
-  quantmod_fit <- quantmod::quantile_ensemble(
+  quantgen_fit <- quantgen::quantile_ensemble(
     qarr=qarr_train,
     y=y_train,
     tau=as.numeric(quantiles),
     tau_groups=quantile_groups,
-    intercept = quantmod_intercept,
-    nonneg = quantmod_nonneg,
-    unit_sum = quantmod_unit_sum,
+    intercept = quantgen_intercept,
+    nonneg = quantgen_nonneg,
+    unit_sum = quantgen_unit_sum,
     noncross = TRUE,
     q0 = q0,
     verbose=FALSE
   )
 
 
-  # unpack result from quantmod and store in our format
+  # unpack result from quantgen and store in our format
   if(length(unique(quantile_groups)) > 1) {
-    if(quantmod_intercept) {
+    if(quantgen_intercept) {
       intercept <- data.frame(
         q = quantiles,
-        beta = quantmod_fit$alpha[1, ],
+        beta = quantgen_fit$alpha[1, ],
         stringsAsFactors = FALSE)
       colnames(intercept)[1] <- quantile_name_col
       coefficients <- col_index %>%
         mutate(
-          beta = as.vector(t(quantmod_fit$alpha[-1, , drop = FALSE]))
+          beta = as.vector(t(quantgen_fit$alpha[-1, , drop = FALSE]))
         )
     } else {
       intercept <- data.frame(beta = 0.0, stringsAsFactors = FALSE)
       coefficients <- col_index %>%
         mutate(
-          beta = as.vector(t(quantmod_fit$alpha))
+          beta = as.vector(t(quantgen_fit$alpha))
         )
     }
   } else {
-    if(quantmod_intercept) {
-      intercept <- data.frame(beta = quantmod_fit$alpha[1], stringsAsFactors = FALSE)
-      coefficients <- data.frame(model=models, beta = quantmod_fit$alpha[-1], stringsAsFactors = FALSE)
+    if(quantgen_intercept) {
+      intercept <- data.frame(beta = quantgen_fit$alpha[1], stringsAsFactors = FALSE)
+      coefficients <- data.frame(model=models, beta = quantgen_fit$alpha[-1], stringsAsFactors = FALSE)
       names(coefficients)[1] <- model_col
     } else {
       intercept <- data.frame(beta = 0.0, stringsAsFactors = FALSE)
-      coefficients <- data.frame(model=models, beta = quantmod_fit$alpha, stringsAsFactors = FALSE)
+      coefficients <- data.frame(model=models, beta = quantgen_fit$alpha, stringsAsFactors = FALSE)
       names(coefficients)[1] <- model_col
     }
   }

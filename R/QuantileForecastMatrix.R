@@ -232,7 +232,7 @@ as.data.frame.QuantileForecastMatrix <- function(qfm) {
             )
 
           result[[attr(qfm, 'quantile_value_col')]] <-
-            unclass(qfm[i, j])
+            unclass(qfm)[i, j]
 
           result[[attr(qfm, 'quantile_name_col')]] <-
             as.numeric(result[[attr(qfm, 'quantile_name_col')]])

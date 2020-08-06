@@ -32,13 +32,13 @@ length as the number of quantiles.  Common labels indicate that the ensemble
 weights for the corresponding quantile levels should be tied together.
 Default is rep(1,length(quantiles)), which means that a common set of
 ensemble weights should be used across all levels.  This is the argument
-\code{tau_groups} for \code{quantmod::quantile_ensemble}, and may only be supplied if
-\verb{backend = 'quantmod}}
+\code{tau_groups} for \code{quantgen::quantile_ensemble}, and may only be supplied if
+\verb{backend = 'quantgen}}
 
 \item{backend}{implementation used for estimation; currently either
 'optim', using L-BFGS-B as provided by the optim function in R;
-'NlcOptim', using NlcOptim::solnl; or 'quantmod', using
-quantmod::quantile_ensemble}
+'NlcOptim', using NlcOptim::solnl; or 'quantgen', using
+quantgen::quantile_ensemble}
 }
 \value{
 object of class qra_fit
