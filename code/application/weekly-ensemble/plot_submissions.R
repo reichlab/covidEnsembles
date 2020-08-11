@@ -8,10 +8,13 @@ library(here)
 setwd(here())
 
 # Location of main covid19-forecast-hub repo where component model submissions can be found
-submissions_root <- '~/Documents/research/epi/covid/covid19-forecast-hub/data-processed/'
+submissions_root <- '../covid19-forecast-hub/data-processed/'
 
 # Where we want to save the plots
 plots_root <- 'code/application/weekly-ensemble/plots/'
+if(!file.exists(plots_root)) {
+  dir.create(plots_root)
+}
 
 # Figure out what day it is.
 # forecast_week_end_date is a saturday relative to which week-ahead targets are

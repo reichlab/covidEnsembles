@@ -11,15 +11,17 @@ setwd(here())
 final_run <- TRUE
 
 # Where to find component model submissions
-submissions_root <- '~/Documents/research/epi/covid/covid19-forecast-hub/data-processed/'
+submissions_root <- '../covid19-forecast-hub/data-processed/'
 
 # Where to save ensemble forecasts
-save_roots <- c('code/application/weekly-ensemble/forecasts/',
-                '../forked-covid19-forecast-hub/covid19-forecast-hub/')
+save_roots <- c('code/application/weekly-ensemble/forecasts/')
+for (root in save_roots) {
+  if (!file.exists(root)) dir.create(root, recursive = TRUE)
+}
 
 # Where to save plots
 plots_root <- 'code/application/weekly-ensemble/plots/COVIDhub-ensemble/'
-
+if (!file.exists(plots_root)) dir.create(plots_root, recursive = TRUE)
 
 # List of candidate models for inclusion in ensemble
 model_dirs <- Sys.glob(paste0(submissions_root, '*'), dirmark = TRUE)
@@ -269,21 +271,25 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
 
   for(root in save_roots) {
     if(final_run) {
+      save_dir <- paste0(root, 'data-processed/COVIDhub-ensemble/')
+      if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
       write_csv(all_formatted_ensemble_predictions %>% select(-location_name),
-                paste0(root, 'data-processed/COVIDhub-ensemble/',
+                paste0(save_dir,
                        formatted_ensemble_predictions$forecast_date[1],
                        '-COVIDhub-ensemble.csv')
       )
 
+      save_dir <- paste0(root, "ensemble-metadata/")
+      if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
       write_csv(model_eligibility,
-        paste0(root, 'ensemble-metadata/',
+        paste0(save_dir,
           formatted_ensemble_predictions$forecast_date[1],
           '-',
           response_var,
           '-model-eligibility.csv'))
 
       write_csv(model_weights,
-        paste0(root, 'ensemble-metadata/',
+        paste0(save_dir,
           formatted_ensemble_predictions$forecast_date[1],
           '-',
           response_var,
