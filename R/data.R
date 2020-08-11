@@ -5,12 +5,6 @@
 "fips_codes"
 
 
-#' JHU data for the US and its states and territories
-#'
-#' @format A tibble with a row per issue date
-"jhu_data"
-
-
 #' Forecasts from a simple baseline model
 #'
 #' @format A tibble with a row per week end date
