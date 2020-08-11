@@ -42,14 +42,7 @@ candidate_model_abbreviations_to_include <- model_info %>%
 
 # Figure out what day it is; forecast creation date is set to a Monday,
 # even if we are delayed and create it Tuesday morning.
-current_wday <- lubridate::wday(Sys.Date(), label = TRUE)
-forecast_week_end_date <- if(current_wday == 'Mon') {
-  Sys.Date() - 2
-} else if(current_wday == 'Tue') {
-  Sys.Date() - 3
-} else {
-  stop('unsupported current_wday')
-}
+forecast_week_end_date <- lubridate::floor_date(Sys.Date(), unit = "week") - 1
 forecast_date <- forecast_week_end_date + 2
 
 for(response_var in c('cum_death', 'inc_death', 'inc_case')) {

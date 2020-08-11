@@ -16,14 +16,7 @@ plots_root <- 'code/application/weekly-ensemble/plots/'
 # Figure out what day it is.
 # forecast_week_end_date is a saturday relative to which week-ahead targets are
 # defined. forecast_date is the monday of forecast submission
-current_wday <- lubridate::wday(Sys.Date(), label = TRUE)
-forecast_week_end_date <- if(current_wday == 'Mon') {
-  Sys.Date() - 2
-} else if(current_wday == 'Tue') {
-  Sys.Date() - 3
-} else {
-  stop('unsupported current_wday')
-}
+forecast_week_end_date <- lubridate::floor_date(Sys.Date(), unit = "week") - 1
 forecast_date <- forecast_week_end_date + 2
 
 day_plots_root <- paste0(plots_root, forecast_date, '/')
