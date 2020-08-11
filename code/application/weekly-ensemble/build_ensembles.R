@@ -438,3 +438,33 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
     }
   }
 }
+
+
+# Upload to google drive
+gdrive_plot_folders <- googledrive::drive_ls(
+  path = googledrive::as_id("1lvEs1dHYANygB2EE-bHl1MIZyJbgMLr-"))
+if(as.character(forecast_date) %in% gdrive_plot_folders$name) {
+  gdrive_plots_root <- gdrive_plot_folders %>%
+    dplyr::filter(name == as.character(forecast_date))
+  existing_uploaded <- googledrive::drive_ls(path = gdrive_plots_root)$name
+} else {
+  gdrive_plots_root <- googledrive::drive_mkdir(
+    name = as.character(forecast_date),
+    path = googledrive::as_id("1lvEs1dHYANygB2EE-bHl1MIZyJbgMLr-"))
+  existing_uploaded <- NULL
+}
+
+current_wd <- getwd()
+setwd(plots_root)
+
+plot_paths <- paste0('COVIDhub-ensemble-', model_forecast_date, '-',
+  c("deaths", "cases"), '.pdf')
+for(local_file in plot_paths) {
+  if(!(local_file %in% existing_uploaded)) {
+    googledrive::drive_put(
+      media = local_file,
+      path = gdrive_plots_root)
+  }
+}
+
+setwd(current_wd)
