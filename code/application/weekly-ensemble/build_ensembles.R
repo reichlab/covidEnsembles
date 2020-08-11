@@ -4,12 +4,14 @@ library(covidEnsembles)
 library(covidData)
 library(googledrive)
 library(yaml)
+library(here)
 options(error=recover)
+setwd(here())
 
 final_run <- TRUE
 
 # Where to find component model submissions
-submissions_root <- '~/Documents/research/epi/covid/upstream-covid19-forecast-hub/covid19-forecast-hub/data-processed/'
+submissions_root <- '~/Documents/research/epi/covid/covid19-forecast-hub/data-processed/'
 
 # Where to save ensemble forecasts
 save_roots <- c('code/application/weekly-ensemble/forecasts/',
@@ -443,5 +445,3 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
     }
   }
 }
-
-

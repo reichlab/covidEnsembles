@@ -4,9 +4,11 @@ library(zeallot)
 library(covidData)
 library(googledrive)
 library(yaml)
+library(here)
+setwd(here())
 
 # Location of main covid19-forecast-hub repo where component model submissions can be found
-submissions_root <- '~/Documents/research/epi/covid/upstream-covid19-forecast-hub/covid19-forecast-hub/data-processed/'
+submissions_root <- '~/Documents/research/epi/covid/covid19-forecast-hub/data-processed/'
 
 # Where we want to save the plots
 plots_root <- 'code/application/weekly-ensemble/plots/'
@@ -112,13 +114,16 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
     dplyr::filter(grepl('^1 wk', target)) %>%
     dplyr::pull(target_end_date) %>%
     tail(1)
+  if(length(one_week_target_date) == 0) {
+    # forecast file does not contain forecasts at horizon of 1 week
+    next
+  }
   if(!(one_week_target_date == (forecast_week_end_date + 7))) {
     # forecast file targets wrong week
     next
   }
 
-#  for(measure in c('deaths', 'cases')) {
-  for(measure in 'deaths') {
+  for(measure in c('deaths', 'cases')) {
     plot_path <- paste0(day_plots_root, model_abbr, '-', model_forecast_date, '-', measure, '.pdf')
     if(!file.exists(plot_path)) {
       if(measure == 'deaths') {
@@ -255,4 +260,3 @@ for(local_file in Sys.glob('*')) {
 }
 
 setwd(current_wd)
-
