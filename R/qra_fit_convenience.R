@@ -63,6 +63,74 @@ do_zoltar_query <- function(
 }
 
 
+#' Get a list of candidate models with specified model designations
+#' 
+#' @param submissions_root path to the data-processed folder of the
+#' covid19-forecast-hub repository
+#' @param include_designations character vector of model designations to
+#' include: "primary", "secondary", "proposed", and/or "other"
+#' @param include_COVIDhub_ensemble logical: if TRUE, whether or not the
+#' COVIDhub-ensemble model is included depends on whether it falls within one
+#' of the specified \code{include_designations}; if FALSE, it will never be
+#' included
+#' @param include_COVIDhub_baseline logical: if TRUE, whether or not the
+#' COVIDhub-baseline model is included depends on whether it falls within one
+#' of the specified \code{include_designations}; if FALSE, it will never be
+#' included
+#' 
+#' @return character vector of model abbreviations
+#' 
+#' @export
+get_candidate_models <- function(
+  submissions_root,
+  include_designations = c("primary", "secondary", "proposed"),
+  include_COVIDhub_ensemble = FALSE,
+  include_COVIDhub_baseline = TRUE) {
+  # validate include designations
+  include_designations <- match.arg(
+    include_designations,
+    choices = c("primary", "secondary", "proposed", "other"),
+    several.ok = TRUE
+  )
+
+  # List of directories within the submissions_root
+  model_dirs <- list.dirs(submissions_root)
+
+  # drop first result, which is the data-processed directory itself
+  model_dirs <- model_dirs[-1]
+
+  # Data frame with model abbreviation and designation for each model
+  model_info <- purrr::map_dfr(
+    model_dirs,
+    function(model_dir) {
+      metadata_path <- Sys.glob(paste0(model_dir, "/metadata*"))
+      return(as.data.frame(
+        yaml::read_yaml(metadata_path)[c("model_abbr", "team_model_designation")],
+        stringsAsFactors = FALSE
+      ))
+    }
+  )
+
+  # filter to keep only requested designations
+  candidate_models <- model_info %>%
+    dplyr::filter(team_model_designation %in% include_designations) %>%
+    dplyr::pull(model_abbr)
+  
+  # drop COVIDhub models if requested
+  if(!include_COVIDhub_ensemble) {
+    candidate_models <- candidate_models[
+      candidate_models != "COVIDhub-ensemble"]
+  }
+  if(!include_COVIDhub_baseline) {
+    candidate_models <- candidate_models[
+      candidate_models != "COVIDhub-baseline"]
+  }
+
+  # return
+  return(candidate_models)
+}
+
+
 #' load covid forecasts from local file
 #'
 #' @param model_abbrs Character vector of model abbreviations

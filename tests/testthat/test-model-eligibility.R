@@ -2,6 +2,61 @@ context("model eligibility")
 library(covidEnsembles)
 library(dplyr)
 
+test_that("get_candidate_models works: all models", {
+  actual <- get_candidate_models(
+    submissions_root = "test-data/data-processed-test-get_candidate_models",
+    include_designations = c("primary", "secondary", "proposed", "other"),
+    include_COVIDhub_ensemble = TRUE,
+    include_COVIDhub_baseline = TRUE)
+
+  expected <- c("COVIDhub-baseline", "COVIDhub-ensemble", "teamA-modelA",
+    "teamB-modelB", "teamC-modelC", "teamD-modelD")
+  
+  expect_equal(actual, expected)
+})
+
+
+test_that("get_candidate_models works: not 'other' models", {
+  actual <- get_candidate_models(
+    submissions_root = "test-data/data-processed-test-get_candidate_models",
+    include_designations = c("primary", "secondary", "proposed"),
+    include_COVIDhub_ensemble = TRUE,
+    include_COVIDhub_baseline = TRUE)
+
+  expected <- c("COVIDhub-baseline", "COVIDhub-ensemble", "teamA-modelA",
+    "teamB-modelB", "teamC-modelC")
+  
+  expect_equal(actual, expected)
+})
+
+
+test_that("get_candidate_models works: not 'other' models or baseline", {
+  actual <- get_candidate_models(
+    submissions_root = "test-data/data-processed-test-get_candidate_models",
+    include_designations = c("primary", "secondary", "proposed"),
+    include_COVIDhub_ensemble = TRUE,
+    include_COVIDhub_baseline = FALSE)
+
+  expected <- c("COVIDhub-ensemble", "teamA-modelA", "teamB-modelB",
+    "teamC-modelC")
+  
+  expect_equal(actual, expected)
+})
+
+
+test_that("get_candidate_models works: not 'other' or 'proposed' models, drop ensemble and baseline", {
+  actual <- get_candidate_models(
+    submissions_root = "test-data/data-processed-test-get_candidate_models",
+    include_designations = c("primary", "secondary"),
+    include_COVIDhub_ensemble = FALSE,
+    include_COVIDhub_baseline = FALSE)
+
+  expected <- c("teamA-modelA", "teamB-modelB")
+  
+  expect_equal(actual, expected)
+})
+
+
 test_that("calc_forecast_missingness works: window_size 0, none missing", {
   forecast_df <- expand.grid(
     location = letters[1:4],

@@ -772,16 +772,17 @@ estimate_qra_quantgen <- function(qfm_train, y_train, qfm_test, intercept, const
 
   # estimate ensemble parameters
   quantgen_fit <- quantgen::quantile_ensemble(
-    qarr=qarr_train,
-    y=y_train,
-    tau=as.numeric(quantiles),
-    tau_groups=quantile_groups,
+    qarr = qarr_train,
+    y = y_train,
+    tau = as.numeric(quantiles),
+    tau_groups = quantile_groups,
     intercept = quantgen_intercept,
     nonneg = quantgen_nonneg,
     unit_sum = quantgen_unit_sum,
     noncross = TRUE,
     q0 = q0,
-    verbose=FALSE
+    verbose = FALSE,
+    lp_solver = "gurobi"
   )
 
 

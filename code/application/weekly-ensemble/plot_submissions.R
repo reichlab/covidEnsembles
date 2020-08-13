@@ -30,23 +30,11 @@ if(!file.exists(day_plots_root)) {
 submission_dates <- forecast_date + seq(from = -6, to = 0)
 
 # List of candidate models for inclusion in ensemble
-model_dirs <- Sys.glob(paste0(submissions_root, '*'), dirmark = TRUE)
-model_dirs <- model_dirs[substr(model_dirs, nchar(model_dirs), nchar(model_dirs)) == '/']
-
-model_info <- purrr::map_dfr(
-  model_dirs,
-  function(model_dir) {
-    metadata_path <- Sys.glob(paste0(model_dir, 'metadata*'))
-    return(as.data.frame(
-      yaml::read_yaml(metadata_path)[c('model_abbr', 'team_model_designation')],
-      stringsAsFactors = FALSE
-    ))
-  }
-)
-
-candidate_model_abbreviations_to_include <- model_info %>%
-  dplyr::filter(team_model_designation %in% c('primary', 'secondary', 'proposed')) %>%
-  dplyr::pull(model_abbr)
+candidate_model_abbreviations_to_include <- get_candidate_models(
+  submissions_root = submission_root,
+  include_designations = c("primary", "secondary"),
+  include_COVIDhub_ensemble = TRUE,
+  include_COVIDhub_baseline = TRUE)
 
 # Put this into covidData instead of here
 fips_codes <- covidData::fips_codes %>%

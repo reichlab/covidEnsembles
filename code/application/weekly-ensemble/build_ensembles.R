@@ -24,23 +24,11 @@ plots_root <- 'code/application/weekly-ensemble/plots/COVIDhub-ensemble/'
 if (!file.exists(plots_root)) dir.create(plots_root, recursive = TRUE)
 
 # List of candidate models for inclusion in ensemble
-model_dirs <- Sys.glob(paste0(submissions_root, '*'), dirmark = TRUE)
-model_dirs <- model_dirs[substr(model_dirs, nchar(model_dirs), nchar(model_dirs)) == '/']
-
-model_info <- purrr::map_dfr(
-  model_dirs,
-  function(model_dir) {
-    metadata_path <- Sys.glob(paste0(model_dir, 'metadata*'))
-    return(as.data.frame(
-      yaml::read_yaml(metadata_path)[c('model_abbr', 'team_model_designation')],
-      stringsAsFactors = FALSE
-    ))
-  }
-)
-
-candidate_model_abbreviations_to_include <- model_info %>%
-  dplyr::filter(team_model_designation %in% c('primary', 'secondary', 'proposed')) %>%
-  dplyr::pull(model_abbr)
+candidate_model_abbreviations_to_include <- get_candidate_models(
+  submissions_root = submission_root,
+  include_designations = c("primary", "secondary"),
+  include_COVIDhub_ensemble = FALSE,
+  include_COVIDhub_baseline = TRUE)
 
 # Figure out what day it is; forecast creation date is set to a Monday,
 # even if we are delayed and create it Tuesday morning.
