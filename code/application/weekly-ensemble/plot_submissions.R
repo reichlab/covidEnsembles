@@ -2,6 +2,7 @@ library(zoltr)
 library(tidyverse)
 library(zeallot)
 library(covidData)
+library(covidEnsembles)
 library(googledrive)
 library(yaml)
 library(here)
@@ -30,39 +31,15 @@ if(!file.exists(day_plots_root)) {
 submission_dates <- forecast_date + seq(from = -6, to = 0)
 
 # List of candidate models for inclusion in ensemble
-candidate_model_abbreviations_to_include <- get_candidate_models(
-  submissions_root = submission_root,
+candidate_model_abbreviations_to_include <- covidEnsembles::get_candidate_models(
+  submissions_root = submissions_root,
   include_designations = c("primary", "secondary"),
   include_COVIDhub_ensemble = TRUE,
   include_COVIDhub_baseline = TRUE)
 
 # Put this into covidData instead of here
 fips_codes <- covidData::fips_codes %>%
-  # Extract which state each county belongs to
-  dplyr::mutate(
-    state_code = ifelse(
-      nchar(location > 2),
-      substr(location, 1, 2),
-      location
-    )
-  ) %>%
-  # For all locations, add a state abbreviation
-  dplyr::left_join(
-    covidData::fips_codes %>%
-      dplyr::filter(nchar(location) == 2) %>%
-      dplyr::select(state_code = location, state_abbr = abbreviation),
-    by = 'state_code'
-  ) %>%
-  # Create "county, state" format for county names
-  dplyr::mutate(
-    location_name = ifelse(
-      nchar(location) > 2,
-      paste0(location_name, ', ', state_abbr),
-      location_name
-    )
-  ) %>%
-  # Drop extra columns we created above
-  dplyr::select(location, location_name)
+  dplyr::select(location, location_name = location_name_with_state)
 
 
 for(model_abbr in candidate_model_abbreviations_to_include) {
