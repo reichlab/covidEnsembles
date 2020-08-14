@@ -25,7 +25,7 @@ if (!file.exists(plots_root)) dir.create(plots_root, recursive = TRUE)
 
 # List of candidate models for inclusion in ensemble
 candidate_model_abbreviations_to_include <- get_candidate_models(
-  submissions_root = submission_root,
+  submissions_root = submissions_root,
   include_designations = c("primary", "secondary"),
   include_COVIDhub_ensemble = FALSE,
   include_COVIDhub_baseline = TRUE)
@@ -160,7 +160,7 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
       timezero_window_size = 7,
       window_size = 0,
       intercept = FALSE,
-      constraint = 'median',
+      combine_method = 'median',
       quantile_groups = rep(1, 23),
       missingness = 'by_location_group',
       backend = NA,
@@ -292,7 +292,7 @@ submissions_root <- paste0(root, 'data-processed/')
 
 submission_dates <- forecast_date + seq(from = -6, to = 0)
 
-# List of candidate models for inclusion in ensemble
+# List of candidate models for inclusion in plot
 candidate_model_abbreviations_to_include <- 'COVIDhub-ensemble'
 
 

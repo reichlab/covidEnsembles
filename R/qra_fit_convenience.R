@@ -205,8 +205,11 @@ load_covid_forecasts <- function(
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
-#' @param constraint character specifying constraints on parameters; 'ew',
-#' 'convex', 'positive' or 'unconstrained'
+#' @param combine_method character specifying the approach to model
+#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' The first four form a linear combination of quantiles across component
+#' models with varying levels of restrictions on the combination coefficients.
+#' "median" takes the median across models at each quantile level.
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -238,7 +241,7 @@ build_covid_ensemble_from_local_files <- function(
   timezero_window_size = 1,
   window_size,
   intercept=FALSE,
-  constraint,
+  combine_method,
   quantile_groups,
   missingness,
   impute_method,
@@ -314,7 +317,7 @@ build_covid_ensemble_from_local_files <- function(
     forecast_week_end_date=forecast_week_end_date,
     window_size=window_size,
     intercept=intercept,
-    constraint=constraint,
+    combine_method=combine_method,
     quantile_groups=quantile_groups,
     missingness=missingness,
     impute_method=impute_method,
@@ -346,8 +349,11 @@ build_covid_ensemble_from_local_files <- function(
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
-#' @param constraint character specifying constraints on parameters; 'ew',
-#' 'convex', 'positive' or 'unconstrained'
+#' @param combine_method character specifying the approach to model
+#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' The first four form a linear combination of quantiles across component
+#' models with varying levels of restrictions on the combination coefficients.
+#' "median" takes the median across models at each quantile level.
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -377,7 +383,7 @@ build_covid_ensemble_from_zoltar <- function(
   timezero_window_size = 1,
   window_size,
   intercept=FALSE,
-  constraint,
+  combine_method,
   quantile_groups,
   missingness,
   impute_method,
@@ -460,7 +466,7 @@ build_covid_ensemble_from_zoltar <- function(
     forecast_week_end_date=forecast_week_end_date,
     window_size=window_size,
     intercept=intercept,
-    constraint=constraint,
+    combine_method=combine_method,
     quantile_groups=quantile_groups,
     missingness=missingness,
     impute_method=impute_method,
@@ -491,8 +497,11 @@ build_covid_ensemble_from_zoltar <- function(
 #' of the forecast week; week-ahead targets are with respect to this date
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
-#' @param constraint character specifying constraints on parameters; 'ew',
-#' 'convex', 'positive' or 'unconstrained'
+#' @param combine_method character specifying the approach to model
+#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' The first four form a linear combination of quantiles across component
+#' models with varying levels of restrictions on the combination coefficients.
+#' "median" takes the median across models at each quantile level.
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -521,7 +530,7 @@ get_ensemble_fit_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  constraint = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
+  combine_method = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
   quantile_groups = NULL,
   missingness = c('by_location_group', 'rescale', 'mean_impute'),
   impute_method = 'mean',
@@ -539,59 +548,61 @@ get_ensemble_fit_and_predictions <- function(
     stop("The arguments `forecasts`, `forecast_week_end_date`, and `window_size` must all be provided.")
   }
 
-  constraint <- match.arg(
-    constraint,
-    choices = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
+  combine_method <- match.arg(
+    combine_method,
+    choices = c("ew", "convex", "positive", "unconstrained", "median"),
     several.ok = FALSE)
 
-  if(missingness == 'by_location_group') {
+  if(missingness == "by_location_group") {
     results <- get_by_location_group_ensemble_fits_and_predictions(
-      forecasts=forecasts,
-      observed_by_location_target_end_date=observed_by_location_target_end_date,
-      forecast_week_end_date=forecast_week_end_date,
-      window_size=window_size,
-      intercept=intercept,
-      constraint=constraint,
-      quantile_groups=quantile_groups,
-      backend=backend,
+      forecasts = forecasts,
+      observed_by_location_target_end_date = observed_by_location_target_end_date,
+      forecast_week_end_date = forecast_week_end_date,
+      window_size = window_size,
+      intercept = intercept,
+      combine_method = combine_method,
+      quantile_groups = quantile_groups,
+      backend = backend,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = do_baseline_check,
       baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
-      return_eligibility=return_eligibility,
-      return_all=return_all)
-  } else if(missingness == 'impute') {
+      return_eligibility = return_eligibility,
+      return_all = return_all)
+  } else if(missingness == "impute") {
     results <- get_imputed_ensemble_fits_and_predictions(
-      forecasts=forecasts,
-      observed_by_location_target_end_date=observed_by_location_target_end_date,
-      forecast_week_end_date=forecast_week_end_date,
-      window_size=window_size,
-      intercept=intercept,
-      constraint=constraint,
-      quantile_groups=quantile_groups,
-      impute_method=impute_method,
-      backend=backend,
+      forecasts = forecasts,
+      observed_by_location_target_end_date =
+        observed_by_location_target_end_date,
+      forecast_week_end_date = forecast_week_end_date,
+      window_size = window_size,
+      intercept = intercept,
+      combine_method = combine_method,
+      quantile_groups = quantile_groups,
+      impute_method = impute_method,
+      backend = backend,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = do_baseline_check,
       baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
-      return_eligibility=return_eligibility,
-      return_all=return_all)
+      return_eligibility = return_eligibility,
+      return_all = return_all)
   } else if(missingness == 'rescale') {
     results <- get_rescaled_ensemble_fits_and_predictions(
-      forecasts=forecasts,
-      observed_by_location_target_end_date=observed_by_location_target_end_date,
-      forecast_week_end_date=forecast_week_end_date,
-      window_size=window_size,
+      forecasts = forecasts,
+      observed_by_location_target_end_date =
+        observed_by_location_target_end_date,
+      forecast_week_end_date = forecast_week_end_date,
+      window_size = window_size,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = do_baseline_check,
       baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
-      return_eligibility=return_eligibility,
-      return_all=return_all)
+      return_eligibility = return_eligibility,
+      return_all = return_all)
   } else {
     stop('invalid value for argument missingness')
   }
@@ -610,8 +621,11 @@ get_ensemble_fit_and_predictions <- function(
 #' of the forecast week; week-ahead targets are with respect to this date
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
-#' @param constraint character specifying constraints on parameters; 'ew',
-#' 'convex', 'positive', 'unconstrained', or 'median'
+#' @param combine_method character specifying the approach to model
+#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' The first four form a linear combination of quantiles across component
+#' models with varying levels of restrictions on the combination coefficients.
+#' "median" takes the median across models at each quantile level.
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -633,9 +647,9 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  constraint = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
+  combine_method = c("ew", "convex", "positive", "unconstrained", "median"),
   quantile_groups = NULL,
-  backend = 'quantmod',
+  backend = "quantmod",
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
@@ -649,9 +663,9 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
     stop("The arguments `forecasts`, `forecast_week_end_date`, and `window_size` must all be provided.")
   }
 
-  constraint <- match.arg(
-    constraint,
-    choices = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
+  combine_method <- match.arg(
+    combine_method,
+    choices = c("ew", "convex", "positive", "unconstrained", "median"),
     several.ok = TRUE)
 
   # obtain model eligibility by location
@@ -659,15 +673,15 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   # all four targets 1 - 4 wk ahead cum deaths
   forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
     forecast_df = forecasts,
-    model_col = 'model',
-    id_cols = c('location', 'forecast_week_end_date', 'target'),
-    quantile_name_col = 'quantile',
-    quantile_value_col = 'value'
+    model_col = "model",
+    id_cols = c("location", "forecast_week_end_date", "target"),
+    quantile_name_col = "quantile",
+    quantile_value_col = "value"
   )
 
   forecast_base_targets <- substr(
     forecasts$target,
-    regexpr(' ', forecasts$target) + 1,
+    regexpr(" ", forecasts$target) + 1,
     nchar(forecasts$target)
   )
   model_eligibility <- covidEnsembles::calc_model_eligibility_for_ensemble(
@@ -797,12 +811,12 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
     })
 
   # fit ensembles and obtain predictions per group
-  if(constraint == 'ew') {
+  if(combine_method == 'ew') {
     location_groups$qra_fit <- purrr::map(
       location_groups$qfm_train,
       estimate_qra,
-      constraint = 'ew')
-  } else if(constraint == 'median') {
+      combine_method = 'ew')
+  } else if(combine_method == 'median') {
     location_groups$qra_fit <- purrr::map(
       location_groups$qfm_train,
       new_median_qra_fit)
@@ -815,7 +829,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
           y_train = y_train,
           qfm_test = qfm_test,
           intercept = intercept,
-          constraint = constraint,
+          combine_method = combine_method,
           quantile_groups = quantile_groups,
           backend = backend)
       })
@@ -933,8 +947,11 @@ impute_missing_per_quantile <- function(qfm, impute_method = 'mean') {
 #' of the forecast week; week-ahead targets are with respect to this date
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
-#' @param constraint character specifying constraints on parameters; 'ew',
-#' 'convex', 'positive' or 'unconstrained'
+#' @param combine_method character specifying the approach to model
+#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' The first four form a linear combination of quantiles across component
+#' models with varying levels of restrictions on the combination coefficients.
+#' "median" takes the median across models at each quantile level.
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -960,7 +977,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  constraint = c('ew', 'convex', 'positive', 'unconstrained'),
+  combine_method = c('ew', 'convex', 'positive', 'unconstrained'),
   quantile_groups = NULL,
   impute_method = 'mean',
   backend = 'quantmod',
@@ -977,8 +994,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
     stop("The arguments `forecasts`, `forecast_week_end_date`, and `window_size` must all be provided.")
   }
 
-  constraint <- match.arg(
-    constraint,
+  combine_method <- match.arg(
+    combine_method,
     choices = c('ew', 'convex', 'positive', 'unconstrained'),
     several.ok = TRUE)
 
@@ -1103,15 +1120,15 @@ get_imputed_ensemble_fits_and_predictions <- function(
     dplyr::pull(observed)
 
   # fit ensembles and obtain predictions per group
-  if(constraint == 'ew') {
-    qra_fit <- estimate_qra(imputed_qfm_train, constraint = 'ew')
+  if(combine_method == 'ew') {
+    qra_fit <- estimate_qra(imputed_qfm_train, combine_method = 'ew')
   } else {
     qra_fit <- estimate_qra(
       qfm_train = imputed_qfm_train,
       y_train = y_train,
       qfm_test = imputed_qfm_test,
       intercept = intercept,
-      constraint = constraint,
+      combine_method = combine_method,
       quantile_groups = quantile_groups,
       backend = backend)
 

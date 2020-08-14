@@ -384,8 +384,11 @@ predict.median_qra_fit <- function(qra_fit, qfm) {
 #' @param y_train numeric vector of responses for training set
 #' @param qfm_test QuantileForecastMatrix with test set predictions
 #' @param intercept logical specifying whether an intercept is included
-#' @param constraint character specifying constraints on parameters; 'ew',
-#' 'convex', 'positive' or 'unconstrained'
+#' @param combine_method character specifying the approach to model
+#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' The first four form a linear combination of quantiles across component
+#' models with varying levels of restrictions on the combination coefficients.
+#' "median" takes the median across models at each quantile level.
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -406,37 +409,45 @@ estimate_qra <- function(
   y_train,
   qfm_test = NULL,
   intercept = FALSE,
-  constraint = c('ew', 'convex', 'positive', 'unconstrained'),
+  combine_method = c("ew", "convex", "positive", "unconstrained", "median"),
   quantile_groups = NULL,
   backend = 'optim',
   ...
 ) {
-  constraint <- match.arg(constraint, choices = c('ew', 'convex', 'positive', 'unconstrained'))
-  backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'qra', 'quantgen'))
+  combine_method <- match.arg(
+    combine_method,
+    choices = c("ew", "convex", "positive", "unconstrained", "median"))
+  backend <- match.arg(
+    backend,
+    choices = c("optim", "NlcOptim", "qra", "quantgen"))
 
-  if(backend == 'quantgen') {
+  if(backend == "quantgen") {
+    combine_method <- match.arg(
+      combine_method,
+      choices = c("convex", "positive", "unconstrained"))
     result <- estimate_qra_quantgen(
-      qfm_train=qfm_train,
-      y_train=y_train,
-      qfm_test=qfm_test,
-      intercept=intercept,
-      constraint=constraint,
-      quantile_groups=quantile_groups)
-    col_index <- attr(qfm_train, 'col_index')
-  } else if(backend == 'qra') {
+      qfm_train = qfm_train,
+      y_train = y_train,
+      qfm_test = qfm_test,
+      intercept = intercept,
+      constraint = combine_method,
+      quantile_groups = quantile_groups)
+    col_index <- attr(qfm_train, "col_index")
+  } else if(backend == "qra") {
     stop("backend = 'qra' is not yet supported")
     qra_data <-
       result <- qra:::qra_estimate_weights(
         x = qra_data,
         per_quantile_weights = per_quantile_weights,
-        enforce_normalisation = (constraint == 'convex')
+        enforce_normalisation = (combine_method == "convex")
       )
   } else {
-    if(constraint == 'ew') {
+    if(combine_method == "ew") {
       result <- estimate_qra_ew(qfm_train, ...)
     } else {
-      stop('backend not supported')
-      result <- estimate_qra_optimized(qfm_train, y_train, constraint, backend)
+      stop("backend not supported")
+      result <- estimate_qra_optimized(qfm_train, y_train, combine_method,
+                                       backend)
     }
   }
 
