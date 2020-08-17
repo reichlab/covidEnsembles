@@ -379,24 +379,6 @@ all_scores %>%
   as.data.frame()
 
 
-all_scores %>%
-  dplyr::filter(num_models > 1, location == 'US') %>%
-  dplyr::mutate(
-    horizon = as.integer(substr(target, 1, 2)),
-    target_end_date = lubridate::ymd(forecast_week_end_date) + 7*horizon,
-    base_target = ifelse(
-      grepl('cum', target),
-      'Cumulative',
-      'Incident'
-    )
-  ) %>%
-  dplyr::filter(target_end_date >= '2020-05-23', target_end_date <= '2020-07-11',
-                base_target == 'Cumulative', horizon == 1) %>%
-  summarize(
-    mape_1 = mean(one_week_mape, na.rm = TRUE),
-    mape_4 = mean(four_week_mape, na.rm = TRUE)
-  )
-
 
 ## Proportion of observations above predicted 99th percentile
 prop_leq_99 <- all_scores %>%
@@ -459,7 +441,7 @@ for(fwed in unique(all_scores$forecast_week_end_date)) {
           value = col_double()
         )) %>%
         dplyr::distinct(location) %>%
-        dplyr::mutate(model = 'MIT_CovidAnalytics-DELPHI'),
+        dplyr::mutate(model = 'CovidAnalytics-DELPHI'),
       readr::read_csv(
         'https://raw.githubusercontent.com/reichlab/covid19-forecast-hub/2fda1aaa7b806fafe0b1bfe1a96e7310fdc2f572/data-processed/LANL-GrowthRate/2020-04-26-LANL-GrowthRate.csv',
         col_types = cols(
@@ -607,8 +589,8 @@ models_used_by_location$model[
 ] <- 'LANL-GrowthRate'
 
 models_used_by_location$model[
-  models_used_by_location$model == 'DELPHI'
-] <- 'MIT_CovidAnalytics-DELPHI'
+  models_used_by_location$model %in% c('DELPHI', 'MIT_CovidAnalytics-DELPHI')
+] <- 'CovidAnalytics-DELPHI'
 
 models_used_by_location$model[
   models_used_by_location$model %in% c('GLEAM_COVID', 'MOBS_NEU-GLEAM_COVID')
@@ -683,7 +665,7 @@ mae_labels <- all_scores %>%
       dplyr::select(location, location_abbreviation = abbreviation),
     by = 'location'
   ) %>%
-  dplyr::filter(num_models > 1) %>%
+#  dplyr::filter(num_models > 1) %>%
   dplyr::mutate(
     horizon = as.integer(substr(target, 1, 2)),
     target_end_date = lubridate::ymd(forecast_week_end_date) + 7*horizon
@@ -952,7 +934,7 @@ dev.off()
 all_locations_to_plot <- unique(all_forecasts$location_abbreviation)
 all_locations_to_plot <- c(
   'US',
-  sort(all_locations_to_plot[!(all_locations_to_plot %in% c('US', 'AS'))]) # drop AS
+  sort(all_locations_to_plot[!(all_locations_to_plot %in% c('US'))])
 )
 
 png('writing/manuscript/forecast_plots_all_locations1.png', width = 10, height = 11, units = "in", res = 300)
@@ -1166,7 +1148,7 @@ print(p_forecasts)
 dev.off()
 
 
-png('writing/manuscript/forecast_plots_all_locations2.png', width = 10, height = 11, units = "in", res = 300)
+png('writing/manuscript/forecast_plots_all_locations2.png', width = 10, height = 11/7*8, units = "in", res = 300)
 location_abbreviations_to_plot <- tail(all_locations_to_plot, length(all_locations_to_plot) - 28)
 to_search <- covidData::fips_codes %>% dplyr::filter(!is.na(abbreviation))
 locations_to_plot <- purrr::map_chr(
@@ -1573,7 +1555,7 @@ maes_by_location <- all_scores %>%
       dplyr::select(location, location_abbreviation = abbreviation),
     by = 'location'
   ) %>%
-  dplyr::filter(num_models > 1) %>%
+#  dplyr::filter(num_models > 1) %>%
   dplyr::mutate(
     horizon = as.integer(substr(target, 1, 2)),
     target_end_date = lubridate::ymd(forecast_week_end_date) + 7*horizon
@@ -1582,7 +1564,7 @@ maes_by_location <- all_scores %>%
     target_end_date >= '2020-05-23', target_end_date <= '2020-07-11',
     grepl('cum', target)) %>%
   dplyr::group_by(location, location_abbreviation, horizon) %>%
-  dplyr::summarize(mae = mean(wis_1)) %>%
+  dplyr::summarize(mae = mean(wis_1, na.rm = TRUE)) %>%
   tidyr::pivot_wider(names_from = 'horizon', values_from = 'mae') %>%
   dplyr::left_join(
     observed_by_location_target_end_date %>%

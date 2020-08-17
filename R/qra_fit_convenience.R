@@ -23,7 +23,7 @@ do_zoltar_query <- function(
   verbose) {
   # Assemble query
   list_query <- list(
-    "model_abbrs" = model_abbrs,
+    "models" = model_abbrs,
     "types" = list("quantile"),
     "timezeros" = as.character(
       last_timezero + seq(from = -timezero_window_size, to = 0)),
