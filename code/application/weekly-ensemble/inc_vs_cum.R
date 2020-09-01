@@ -1,51 +1,33 @@
-library(zoltr)
 library(tidyverse)
 library(zeallot)
 library(covidEnsembles)
 library(covidData)
-library(googledrive)
-options(error=recover)
+options(error = recover)
 
-candidate_model_abbreviations_to_include <-
-  c("Auquan-SEIR", "CAN-SEIR_CAN", "CDDEP-CDDEP_SEIR_MCMC", "Columbia_UNC-SurvCon",
-    "Covid19Sim-Simulator", "CovidAnalytics-DELPHI", "COVIDhub-baseline",
-    "CU-select", "epiforecasts-ensemble1", "Geneva-DeterministicGrowth",
-    "GT_CHHS-COVID19", "GT-DeepCOVID", "IHME-CurveFit", "Imperial-Ensemble2",
-    "IowaStateLW-STEM", "ISUandPKU-vSEIdR", "JHU_IDD-CovidSP", "LANL-GrowthRate",
-    "MITCovAlliance-SIR",
-    "MOBS-GLEAM_COVID", "NotreDame-FRED", "NotreDame-mobility", "OliverWyman-Navigator",
-    "PSI-DRAFT", "QJHong-Encounter", "RobertWalraven-ESG", "STH-3PU",
-    "SWC-TerminusCM", "UA-EpiCovDA", "UChicago-CovidIL",
-    "UCLA-SuEIR", "UM_CFG-RidgeTfReg", "UMass-MechBayes", "USACE-ERDC_SEIR",
-    "USC-SI_kJalpha", "UT-Mobility", "YYG-ParamSearch")
-
-
-
-
-zoltar_connection <- new_connection()
-zoltar_authenticate(zoltar_connection, Sys.getenv("Z_USERNAME"), Sys.getenv("Z_PASSWORD"))
-project_url <- 'https://www.zoltardata.com/api/project/44/'
+# Where to find component model submissions
+submissions_root <- '../covid19-forecast-hub/data-processed/'
 
 required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
-monday_dates <- lubridate::ymd('2020-07-06')
+
+candidate_model_abbreviations_to_include <- get_candidate_models(
+  submissions_root = submissions_root,
+  include_designations = c("primary", "secondary"),
+  include_COVIDhub_ensemble = FALSE,
+  include_COVIDhub_baseline = FALSE)
+
+forecast_week_end_date <- lubridate::floor_date(Sys.Date(), unit = "week") - 1
+forecast_date <- forecast_week_end_date + 2
 
 all_forecasts <-
-  purrr::map_dfr(
-    candidate_model_abbreviations_to_include,
-    function(model_abbr) {
-      covidEnsembles:::do_zoltar_query(
-        model_abbr = model_abbr,
-        last_timezero = monday_dates,
-        timezero_window_size = 1,
-        targets = c(paste0(1:4, ' wk ahead inc death'), paste0(1:4, ' wk ahead cum death')),
-        zoltar_connection = zoltar_connection,
-        project_url = project_url,
-        verbose = TRUE
-      ) %>%
-        dplyr::mutate(unit = as.character(unit))
-    }
-  ) %>%
-  dplyr::select(model, timezero, location=unit, target, quantile, value) %>%
+  # read in forecasts
+  load_covid_forecasts(
+    model_abbrs = candidate_model_abbreviations_to_include,
+    last_timezero = forecast_date,
+    timezero_window_size = 6,
+    targets = c(paste0(1:4, ' wk ahead inc death'), paste0(1:4, ' wk ahead cum death')),
+    submissions_root = submissions_root) %>%
+  # add horizon, forecast_week_end_date, and target_end_date variables, and
+  # keep only the most receent forecast from each model
   dplyr::filter(
     format(quantile, digits=3, nsmall=3) %in%
       format(required_quantiles, digits=3, nsmall=3)) %>%
@@ -64,8 +46,8 @@ all_forecasts <-
     names_to = 'quantile',
     values_to = 'value') %>%
   ungroup() %>%
-  left_join(fips_codes, by = 'location')
-
+  # add in location information
+  left_join(covidData::fips_codes, by = 'location')
 
 us_forecasts <- all_forecasts %>%
   dplyr::filter(location == 'US')
@@ -74,39 +56,26 @@ View(us_forecasts %>%
   dplyr::filter(grepl('cum', target), !is.na(value)) %>%
   dplyr::count(model))
 
-
-cum_model_weights <- read_csv('https://raw.githubusercontent.com/reichlab/covid19-forecast-hub/master/ensemble-metadata/2020-07-06-cum_death-model-weights.csv')
-inc_model_weights <- read_csv('https://raw.githubusercontent.com/reichlab/covid19-forecast-hub/master/ensemble-metadata/2020-07-06-inc_death-model-weights.csv')
-
-cum_models <- cum_model_weights %>%
-  dplyr::filter(location == 'US') %>%
-  dplyr::select(-location, -location_abbreviation, -location_name) %>%
-  tidyr::pivot_longer(cols = colnames(.), names_to = 'model', values_to = 'weight') %>%
-  dplyr::filter(weight > 0) %>%
-  dplyr::pull(model)
-
-inc_models <- inc_model_weights %>%
-  dplyr::filter(location == 'US') %>%
-  dplyr::select(-location, -location_abbreviation, -location_name) %>%
-  tidyr::pivot_longer(cols = colnames(.), names_to = 'model', values_to = 'weight') %>%
-  dplyr::filter(weight > 0) %>%
-  dplyr::pull(model)
-
-both_models <- inc_models[inc_models %in% cum_models]
-cum_models_not_in_both <- cum_models[!(cum_models %in% both_models)]
-inc_models_not_in_both <- inc_models[!(inc_models %in% both_models)]
-
-
 last_cum <- covidData::load_jhu_data(
-  issue_date = '2020-07-05',
+  issue_date = as.character(forecast_week_end_date + 2),
   spatial_resolution = 'national',
   temporal_resolution = 'weekly',
   measure = 'deaths') %>%
   tail(1) %>%
   pull(cum)
+
+library(zoltr)
+zoltar_connection <- new_connection()
+zoltr::zoltar_authenticate(zoltar_connection,
+  Sys.getenv("Z_USERNAME"), Sys.getenv("Z_PASSWORD"))
+
+project_url <- "https://www.zoltardata.com/api/project/44/"
+
+zoltar_truth <- zoltr::truth(
+  zoltar_connection = zoltar_connection, project_url = project_url)
+
 implied <- us_forecasts %>%
   dplyr::filter(
-    model %in% both_models,
     quantile == '0.5',
     grepl('cum', target)) %>%
   dplyr::group_by(model) %>%
@@ -122,7 +91,6 @@ implied <- us_forecasts %>%
 
 actual <- us_forecasts %>%
   dplyr::filter(
-    model %in% both_models,
     quantile == '0.5',
     grepl('inc', target)) %>%
   dplyr::transmute(
@@ -140,16 +108,47 @@ implied_and_actual <- implied %>%
 #     values_to = 'value')
 
 ggplot(
-  data = implied_and_actual,
+  data = implied_and_actual %>%
+    dplyr::filter(!is.na(implied_median_inc), !is.na(actual_median_inc)),
   mapping = aes(x = actual_median_inc,
                 y = implied_median_inc,
                 color = model,
                 shape = factor(horizon))) +
   geom_point() +
-  geom_line(mapping = aes(linetype = model, group = model)) +
+  geom_line(mapping = aes(group = model)) +
   geom_abline(intercept = 0, slope = 1) +
   theme_bw()
 
+
+implied_and_actual %>%
+  dplyr::mutate(
+    observed_cum = last_cum,
+    diff = implied_median_inc - actual_median_inc,
+    diff = ifelse(abs(diff) < sqrt(.Machine$double.eps), 0.0, diff)
+  ) %>%
+  dplyr::left_join(
+    
+  ) %>%
+  dplyr::arrange(desc(abs(diff))) %>%
+  dplyr::filter(horizon == 1) %>%
+  print(n = nrow(.))
+
+implied_and_actual %>%
+  dplyr::mutate(diff = implied_median_inc - actual_median_inc) %>%
+  dplyr::arrange(desc(abs(diff))) %>%
+  dplyr::filter(horizon == 1) %>%
+  ggplot() +
+    geom_point(mapping = aes(x = horizon, y = diff))
+  print(n = nrow(.))
+
+
+
+
+implied_and_actual %>%
+  dplyr::filter(
+    is.na(implied_median_inc) | is.na(actual_median_inc),
+    !(is.na(implied_median_inc) & is.na(actual_median_inc))
+  )
 
 
 p1 <- ggplot(data = us_forecasts %>%

@@ -12,13 +12,14 @@ build_covid_ensemble_from_local_files(
   timezero_window_size = 1,
   window_size,
   intercept = FALSE,
-  constraint,
+  combine_method,
   quantile_groups,
   missingness,
   impute_method,
   backend,
   submissions_root,
   required_quantiles,
+  check_missingness_by_target,
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
@@ -44,8 +45,11 @@ c('1 wk ahead cum death', '2 wk ahead cum death')}
 
 \item{intercept}{logical specifying whether an intercept is included}
 
-\item{constraint}{character specifying constraints on parameters; 'ew',
-'convex', 'positive' or 'unconstrained'}
+\item{combine_method}{character specifying the approach to model
+combination: "equal", "convex", "positive", "unconstrained", or "median".
+The first four form a linear combination of quantiles across component
+models with varying levels of restrictions on the combination coefficients.
+"median" takes the median across models at each quantile level.}
 
 \item{quantile_groups}{Vector of group labels for quantiles, having the same
 length as the number of quantiles.  Common labels indicate that the ensemble
@@ -68,6 +72,10 @@ covid19-forecast-hub repository}
 
 \item{required_quantiles}{numeric vector of quantiles component models are
 required to have submitted}
+
+\item{check_missingness_by_target}{if TRUE, record missingness for every
+combination of model, location, forecast week, and target; if FALSE, record
+missingness only for each model and location}
 
 \item{do_q10_check}{if TRUE, do q10 check}
 

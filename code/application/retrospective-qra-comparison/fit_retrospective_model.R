@@ -29,6 +29,11 @@ candidate_model_abbreviations_to_include <- model_info %>%
   dplyr::filter(team_model_designation %in%
     c("primary", "secondary", "proposed")) %>%
   dplyr::pull(model_abbr)
+candidate_model_abbreviations_to_include <-
+  candidate_model_abbreviations_to_include[
+    !(candidate_model_abbreviations_to_include == "COVIDhub-ensemble")
+  ]
+
 
 #options(warn=2, error=recover)
 
@@ -46,18 +51,21 @@ candidate_model_abbreviations_to_include <- model_info %>%
 #args <- c("inc_death", "2020-05-23", "TRUE", "positive", "mean_impute", "3_groups", "3", "FALSE", "TRUE")
 #args <- c("inc_death", "2020-07-25", "TRUE", "positive", "mean_impute", "per_quantile", "5", "TRUE", "FALSE")
 #args <- c("cum_death", "2020-05-16", "FALSE", "convex", "by_location_group", "per_quantile", "5", "FALSE", "FALSE")
-#args <- c("inc_death", "2020-07-25", "TRUE", "positive", "mean_impute", "3_groups", "3", "FALSE", "FALSE")
+#args <- c("inc_death", "2020-07-25", "TRUE", "positive", "mean_impute", "3_groups", "3", "TRUE", "FALSE", "FALSE")
+#args <- c("cum_death", "2020-05-09", "FALSE", "convex", "mean_impute", "3_groups", "2", "FALSE", "TRUE", "FALSE")
+#args <- c("cum_death", "2020-08-01", "FALSE", "ew", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE")
 
 args <- commandArgs(trailingOnly = TRUE)
 response_var <- args[1]
 forecast_week_end_date <- lubridate::ymd(args[2])
 intercept <- as.logical(args[3])
-method <- args[4]
+combine_method <- args[4]
 missingness <- args[5]
 quantile_group_str <- args[6]
 window_size <- as.integer(args[7])
-do_standard_checks <- as.logical(args[8])
-do_baseline_check <- as.logical(args[9])
+check_missingness_by_target <- as.logical(args[8])
+do_standard_checks <- as.logical(args[9])
+do_baseline_check <- as.logical(args[10])
 
 if(quantile_group_str == "per_model") {
   quantile_groups <- rep(1, 23)
@@ -91,10 +99,11 @@ result_filename <- paste0(
   response_var,
   "-forecast_week_", as.character(forecast_week_end_date),
   "-intercept_", as.character(intercept),
-  "-method_", method,
+  "-combine_method_", combine_method,
   "-missingness_", missingness,
   "-quantile_groups_", quantile_group_str,
   "-window_size_", window_size,
+  "-check_missingness_by_target_", check_missingness_by_target,
   "-do_standard_checks_", do_standard_checks,
   "-do_baseline_check_", do_baseline_check,
   ".rds")
@@ -111,13 +120,14 @@ if(!file.exists(result_filename)) {
     timezero_window_size = 1,
     window_size = window_size,
     intercept = intercept,
-    constraint = method,
+    combine_method = combine_method,
     quantile_groups = quantile_groups,
     missingness = missingness,
     impute_method = impute_method,
     backend = "quantgen",
     submissions_root = submissions_root,
     required_quantiles = required_quantiles,
+    check_missingness_by_target = check_missingness_by_target,
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
@@ -135,13 +145,13 @@ if(!file.exists(result_filename)) {
     c(model_eligibility, wide_model_eligibility, location_groups,
       weight_transfer, component_forecasts) %<-% results
     
-    col_index <- attr(location_groups$qfm_test, "col_index")
+    col_index <- attr(location_groups$qfm_test[[1]], "col_index")
     models_used <- purrr::map_dfc(
       unique(col_index$model),
       function(model) {
         col_ind <- min(which(col_index$model == model))
         result <- data.frame(
-          m = !is.na(unclass(location_groups$qfm_test)[, col_ind]))
+          m = !is.na(unclass(location_groups$qfm_test[[1]])[, col_ind]))
         colnames(result) <- model
         return(result)
       }
@@ -153,9 +163,10 @@ if(!file.exists(result_filename)) {
     )
 
     locations_to_drop <- unique(
-      attr(location_groups$qfm_test, "row_index")$location[model_counts == 1])
+      attr(location_groups$qfm_test[[1]], "row_index")[
+        model_counts == 1, "location"])
     
-    ensemble_predictions <- location_groups$qra_forecast %>%
+    ensemble_predictions <- location_groups$qra_forecast[[1]] %>%
       dplyr::filter(!(location %in% locations_to_drop))
   } else {
     c(model_eligibility, wide_model_eligibility, location_groups,
@@ -207,10 +218,11 @@ if(!file.exists(result_filename)) {
 
     case_str <- paste0(
       "intercept_", as.character(intercept),
-      "-constraint_", method,
+      "-combine_method_", combine_method,
       "-missingness_", missingness,
       "-quantile_groups_", quantile_group_str,
       "-window_size_", window_size,
+      "-check_missingness_by_target_", check_missingness_by_target,
       "-do_standard_checks_", do_standard_checks,
       "-do_baseline_check_", do_baseline_check)
     

@@ -3,6 +3,9 @@
 #'
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
 #' @param observed_by_location_target_end_date data frame of observed values
+#' @param missingness_by_target logical; if TRUE, check condition that
+#' forecasts are not missing for each combination of model, week, and target;
+#' otherwise, 
 #' @param do_q10_check logical; if TRUE, check condition that quantile at
 #'   level 0.1 is at least as large as the most recent observed value
 #' @param do_nondecreasing_quantile_check logical; if TRUE, check condition
@@ -31,6 +34,7 @@
 calc_model_eligibility_for_ensemble <- function(
   qfm,
   observed_by_location_target_end_date,
+  missingness_by_target = FALSE,
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
   do_baseline_check = FALSE,
@@ -54,7 +58,10 @@ calc_model_eligibility_for_ensemble <- function(
 
   # identify missing forecasts by location, forecast week end date, and model
   model_id_name <- attr(qfm, 'model_col')
-  eligibility <- calc_forecast_missingness(qfm)
+  eligibility <- calc_forecast_missingness(
+    qfm,
+    by_target = missingness_by_target,
+    by_week = missingness_by_target)
 
   # check whether 10th quantile is less than most recent observation
   if(do_q10_check) {
@@ -205,7 +212,10 @@ calc_q10_check <- function(
 #'
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
 #' @param by_week logical; if TRUE, results are returned by forecast week, and
-#'   if FALSE results are summarized across weeks.
+#' if FALSE results are summarized across weeks.
+#' @param by_target logical; if TRUE, results are returned by target, and if
+#' FALSE results are summarized across targets.  by_target may only be set to
+#' TRUE if by_week is TRUE.
 #'
 #' @return data frame with a row for each combination of
 #'   location, forecast week end date (if requestrd), and model and a logical column called
@@ -215,36 +225,76 @@ calc_q10_check <- function(
 #' @export
 calc_forecast_missingness <- function(
   qfm,
+  by_target = FALSE,
   by_week = FALSE
 ) {
-  # calculate missingness for each combination of location, forecast week end date,
-  # and model
+  # validate that if by_target is TRUE, so is by_week
+  if(by_target & !by_week) {
+    stop("by_target may only be set to TRUE if by_week is TRUE.")
+  }
+  
+  # calculate missingness for each combination of location, forecast week end
+  # date, and model.  Also group by target if requested.
   row_index <- attr(qfm, 'row_index')
   col_index <- attr(qfm, 'col_index')
   model_id_name <- attr(qfm, 'model_col')
 
-  missingness_by_location_forecast_week <- purrr::pmap_dfr(
-    row_index %>% distinct(location, forecast_week_end_date),
-    function(location, forecast_week_end_date) {
-      row_inds <- which(row_index$location == location &
-        row_index$forecast_week_end_date == forecast_week_end_date)
+  if(by_target) {
+    missingness_by_location_forecast_week <- purrr::pmap_dfr(
+      row_index %>% distinct(location, forecast_week_end_date, target),
+      function(location, forecast_week_end_date, target) {
+        row_inds <- which(row_index$location == location &
+          row_index$forecast_week_end_date == forecast_week_end_date &
+          row_index$target == target)
 
-      purrr::map_dfr(
-        unique(col_index[[model_id_name]]),
-        function(model_id) {
-          col_inds <- which(col_index[[model_id_name]] == model_id)
+        purrr::map_dfr(
+          unique(col_index[[model_id_name]]),
+          function(model_id) {
+            col_inds <- which(col_index[[model_id_name]] == model_id)
 
-          result <- attr(qfm, 'row_index')[row_inds[1], ]
-          result[[model_id_name]] <- model_id
-          result[['any_missing']] <- any(is.na(qfm[row_inds, col_inds]))
+            result <- attr(qfm, 'row_index')[row_inds[1], ]
+            result[[model_id_name]] <- model_id
+            result[['any_missing']] <- any(is.na(qfm[row_inds, col_inds]))
 
-          return(result)
-        }
-      )
-    }
-  )
+            return(result)
+          }
+        )
+      }
+    )
+  } else {
+    missingness_by_location_forecast_week <- purrr::pmap_dfr(
+      row_index %>% distinct(location, forecast_week_end_date),
+      function(location, forecast_week_end_date) {
+        row_inds <- which(row_index$location == location &
+          row_index$forecast_week_end_date == forecast_week_end_date)
+
+        purrr::map_dfr(
+          unique(col_index[[model_id_name]]),
+          function(model_id) {
+            col_inds <- which(col_index[[model_id_name]] == model_id)
+
+            result <- attr(qfm, 'row_index')[row_inds[1], ]
+            result[[model_id_name]] <- model_id
+            result[['any_missing']] <- any(is.na(qfm[row_inds, col_inds]))
+
+            return(result)
+          }
+        )
+      }
+    )
+  }
 
   if(by_week) {
+    missingness_by_location_forecast_week <-
+      missingness_by_location_forecast_week %>%
+        dplyr::mutate(
+          missingness_eligibility = ifelse(
+            any_missing,
+            "missing required forecasts",
+            "eligible"
+          )
+        ) %>%
+        dplyr::select(-any_missing)
     return(missingness_by_location_forecast_week)
   }
 

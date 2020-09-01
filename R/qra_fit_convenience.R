@@ -226,6 +226,9 @@ load_covid_forecasts <- function(
 #' covid19-forecast-hub repository
 #' @param required_quantiles numeric vector of quantiles component models are
 #' required to have submitted
+#' @param check_missingness_by_target if TRUE, record missingness for every
+#' combination of model, location, forecast week, and target; if FALSE, record
+#' missingness only for each model and location
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
 #' @param return_eligibility if TRUE, return model eligibility
@@ -248,6 +251,7 @@ build_covid_ensemble_from_local_files <- function(
   backend,
   submissions_root,
   required_quantiles,
+  check_missingness_by_target,
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
@@ -322,6 +326,7 @@ build_covid_ensemble_from_local_files <- function(
     missingness=missingness,
     impute_method=impute_method,
     backend=backend,
+    check_missingness_by_target = check_missingness_by_target,
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
@@ -369,6 +374,9 @@ build_covid_ensemble_from_local_files <- function(
 #' @param project_url zoltar project url
 #' @param required_quantiles numeric vector of quantiles component models are
 #' required to have submitted
+#' @param check_missingness_by_target if TRUE, record missingness for every
+#' combination of model, location, forecast week, and target; if FALSE, record
+#' missingness only for each model and location
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
 #' @param return_eligibility if TRUE, return model eligibility
@@ -390,6 +398,7 @@ build_covid_ensemble_from_zoltar <- function(
   backend,
   project_url = 'https://www.zoltardata.com/api/project/44/',
   required_quantiles,
+  check_missingness_by_target,
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
@@ -471,6 +480,7 @@ build_covid_ensemble_from_zoltar <- function(
     missingness=missingness,
     impute_method=impute_method,
     backend=backend,
+    check_missingness_by_target = check_missingness_by_target,
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
@@ -514,6 +524,9 @@ build_covid_ensemble_from_zoltar <- function(
 #' @param impute_method character string specifying method for imputing missing
 #' forecasts; currently only 'mean' is supported.
 #' @param backend back end used for optimization.
+#' @param check_missingness_by_target if TRUE, record missingness for every
+#' combination of model, location, forecast week, and target; if FALSE, record
+#' missingness only for each model and location
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
 #' @param manual_eligibility_adjust character vector of model abbreviations for
@@ -535,6 +548,7 @@ get_ensemble_fit_and_predictions <- function(
   missingness = c('by_location_group', 'rescale', 'mean_impute'),
   impute_method = 'mean',
   backend = 'quantmod',
+  check_missingness_by_target = FALSE,
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
@@ -582,6 +596,7 @@ get_ensemble_fit_and_predictions <- function(
       quantile_groups = quantile_groups,
       impute_method = impute_method,
       backend = backend,
+      check_missingness_by_target = check_missingness_by_target,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = do_baseline_check,
@@ -962,6 +977,9 @@ impute_missing_per_quantile <- function(qfm, impute_method = 'mean') {
 #' @param impute_method character string specifying method for imputing missing
 #' forecasts; currently only 'mean' is supported.
 #' @param backend back end used for optimization.
+#' @param check_missingness_by_target if TRUE, record missingness for every
+#' combination of model, location, forecast week, and target; if FALSE, record
+#' missingness only for each model and location
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
 #' @param return_all if TRUE, return all quantities; if FALSE, return only some
@@ -981,6 +999,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   quantile_groups = NULL,
   impute_method = 'mean',
   backend = 'quantmod',
+  check_missingness_by_target = FALSE,
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
@@ -1019,7 +1038,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
     qfm = forecast_matrix,
     observed_by_location_target_end_date =
       observed_by_location_target_end_date %>%
-      dplyr::filter(base_target %in% forecast_base_targets),
+        dplyr::filter(base_target %in% forecast_base_targets),
+    missingness_by_target = check_missingness_by_target,
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
@@ -1039,27 +1059,58 @@ get_imputed_ensemble_fits_and_predictions <- function(
     }
   }
 
-  # convert model eligibility to wide format logical with human readable names
-  wide_model_eligibility <- model_eligibility %>%
-    dplyr::transmute(
-      model = model,
-      location = location,
-      eligibility = (overall_eligibility == 'eligible')) %>%
-    tidyr::pivot_wider(names_from='model', values_from='eligibility')
+  # keep only models that are eligible for inclusion in at least one location,
+  # or one combination of location, forecast week, and target if
+  # check_missingness_by_target is TRUE
+  if(check_missingness_by_target) {
+    # convert model eligibility to wide format logical with human readable names
+    wide_model_eligibility <- model_eligibility %>%
+      dplyr::transmute(
+        model = model,
+        location = location,
+        forecast_week_end_date = forecast_week_end_date,
+        target = target,
+        eligibility = (overall_eligibility == "eligible"))
 
-  # keep only models that are eligible for inclusion in at least one location
-  models_to_keep <- apply(
-    wide_model_eligibility %>% select(-location),
-    2,
-    function(el) {any(el != FALSE)}) %>%
-    which() %>%
-    names()
+    # keep only model-location-targets that are eligible
+    # here this is done by filtering the original forecasts data frame and
+    # recreating the QuantileForecastMatrix
+    forecasts <- forecasts %>%
+      dplyr::left_join(wide_model_eligibility,
+        by = c("model", "location", "forecast_week_end_date", "target")) %>%
+      dplyr::filter(eligibility) %>%
+      dplyr::select(-eligibility)
+    
+    forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
+      forecast_df = forecasts,
+      model_col = "model",
+      id_cols = c("location", "forecast_week_end_date", "target"),
+      quantile_name_col = "quantile",
+      quantile_value_col = "value"
+    )
+  } else {
+    # convert model eligibility to wide format logical with human readable names
+    wide_model_eligibility <- model_eligibility %>%
+      dplyr::transmute(
+        model = model,
+        location = location,
+        eligibility = (overall_eligibility == "eligible")) %>%
+      tidyr::pivot_wider(names_from = "model", values_from = "eligibility")
 
-  wide_model_eligibility <- wide_model_eligibility[, c('location', models_to_keep)]
+    # keep only models that are eligible
+    models_to_keep <- apply(
+      wide_model_eligibility %>% select(-location),
+      2,
+      function(el) {any(el != FALSE)}) %>%
+      which() %>%
+      names()
 
-  col_index <- attr(forecast_matrix, 'col_index')
-  cols_to_keep <- which(col_index[['model']] %in% models_to_keep)
-  forecast_matrix <- forecast_matrix[, cols_to_keep]
+    wide_model_eligibility <- wide_model_eligibility[, c('location', models_to_keep)]
+
+    col_index <- attr(forecast_matrix, 'col_index')
+    cols_to_keep <- which(col_index[['model']] %in% models_to_keep)
+    forecast_matrix <- forecast_matrix[, cols_to_keep]
+  }
 
   # drop rows with no eligible models
   rows_to_keep <- apply(forecast_matrix, 1, function(qfm_row) any(!is.na(qfm_row))) %>%
@@ -1086,7 +1137,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
       ) %>%
       pull(target_end_date)
 
-    train_row_inds <- which(target_end_date < forecast_week_end_date)
+    train_row_inds <- which(target_end_date <= forecast_week_end_date)
     test_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
   } else {
     train_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
@@ -1109,7 +1160,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
   y_train <- attr(qfm_train, 'row_index') %>%
     dplyr::mutate(
       target_end_date = as.character(
-        lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
+        lubridate::ymd(forecast_week_end_date) +
+          as.numeric(substr(target, 1, 1)) * 7
       ),
       base_target = substr(target, 3, nchar(target))
     ) %>%
@@ -1156,15 +1208,16 @@ get_imputed_ensemble_fits_and_predictions <- function(
     result <- list(
       model_eligibility = model_eligibility,
       wide_model_eligibility = wide_model_eligibility,
-      location_groups = list(
-        locations = unique(attr(qfm_train, 'row_index')[['location']]),
-        qfm_train = qfm_train,
-        qfm_test = qfm_test,
-        imputed_qfm_train = imputed_qfm_train,
-        imputed_qfm_test = imputed_qfm_test,
-        qra_fit = qra_fit,
-        qra_forecast = qra_forecast
-      ),
+      location_groups = as_tibble(list(
+        locations = list(unique(attr(qfm_train, 'row_index')[['location']])),
+        qfm_train = list(qfm_train),
+        qfm_test = list(qfm_test),
+        y_train = list(y_train),
+        imputed_qfm_train = list(imputed_qfm_train),
+        imputed_qfm_test = list(imputed_qfm_test),
+        qra_fit = list(qra_fit),
+        qra_forecast = list(qra_forecast)
+      )),
       weight_transfer = weight_transfer
     )
   } else {

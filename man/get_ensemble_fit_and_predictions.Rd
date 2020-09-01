@@ -10,11 +10,12 @@ get_ensemble_fit_and_predictions(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  constraint = c("ew", "convex", "positive", "unconstrained", "median"),
+  combine_method = c("ew", "convex", "positive", "unconstrained", "median"),
   quantile_groups = NULL,
   missingness = c("by_location_group", "rescale", "mean_impute"),
   impute_method = "mean",
   backend = "quantmod",
+  check_missingness_by_target = FALSE,
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
@@ -38,8 +39,11 @@ of the forecast week; week-ahead targets are with respect to this date}
 
 \item{intercept}{logical specifying whether an intercept is included}
 
-\item{constraint}{character specifying constraints on parameters; 'ew',
-'convex', 'positive' or 'unconstrained'}
+\item{combine_method}{character specifying the approach to model
+combination: "equal", "convex", "positive", "unconstrained", or "median".
+The first four form a linear combination of quantiles across component
+models with varying levels of restrictions on the combination coefficients.
+"median" takes the median across models at each quantile level.}
 
 \item{quantile_groups}{Vector of group labels for quantiles, having the same
 length as the number of quantiles.  Common labels indicate that the ensemble
@@ -56,6 +60,10 @@ forecasts: 'by_location_group', 'rescale', and 'impute'}
 forecasts; currently only 'mean' is supported.}
 
 \item{backend}{back end used for optimization.}
+
+\item{check_missingness_by_target}{if TRUE, record missingness for every
+combination of model, location, forecast week, and target; if FALSE, record
+missingness only for each model and location}
 
 \item{do_q10_check}{if TRUE, do q10 check}
 

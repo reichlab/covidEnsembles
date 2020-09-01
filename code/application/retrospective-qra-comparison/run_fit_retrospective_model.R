@@ -10,27 +10,31 @@ registerDoParallel(cores = 28)
 
 output_path <- "code/application/retrospective-qra-comparison/log/"
 
-
 # basic approaches
 analysis_combinations <- tidyr::expand_grid(
   response_var = c("cum_death", "inc_death"),
   forecast_week_end_date = as.character(
-    lubridate::ymd("2020-05-09") + seq(from = 0, length = 12) * 7),
+    lubridate::ymd("2020-05-09") + seq(from = 0, length = 15) * 7),
   intercept = c("FALSE", "TRUE"),
-  constraint = c("ew", "convex", "positive"),
+  combine_method = c("ew", "convex", "positive", "median"),
   quantile_group_str = c("per_model", "3_groups", "per_quantile"),
   missingness = c("mean_impute", "by_location_group"),
-  window_size = c(0, 3:5),
+  window_size = c(0:5),
+  check_missingness_by_target = c("FALSE", "TRUE"),
   do_standard_checks = c("FALSE", "TRUE"),
   do_baseline_check = "FALSE"
 ) %>%
   dplyr::filter(
-    (intercept == "FALSE" & constraint == "ew" &
+    (intercept == "FALSE" & combine_method == "ew" &
       quantile_group_str == "per_model" & missingness == "by_location_group") |
-    (window_size > 0 & intercept == "FALSE" & constraint == "convex") |
-    (window_size > 0 & intercept == "TRUE" & constraint == "positive"),
+    (window_size > 0 & intercept == "FALSE" & combine_method == "median" &
+      quantile_group_str == "per_model" & missingness == "by_location_group") |
+    (window_size > 0 & intercept == "FALSE" & combine_method == "convex") |
+    (window_size > 0 & intercept == "TRUE" & combine_method == "positive"),
     !(do_standard_checks == "TRUE" & do_baseline_check == "TRUE"),
-    !(do_standard_checks == "TRUE" & response_var == "inc_death")
+    !(do_standard_checks == "TRUE" & response_var == "inc_death"),
+    (check_missingness_by_target == "TRUE" & do_standard_checks == "FALSE" &
+      missingness == "mean_impute") | check_missingness_by_target == "FALSE"
   )
 
 
@@ -48,10 +52,12 @@ foreach(row_ind = seq_len(nrow(analysis_combinations))) %dopar% {
   forecast_week_end_date <-
     analysis_combinations$forecast_week_end_date[row_ind]
   intercept <- analysis_combinations$intercept[row_ind]
-  constraint <- analysis_combinations$constraint[row_ind]
+  combine_method <- analysis_combinations$combine_method[row_ind]
   quantile_group_str <- analysis_combinations$quantile_group_str[row_ind]
   missingness <- analysis_combinations$missingness[row_ind]
   window_size <- analysis_combinations$window_size[row_ind]
+  check_missingness_by_target <-
+    analysis_combinations$check_missingness_by_target[row_ind]
   do_standard_checks <- analysis_combinations$do_standard_checks[row_ind]
   do_baseline_check <- analysis_combinations$do_baseline_check[row_ind]
 
@@ -60,16 +66,18 @@ foreach(row_ind = seq_len(nrow(analysis_combinations))) %dopar% {
     response_var, " ",
     forecast_week_end_date, " ",
     intercept, " ",
-    constraint, " ",
+    combine_method, " ",
     missingness, " ",
     quantile_group_str, " ",
     window_size, " ",
+    check_missingness_by_target, " ",
     do_standard_checks, " ",
     do_baseline_check,
     "\' code/application/retrospective-qra-comparison/fit_retrospective_model.R ",
     output_path, "output-", response_var, "-", forecast_week_end_date, "-",
-    intercept, "-", constraint, "-", missingness, "-", quantile_group_str,
-    "-", window_size, "-", do_standard_checks, "-", do_baseline_check, ".Rout")
+    intercept, "-", combine_method, "-", missingness, "-", quantile_group_str,
+    "-", window_size, "-", check_missingness_by_target, "-",
+    do_standard_checks, "-", do_baseline_check, ".Rout")
 
   system(run_cmd)
 }

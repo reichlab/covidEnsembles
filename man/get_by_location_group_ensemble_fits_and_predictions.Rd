@@ -10,7 +10,7 @@ get_by_location_group_ensemble_fits_and_predictions(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  constraint = c("ew", "convex", "positive", "unconstrained", "median"),
+  combine_method = c("ew", "convex", "positive", "unconstrained", "median"),
   quantile_groups = NULL,
   backend = "quantmod",
   do_q10_check,
@@ -36,8 +36,11 @@ of the forecast week; week-ahead targets are with respect to this date}
 
 \item{intercept}{logical specifying whether an intercept is included}
 
-\item{constraint}{character specifying constraints on parameters; 'ew',
-'convex', 'positive', 'unconstrained', or 'median'}
+\item{combine_method}{character specifying the approach to model
+combination: "equal", "convex", "positive", "unconstrained", or "median".
+The first four form a linear combination of quantiles across component
+models with varying levels of restrictions on the combination coefficients.
+"median" takes the median across models at each quantile level.}
 
 \item{quantile_groups}{Vector of group labels for quantiles, having the same
 length as the number of quantiles.  Common labels indicate that the ensemble

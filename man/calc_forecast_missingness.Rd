@@ -4,10 +4,14 @@
 \alias{calc_forecast_missingness}
 \title{Compute forecast missingness for each combination of location and model}
 \usage{
-calc_forecast_missingness(qfm, by_week = FALSE)
+calc_forecast_missingness(qfm, by_target = FALSE, by_week = FALSE)
 }
 \arguments{
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
+
+\item{by_target}{logical; if TRUE, results are returned by target, and if
+FALSE results are summarized across targets.  by_target may only be set to
+TRUE if by_week is TRUE.}
 
 \item{by_week}{logical; if TRUE, results are returned by forecast week, and
 if FALSE results are summarized across weeks.}

@@ -8,6 +8,7 @@ that model is eligible for inclusion in an ensemble, with explanation if not}
 calc_model_eligibility_for_ensemble(
   qfm,
   observed_by_location_target_end_date,
+  missingness_by_target = FALSE,
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
   do_baseline_check = FALSE,
@@ -20,6 +21,10 @@ calc_model_eligibility_for_ensemble(
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
 
 \item{observed_by_location_target_end_date}{data frame of observed values}
+
+\item{missingness_by_target}{logical; if TRUE, check condition that
+forecasts are not missing for each combination of model, week, and target;
+otherwise,}
 
 \item{do_q10_check}{logical; if TRUE, check condition that quantile at
 level 0.1 is at least as large as the most recent observed value}

@@ -95,9 +95,9 @@ parse_model_case <- function(model_abbr) {
         return(data.frame(
           intercept = as.logical(substr(case_part, 11, nc))
         ))
-      } else if(substr(case_part, 1, min(nc, 10)) == "constraint") {
+      } else if(substr(case_part, 1, min(nc, 14)) == "combine_method") {
         return(data.frame(
-          constraint = substr(case_part, 12, nc)
+          combine_method = substr(case_part, 16, nc)
         ))
       } else if(substr(case_part, 1, min(nc, 11)) == "missingness") {
         return(data.frame(
@@ -110,6 +110,11 @@ parse_model_case <- function(model_abbr) {
       } else if(substr(case_part, 1, min(nc, 11)) == "window_size") {
         return(data.frame(
           window_size = substr(case_part, 13, nc)
+        ))
+      } else if(substr(case_part, 1, min(nc, 27)) ==
+          "check_missingness_by_target") {
+        return(data.frame(
+          check_missingness_by_target = substr(case_part, 29, nc)
         ))
       } else if(substr(case_part, 1, min(nc, 18)) == "do_standard_checks") {
         return(data.frame(
@@ -305,9 +310,9 @@ scores_by_week <- all_scores %>%
     base_target = substr(target, 3, nchar(target)),
     location_type = ifelse(location == "US", "US", "State")) %>%
   dplyr::group_by(
-    model, intercept, constraint, missingness, quantile_groups, window_size,
-    do_standard_checks, do_baseline_check,
-    forecast_week_end_date, base_target, location_type) %>%
+    model, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, forecast_week_end_date, base_target, location_type) %>%
   dplyr::summarize(
     across(starts_with("wis"), mean),
     across(starts_with("wiw"), mean),
@@ -323,9 +328,9 @@ scores_overall <- all_scores %>%
     location_type = ifelse(location == "US", "US", "State")
   ) %>%
   dplyr::group_by(
-    model, intercept, constraint, missingness, quantile_groups, window_size,
-    do_standard_checks, do_baseline_check,
-    base_target, location_type) %>%
+    model, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, base_target, location_type) %>%
   dplyr::summarize(
     across(starts_with("wis"), mean),
     across(starts_with("wiw"), mean),
@@ -424,9 +429,9 @@ scores_overall_by_reporting_anomaly_status <- all_scores %>%
     location_type = ifelse(location == "US", "US", "State")
   ) %>%
   dplyr::group_by(
-    model, intercept, constraint, missingness, quantile_groups, window_size,
-    do_standard_checks, do_baseline_check,
-    base_target, location_type, reporting_anomaly) %>%
+    model, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, base_target, location_type, reporting_anomaly) %>%
   dplyr::summarize(
     across(starts_with("wis"), mean),
     across(starts_with("wiw"), mean),
@@ -682,7 +687,7 @@ coverage_by_week <- dplyr::bind_rows(
       values_to = 'empirical_coverage') %>%
     dplyr::mutate(
       nominal_coverage = as.numeric(nominal_coverage),
-      constraint_and_quantile_groups = paste0(constraint, "-", quantile_groups),
+      combine_method_and_quantile_groups = paste0(combine_method, "-", quantile_groups),
       coverage_type = "interval"
     ),
   scores_by_week %>%
@@ -694,7 +699,7 @@ coverage_by_week <- dplyr::bind_rows(
       values_to = 'empirical_coverage') %>%
     dplyr::mutate(
       nominal_coverage = as.numeric(nominal_coverage),
-      constraint_and_quantile_groups = paste0(constraint, "-", quantile_groups),
+      combine_method_and_quantile_groups = paste0(combine_method, "-", quantile_groups),
       coverage_type = "quantile"
     )
 )
@@ -709,7 +714,7 @@ coverage_overall <- dplyr::bind_rows(
       values_to = 'empirical_coverage') %>%
     dplyr::mutate(
       nominal_coverage = as.numeric(nominal_coverage),
-      constraint_and_quantile_groups = paste0(constraint, "-", quantile_groups),
+      combine_method_and_quantile_groups = paste0(combine_method, "-", quantile_groups),
       coverage_type = "interval"
     ),
   scores_overall %>%
@@ -721,7 +726,7 @@ coverage_overall <- dplyr::bind_rows(
       values_to = 'empirical_coverage') %>%
     dplyr::mutate(
       nominal_coverage = as.numeric(nominal_coverage),
-      constraint_and_quantile_groups = paste0(constraint, "-", quantile_groups),
+      combine_method_and_quantile_groups = paste0(combine_method, "-", quantile_groups),
       coverage_type = "quantile"
     )
 )
@@ -737,7 +742,7 @@ coverage_by_reporting_anomaly_overall <- dplyr::bind_rows(
       values_to = 'empirical_coverage') %>%
     dplyr::mutate(
       nominal_coverage = as.numeric(nominal_coverage),
-      constraint_and_quantile_groups = paste0(constraint, "-", quantile_groups),
+      combine_method_and_quantile_groups = paste0(combine_method, "-", quantile_groups),
       coverage_type = "interval"
     ),
   scores_overall_by_reporting_anomaly_status %>%
@@ -749,15 +754,15 @@ coverage_by_reporting_anomaly_overall <- dplyr::bind_rows(
       values_to = 'empirical_coverage') %>%
     dplyr::mutate(
       nominal_coverage = as.numeric(nominal_coverage),
-      constraint_and_quantile_groups = paste0(constraint, "-", quantile_groups),
+      combine_method_and_quantile_groups = paste0(combine_method, "-", quantile_groups),
       coverage_type = "quantile"
     )
 )
 
 
-model_case_vars <- c("constraint", "missingness",
-  "quantile_groups", "window_size", "do_standard_checks", "do_baseline_check",
-  "constraint_and_quantile_groups")
+model_case_vars <- c("combine_method", "missingness",
+  "quantile_groups", "window_size",  "do_standard_checks", "do_baseline_check",
+  "check_missingness_by_target")
 for(model_case_var in model_case_vars) {
   for(measure in c("cum_death", "inc_death")) {
     plot_path <- paste0(
@@ -848,12 +853,13 @@ for(model_case_var in model_case_vars) {
 
 
 model_case_vars <- c("missingness",
-  "quantile_groups", "window_size", "do_standard_checks", "do_baseline_check")
+  "quantile_groups", "window_size", "check_missingness_by_target",
+  "do_standard_checks", "do_baseline_check")
 for(model_case_var in model_case_vars) {
   plot_path <- paste0(
         "code/application/retrospective-qra-comparison/ensemble-score-plots/",
         "calibration-cum_inc_death-", model_case_var,
-        "-facet_constraint-overall.pdf")
+        "-facet_combine_method-overall.pdf")
   pdf(plot_path, width = 24, height = 14)
   p <- ggplot(
     data = coverage_overall %>%
@@ -874,7 +880,7 @@ for(model_case_var in model_case_vars) {
         shape = model_case_var)
     ) +
     geom_abline(intercept = 0, slope = 1) +
-    facet_grid(coverage_type ~ base_target + constraint) +
+    facet_grid(coverage_type ~ base_target + combine_method) +
     theme_bw()
   print(p)
 
@@ -897,7 +903,7 @@ for(model_case_var in model_case_vars) {
         shape = model_case_var)
     ) +
     geom_abline(intercept = 0, slope = 1) +
-    facet_grid(coverage_type ~ base_target + constraint) +
+    facet_grid(coverage_type ~ base_target + combine_method) +
     theme_bw()
   print(p)
   dev.off()
@@ -905,18 +911,19 @@ for(model_case_var in model_case_vars) {
 
 
 model_case_vars <- c(
-  "quantile_groups", "window_size", "do_standard_checks", "do_baseline_check")
+  "quantile_groups", "window_size", "check_missingness_by_target",
+  "do_standard_checks", "do_baseline_check")
 for(model_case_var in model_case_vars) {
   plot_path <- paste0(
         "code/application/retrospective-qra-comparison/ensemble-score-plots/",
         "calibration-cum_inc_death-filter_missingness_impute-", model_case_var,
-        "-facet_constraint-overall.pdf")
+        "-facet_combine_method-overall.pdf")
   pdf(plot_path, width = 24, height = 14)
   p <- ggplot(
     data = coverage_overall %>%
       dplyr::filter(
         location_type != "US",
-        missingness == "impute" | constraint == "ew")) +
+        missingness == "impute" | combine_method == "ew")) +
     geom_line(
       mapping = aes_string(
         x = "nominal_coverage",
@@ -933,7 +940,7 @@ for(model_case_var in model_case_vars) {
         shape = model_case_var)
     ) +
     geom_abline(intercept = 0, slope = 1) +
-    facet_grid(coverage_type ~ base_target + constraint) +
+    facet_grid(coverage_type ~ base_target + combine_method) +
     theme_bw()
   print(p)
 
@@ -941,7 +948,7 @@ for(model_case_var in model_case_vars) {
     data = coverage_overall %>%
       dplyr::filter(
         location_type == "US",
-        missingness == "impute" | constraint == "ew")) +
+        missingness == "impute" | combine_method == "ew")) +
     geom_line(
       mapping = aes_string(
         x = "nominal_coverage",
@@ -958,7 +965,7 @@ for(model_case_var in model_case_vars) {
         shape = model_case_var)
     ) +
     geom_abline(intercept = 0, slope = 1) +
-    facet_grid(coverage_type ~ base_target + constraint) +
+    facet_grid(coverage_type ~ base_target + combine_method) +
     theme_bw()
   print(p)
   dev.off()
@@ -968,19 +975,20 @@ for(model_case_var in model_case_vars) {
 
 
 model_case_vars <- c(
-  "quantile_groups", "window_size", "do_standard_checks", "do_baseline_check")
+  "quantile_groups", "window_size", "check_missingness_by_target",
+  "do_standard_checks", "do_baseline_check")
 for(model_case_var in model_case_vars) {
   plot_path <- paste0(
         "code/application/retrospective-qra-comparison/ensemble-score-plots/",
         "calibration-cum_inc_death-filter_missingness_impute-", model_case_var,
-        "-drop_reporting_anomaly-facet_constraint-overall.pdf")
+        "-drop_reporting_anomaly-facet_combine_method-overall.pdf")
   pdf(plot_path, width = 24, height = 14)
   p <- ggplot(
     data = coverage_by_reporting_anomaly_overall %>%
       dplyr::filter(
         location_type != "US",
         !reporting_anomaly,
-        missingness == "impute" | constraint == "ew")) +
+        missingness == "impute" | combine_method == "ew")) +
     geom_line(
       mapping = aes_string(
         x = "nominal_coverage",
@@ -997,7 +1005,7 @@ for(model_case_var in model_case_vars) {
         shape = model_case_var)
     ) +
     geom_abline(intercept = 0, slope = 1) +
-    facet_grid(coverage_type ~ base_target + constraint) +
+    facet_grid(coverage_type ~ base_target + combine_method) +
     theme_bw()
   print(p)
 
@@ -1006,7 +1014,7 @@ for(model_case_var in model_case_vars) {
       dplyr::filter(
         location_type == "US",
         !reporting_anomaly,
-        missingness == "impute" | constraint == "ew")) +
+        missingness == "impute" | combine_method == "ew")) +
     geom_line(
       mapping = aes_string(
         x = "nominal_coverage",
@@ -1023,25 +1031,25 @@ for(model_case_var in model_case_vars) {
         shape = model_case_var)
     ) +
     geom_abline(intercept = 0, slope = 1) +
-    facet_grid(coverage_type ~ base_target + constraint) +
+    facet_grid(coverage_type ~ base_target + combine_method) +
     theme_bw()
   print(p)
   dev.off()
 }
 
 
-model_case_vars <- "window_size"
+model_case_vars <- c("window_size", "check_missingness_by_target")
 for(model_case_var in model_case_vars) {
   plot_path <- paste0(
         "code/application/retrospective-qra-comparison/ensemble-score-plots/",
-        "calibration-cum_inc_death-filter_missingness_impute-filter_constraint_positive-filter_quantile_groups_per_quantile", model_case_var,
+        "calibration-cum_inc_death-filter_missingness_impute-filter_combine_method_positive-filter_quantile_groups_per_quantile", model_case_var,
         "-facet_location_type-overall.pdf")
   pdf(plot_path, width = 24, height = 14)
   p <- ggplot(
     data = coverage_overall %>%
       dplyr::filter(
         missingness == "impute",
-        constraint == "positive",
+        combine_method == "positive",
         quantile_groups == "per_quantile")) +
     geom_line(
       mapping = aes_string(
@@ -1075,9 +1083,9 @@ mae_by_week_and_location_type <- all_scores %>%
     location_type = ifelse(location == "US", "US", "State")
   ) %>%
   dplyr::group_by(
-    model, intercept, constraint, missingness, quantile_groups, window_size,
-    do_standard_checks, do_baseline_check,
-    forecast_week_end_date, base_target, location_type) %>%
+    model, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, forecast_week_end_date, base_target, location_type) %>%
   dplyr::summarize(mae = mean(wis_1)) %>%
   dplyr::ungroup()
 
@@ -1088,25 +1096,26 @@ mae_by_location_type <- all_scores %>%
     location_type = ifelse(location == "US", "US", "State")
   ) %>%
   dplyr::group_by(
-    model, intercept, constraint, missingness, quantile_groups, window_size,
-    do_standard_checks, do_baseline_check,
-    base_target, location_type) %>%
+    model, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, base_target, location_type) %>%
   dplyr::summarize(mae = mean(wis_1)) %>%
   dplyr::ungroup()
 
 
 model_case_vars <- c("missingness",
-  "quantile_groups", "window_size", "do_standard_checks", "do_baseline_check")
+  "quantile_groups", "window_size", "check_missingness_by_target",
+  "do_standard_checks", "do_baseline_check")
 for(model_case_var in model_case_vars) {
   plot_path <- paste0(
     "code/application/retrospective-qra-comparison/ensemble-score-plots/",
     "mae-cum_inc_death-", model_case_var, "-overall.pdf")
   pdf(plot_path, width = 12, height = 7)
   p <- ggplot(data = mae_by_location_type %>%
-    dplyr::mutate(case_and_constraint = paste0(constraint, get(model_case_var)))) +
+    dplyr::mutate(case_and_constraint = paste0(combine_method, get(model_case_var)))) +
     geom_point(
       mapping = aes_string(
-        x = "constraint",
+        x = "combine_method",
         y = "mae",
         color = model_case_var,
         shape = model_case_var,
@@ -1130,22 +1139,25 @@ wis_by_week_and_location_type <- all_scores %>%
     location_type = ifelse(location == "US", "US", "State")
   ) %>%
   dplyr::group_by(
-    model, intercept, constraint, missingness, quantile_groups, window_size,
-    do_standard_checks, do_baseline_check,
-    forecast_week_end_date, base_target, location_type) %>%
+    model, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, forecast_week_end_date, base_target, location_type) %>%
   dplyr::summarize(wis = mean(wis)) %>%
   dplyr::ungroup()
 
 wis_by_location_type <- all_scores %>%
-#  dplyr::filter(forecast_week_end_date > "2020-05-09") %>%
+  dplyr::filter(
+    forecast_week_end_date > "2020-05-09",
+    wis < 1e8
+  ) %>%
   dplyr::mutate(
     base_target = substr(target, 3, nchar(target)),
     location_type = ifelse(location == "US", "US", "State")
   ) %>%
   dplyr::group_by(
-    model, intercept, constraint, missingness, quantile_groups, window_size,
-    do_standard_checks, do_baseline_check,
-    base_target, location_type) %>%
+    model, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, base_target, location_type) %>%
   dplyr::summarize(wis = mean(wis)) %>%
   dplyr::ungroup()
 
@@ -1154,7 +1166,7 @@ wis_by_location_type <- all_scores %>%
 #   dplyr::select(location_type, base_target, wis) %>%
 #   dplyr::arrange(location_type, base_target)
 
-model_case_vars <- c("missingness",
+model_case_vars <- c("missingness", "check_missingness_by_target",
   "quantile_groups", "window_size", "do_standard_checks", "do_baseline_check")
 for(model_case_var in model_case_vars) {
   plot_path <- paste0(
@@ -1162,10 +1174,10 @@ for(model_case_var in model_case_vars) {
     "wis-cum_inc_death-", model_case_var, "-overall.pdf")
   pdf(plot_path, width = 12, height = 7)
   p <- ggplot(data = wis_by_location_type %>%
-    dplyr::mutate(case_and_constraint = paste0(constraint, get(model_case_var)))) +
+    dplyr::mutate(case_and_constraint = paste0(combine_method, get(model_case_var)))) +
     geom_point(
       mapping = aes_string(
-        x = "constraint",
+        x = "combine_method",
         y = "wis",
         color = model_case_var,
         shape = model_case_var,
@@ -1186,14 +1198,14 @@ wis_by_location_type_and_reporting_anomaly <- all_scores %>%
     location_type = ifelse(location == "US", "US", "State")
   ) %>%
   dplyr::group_by(
-    model, intercept, constraint, missingness, quantile_groups, window_size,
-    do_standard_checks, do_baseline_check,
-    base_target, location_type, reporting_anomaly) %>%
+    model, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, base_target, location_type, reporting_anomaly) %>%
   dplyr::summarize(wis = mean(wis)) %>%
   dplyr::ungroup()
 
 
-model_case_vars <- c("missingness",
+model_case_vars <- c("missingness",, "check_missingness_by_target",
   "quantile_groups", "window_size", "do_standard_checks", "do_baseline_check")
 for(model_case_var in model_case_vars) {
   plot_path <- paste0(
@@ -1202,12 +1214,12 @@ for(model_case_var in model_case_vars) {
   pdf(plot_path, width = 12, height = 7)
   p <- ggplot(data = wis_by_location_type_and_reporting_anomaly %>%
     dplyr::mutate(
-      case_and_constraint = paste0(constraint, get(model_case_var), reporting_anomaly),
+      case_and_constraint = paste0(combine_method, get(model_case_var), reporting_anomaly),
       case_and_reporting_anomaly = paste0(get(model_case_var), reporting_anomaly)
     )) +
     geom_point(
       mapping = aes_string(
-        x = "constraint",
+        x = "combine_method",
         y = "wis",
         color = model_case_var,
         shape = "reporting_anomaly",
@@ -1221,7 +1233,7 @@ for(model_case_var in model_case_vars) {
 }
 
 
-model_case_vars <- c("missingness",
+model_case_vars <- c("missingness", "check_missingness_by_target",
   "quantile_groups", "window_size", "do_standard_checks", "do_baseline_check")
 for(model_case_var in model_case_vars) {
   plot_path <- paste0(
@@ -1231,11 +1243,11 @@ for(model_case_var in model_case_vars) {
   p <- ggplot(data = wis_by_location_type_and_reporting_anomaly %>%
     dplyr::filter(!reporting_anomaly) %>%
     dplyr::mutate(
-      case_and_constraint = paste0(constraint, get(model_case_var))
+      case_and_constraint = paste0(combine_method, get(model_case_var))
     )) +
     geom_point(
       mapping = aes_string(
-        x = "constraint",
+        x = "combine_method",
         y = "wis",
         color = model_case_var,
         shape = model_case_var,
@@ -1250,13 +1262,82 @@ for(model_case_var in model_case_vars) {
 
 
 
-# Examine weight estimates
-result_filename <- paste0(
-  "code/application/retrospective-qra-comparison/retrospective-fits/",
-  "cum_death-forecast_week_2020-05-16-intercept_FALSE-constraint_convex-missingness_by_location_group-quantile_groups_per_quantile-window_size_5-do_standard_checks_FALSE-do_baseline_check_FALSE.rds"
+# Relationship between training set and test set wis
+result_filenames <- Sys.glob(
+  "code/application/retrospective-qra-comparison/retrospective-fits/*.rds")
+
+train_set_wis <- purrr::map_dfr(
+  result_filenames,
+  function(result_filename) {
+    # get model abbreviation from file name, which includes full path
+    model_abbr <- tail(strsplit(result_filename, "/")[[1]], 1)
+    intercept_ind <- regexpr("intercept", model_abbr)
+    measure_and_date <- substr(model_abbr, 1, intercept_ind - 2)
+    forecast_week_ind <- regexpr("forecast_week", measure_and_date)
+    measure <- substr(measure_and_date, 1, forecast_week_ind - 2)
+    forecast_week <- substr(measure_and_date, forecast_week_ind + 14, nchar(measure_and_date))
+    model_abbr <- substr(model_abbr, intercept_ind, nchar(model_abbr))
+
+    # extract model case
+    model_case <- parse_model_case(model_abbr) %>%
+      dplyr::mutate(
+        measure = measure,
+        forecast_week = forecast_week,
+        join_field = "temp"
+      )
+
+    # read in estimation results
+    if(model_case$missingness == "impute") {
+      c(model_eligibility, wide_model_eligibility, location_groups,
+        weight_transfer, component_forecasts) %<-%
+          readRDS(result_filename)
+
+      # extract ensemble wis per training set observation
+      train_set_wis_one_model <- location_groups$qfm_train %>%
+        attr("row_index") %>%
+        dplyr::mutate(
+          train_wis = covidEnsembles::wis(
+            y = location_groups$y_train,
+            qfm = predict(
+              location_groups$qra_fit,
+              qfm = location_groups$qfm_train
+            )
+          ),
+          join_field = "temp"
+        ) %>%
+        dplyr::left_join(model_case, by = "join_field") %>%
+        dplyr::select(-join_field)
+    } else {
+      c(model_eligibility, wide_model_eligibility, location_groups,
+        component_forecasts) %<-%
+          readRDS(result_filename)
+
+      # extract ensemble wis per training set observation
+      train_set_wis_one_model <- purrr::map_dfr(
+        seq_len(nrow(location_groups)),
+        function(i) {
+          location_groups$qfm_train[[i]] %>%
+            attr("row_index") %>%
+            dplyr::mutate(
+              train_wis = covidEnsembles::wis(
+                y = location_groups$y_train[[i]],
+                qfm = predict(
+                  location_groups$qra_fit[[i]],
+                  qfm = location_groups$qfm_train[[i]]
+                )
+              )
+            )
+        }
+      ) %>%
+        dplyr::mutate(
+          join_field = "temp"
+        ) %>%
+        dplyr::left_join(model_case, by = "join_field") %>%
+        dplyr::select(-join_field)
+    }
+
+    return(train_set_wis_one_model)
+  }
 )
 
-c(model_eligibility, wide_model_eligibility, location_groups,
-  component_forecasts) %<-%
-    readRDS(result_filename)
 

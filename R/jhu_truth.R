@@ -170,7 +170,7 @@ get_observed_by_location_target_end_date <- function(
           dplyr::transmute(
             location = location,
             base_target = paste('wk ahead', type, measure),
-            target_end_date = date,
+            target_end_date = as.character(date),
             observed = observed
           )
       }
