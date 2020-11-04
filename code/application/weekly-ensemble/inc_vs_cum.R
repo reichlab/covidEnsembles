@@ -2,82 +2,60 @@ library(tidyverse)
 library(zeallot)
 library(covidEnsembles)
 library(covidData)
+library(covidHubUtils)
 options(error = recover)
 
 # Where to find component model submissions
+hub_repo_path <- '../covid19-forecast-hub'
+
 submissions_root <- '../covid19-forecast-hub/data-processed/'
 
 required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
 
-candidate_model_abbreviations_to_include <- get_candidate_models(
-  submissions_root = submissions_root,
-  include_designations = c("primary", "secondary"),
-  include_COVIDhub_ensemble = FALSE,
-  include_COVIDhub_baseline = FALSE)
+model_designations <- covidHubUtils::get_model_designations(
+  source = "local_hub_repo",
+  hub_repo_path = hub_repo_path)
+candidate_model_abbreviations_to_include <- model_designations %>%
+  dplyr::filter(designation %in% c("primary", "secondary")) %>%
+  dplyr::pull(model)
 
 forecast_week_end_date <- lubridate::floor_date(Sys.Date(), unit = "week") - 1
 forecast_date <- forecast_week_end_date + 2
 
-all_forecasts <-
-  # read in forecasts
-  load_covid_forecasts(
-    model_abbrs = candidate_model_abbreviations_to_include,
-    last_timezero = forecast_date,
-    timezero_window_size = 6,
-    targets = c(paste0(1:4, ' wk ahead inc death'), paste0(1:4, ' wk ahead cum death')),
-    submissions_root = submissions_root) %>%
-  # add horizon, forecast_week_end_date, and target_end_date variables, and
-  # keep only the most receent forecast from each model
-  dplyr::filter(
-    format(quantile, digits=3, nsmall=3) %in%
-      format(required_quantiles, digits=3, nsmall=3)) %>%
-  tidyr::pivot_wider(names_from = quantile, values_from = value) %>%
-  dplyr::mutate(
-    horizon = as.integer(substr(target, 1, 1)),
-    forecast_week_end_date = calc_forecast_week_end_date(timezero),
-    target_end_date = calc_target_week_end_date(timezero, horizon)
-  ) %>%
-  dplyr::group_by(
-    location, target, forecast_week_end_date, model
-  ) %>%
-  dplyr::top_n(1, timezero) %>%
-  tidyr::pivot_longer(
-    cols = all_of(as.character(required_quantiles)),
-    names_to = 'quantile',
-    values_to = 'value') %>%
-  ungroup() %>%
-  # add in location information
-  left_join(covidData::fips_codes, by = 'location')
+all_forecasts <- covidHubUtils::load_forecasts(
+  models = candidate_model_abbreviations_to_include,
+  last_forecast_date = forecast_date,
+  forecast_date_window_size = 6,
+  targets = c(paste0(1:4, ' wk ahead inc death'), paste0(1:4, ' wk ahead cum death')),
+  hub_repo_path = hub_repo_path
+)
 
 us_forecasts <- all_forecasts %>%
   dplyr::filter(location == 'US')
 
 View(us_forecasts %>%
-  dplyr::filter(grepl('cum', target), !is.na(value)) %>%
+  dplyr::filter(inc_cum == "cum", !is.na(value)) %>%
   dplyr::count(model))
 
 last_cum <- covidData::load_jhu_data(
-  issue_date = as.character(forecast_week_end_date + 2),
+  issue_date = as.character(forecast_week_end_date + 1),
   spatial_resolution = 'national',
   temporal_resolution = 'weekly',
   measure = 'deaths') %>%
   tail(1) %>%
   pull(cum)
 
-library(zoltr)
-zoltar_connection <- new_connection()
-zoltr::zoltar_authenticate(zoltar_connection,
-  Sys.getenv("Z_USERNAME"), Sys.getenv("Z_PASSWORD"))
 
-project_url <- "https://www.zoltardata.com/api/project/44/"
-
-zoltar_truth <- zoltr::truth(
-  zoltar_connection = zoltar_connection, project_url = project_url)
+state_data <- covidData::load_jhu_data(
+  issue_date = as.character(forecast_week_end_date + 1),
+  spatial_resolution = 'state',
+  temporal_resolution = 'weekly',
+  measure = 'deaths')
 
 implied <- us_forecasts %>%
   dplyr::filter(
     quantile == '0.5',
-    grepl('cum', target)) %>%
+    inc_cum == "cum") %>%
   dplyr::group_by(model) %>%
   dplyr::arrange(model, horizon) %>%
   dplyr::mutate(
@@ -92,7 +70,7 @@ implied <- us_forecasts %>%
 actual <- us_forecasts %>%
   dplyr::filter(
     quantile == '0.5',
-    grepl('inc', target)) %>%
+    inc_cum == "inc") %>%
   dplyr::transmute(
     model = model,
     horizon = horizon,
@@ -101,11 +79,6 @@ actual <- us_forecasts %>%
 
 implied_and_actual <- implied %>%
   dplyr::left_join(actual, by = c('model', 'horizon'))
-# %>%
-#   tidyr::pivot_longer(
-#     cols = c('implied_median_inc', 'actual_median_inc'),
-#     names_to = 'type',
-#     values_to = 'value')
 
 ggplot(
   data = implied_and_actual %>%
@@ -119,7 +92,6 @@ ggplot(
   geom_abline(intercept = 0, slope = 1) +
   theme_bw()
 
-
 implied_and_actual %>%
   dplyr::mutate(
     observed_cum = last_cum,
@@ -127,232 +99,26 @@ implied_and_actual %>%
     diff = ifelse(abs(diff) < sqrt(.Machine$double.eps), 0.0, diff)
   ) %>%
   dplyr::left_join(
-    
+    us_forecasts %>%
+      dplyr::filter(
+        quantile == "0.5",
+        inc_cum == "cum"
+      ) %>%
+      dplyr::select(
+        model, horizon, value
+      ),
+    by = c("model", "horizon")
   ) %>%
   dplyr::arrange(desc(abs(diff))) %>%
   dplyr::filter(horizon == 1) %>%
-  print(n = nrow(.))
-
-implied_and_actual %>%
-  dplyr::mutate(diff = implied_median_inc - actual_median_inc) %>%
-  dplyr::arrange(desc(abs(diff))) %>%
-  dplyr::filter(horizon == 1) %>%
-  ggplot() +
-    geom_point(mapping = aes(x = horizon, y = diff))
-  print(n = nrow(.))
-
-
-
-
-implied_and_actual %>%
-  dplyr::filter(
-    is.na(implied_median_inc) | is.na(actual_median_inc),
-    !(is.na(implied_median_inc) & is.na(actual_median_inc))
-  )
-
-
-p1 <- ggplot(data = us_forecasts %>%
-  dplyr::filter(
-    model %in% cum_models,
-    quantile == '0.5',
-    grepl('cum', target)) %>%
-  dplyr::mutate(
-    cum_ensemble = (model %in% cum_models),
-    inc_ensemble = (model %in% inc_models),
-    both_ensembles = (cum_ensemble & inc_ensemble)
-  )) +
-  geom_point(mapping = aes(x = horizon, y = value, color = both_ensembles)) +
-  ylab('median forecast: cumulative deaths') +
-  theme_bw() +
-  ggtitle("Cumulative Deaths")
-
-p2 <- ggplot(data = us_forecasts %>%
-               dplyr::filter(
-                 model %in% inc_models,
-                 quantile == '0.5',
-                 grepl('inc', target)) %>%
-               dplyr::mutate(
-                 cum_ensemble = (model %in% cum_models),
-                 inc_ensemble = (model %in% inc_models),
-                 both_ensembles = (cum_ensemble & inc_ensemble)
-               )) +
-  geom_point(mapping = aes(x = horizon, y = value, color = both_ensembles)) +
-  ylab('median forecast: incident deaths') +
-  theme_bw() +
-  ggtitle("Incident Deaths")
-
-grid.arrange(p1, p2)
-
-
-
-# Fit ensemble using only those models that were included in both ensembles
-#
-
-for(response_var in c('cum_death', 'inc_death')) {
-  #for(response_var in 'cum_death') {
-  #for(response_var in 'inc_death') {
-  if(response_var == 'cum_death') {
-    do_q10_check <- do_nondecreasing_quantile_check <- TRUE
-
-    # adjustments based on plots
-    if(forecast_date == '2020-06-08') {
-      manual_eligibility_adjust <- c(
-        "Auquan-SEIR", "CAN-SEIR_CAN", "CU-select", "UA-EpiCovDA", "SWC-TerminusCM"
-      )
-    } else if(forecast_date == '2020-06-15') {
-      manual_eligibility_adjust <- "Auquan-SEIR"
-    } else if(forecast_date == '2020-06-29') {
-      manual_eligibility_adjust <- data.frame(
-        model = c("epiforecasts-ensemble1", "NotreDame-mobility"),
-        location = "34"
-      )
-    } else if(forecast_date == "2020-07-06") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "CU-select", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
-                  "MITCovAlliance-SIR"),
-        location = fips_codes$location
-      )
-    } else {
-      manual_eligibility_adjust <- NULL
-    }
-  } else {
-    do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-
-    # adjustments based on plots
-    if(forecast_date == '2020-06-08') {
-      manual_eligibility_adjust <- c(
-        "CAN-SEIR_CAN", "SWC-TerminusCM", "USACE-ERDC_SEIR", "IHME-CurveFit"
-      )
-    } else if(forecast_date == '2020-06-15') {
-      manual_eligibility_adjust <- c(
-        "USACE-ERDC_SEIR", "LANL-GrowthRate"
-      )
-    } else if(forecast_date == '2020-06-29') {
-      manual_eligibility_adjust <- bind_rows(
-        data.frame(
-          model = c("epiforecasts-ensemble1", "NotreDame-mobility"),
-          location = "34",
-          stringsAsFactors = FALSE
-        ),
-        data.frame(
-          model = "CU-select",
-          location = fips_codes$location,
-          stringsAsFactors = FALSE
-        )
-      )
-    } else if(forecast_date == "2020-07-06") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "CU-select", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
-                  "MITCovAlliance-SIR"),
-        location = fips_codes$location
-      )
-    } else {
-      manual_eligibility_adjust <- NULL
-    }
-  }
-
-  c(model_eligibility, wide_model_eligibility, location_groups, component_forecasts) %<-%
-    build_covid_ensemble_from_zoltar(
-      candidate_model_abbreviations_to_include = both_models,
-      targets = paste0(1:4, ' wk ahead ', gsub('_', ' ', response_var)),
-      forecast_week_end_date = forecast_date - 2,
-      timezero_window_size = 1,
-      window_size = 0,
-      intercept = FALSE,
-      constraint = 'ew',
-      quantile_groups = rep(1, 23),
-      missingness = 'by_location_group',
-      backend = NA,
-      project_url = 'https://www.zoltardata.com/api/project/44/',
-      required_quantiles = c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99),
-      do_q10_check = do_q10_check,
-      do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
-      do_baseline_check = FALSE,
-      manual_eligibility_adjust = manual_eligibility_adjust,
-      return_eligibility = TRUE,
-      return_all = TRUE
-    )
-
-  ensemble_predictions <- bind_rows(location_groups[['qra_forecast']])
-
-  # save the results in required format
-  formatted_ensemble_predictions <- ensemble_predictions %>%
-    left_join(
-      fips_codes,# %>% select(location, location_name = location_abbreviation),
-      by='location') %>%
-    dplyr::transmute(
-      forecast_date = UQ(forecast_date),
-      target = target,
-      target_end_date = calc_target_week_end_date(
-        forecast_week_end_date,
-        as.integer(substr(target, 1, 1))),
-      location = location,
-      location_name = location_name,
-      type = 'quantile',
-      quantile = quantile,
-      value = value
-    )
-
-  formatted_ensemble_predictions <- bind_rows(
-    formatted_ensemble_predictions,
-    formatted_ensemble_predictions %>%
-      filter(format(quantile, digits=3, nsmall=3) == '0.500') %>%
-      mutate(
-        type='point',
-        quantile=NA_real_
-      )
-  )
-
-  # reformat model weights and eligibility for output
-  model_weights <- purrr::pmap_dfr(
-    location_groups %>% select(locations, qra_fit),
-    function(locations, qra_fit) {
-      temp <- qra_fit$coefficients %>%
-        tidyr::pivot_wider(names_from = 'model', values_from = 'beta')
-
-      return(purrr::map_dfr(
-        locations,
-        function(location) {
-          temp %>%
-            mutate(location = location)
-        }
-      ))
-    }
-  )
-  model_weights <- bind_cols(
-    model_weights %>%
-      select(location) %>%
-      left_join(fips_codes, by = 'location'),
-    model_weights %>% select(-location)
+  dplyr::select(
+    model,
+    observed_cum,
+    one_week_ahead_cum_forecast = value,
+    implied_median_inc,
+    actual_median_inc,
+    diff
   ) %>%
-    arrange(location)
-  model_weights[is.na(model_weights)] <- 0.0
-
-  if(response_var == 'cum_death') {
-    all_formatted_ensemble_predictions <- formatted_ensemble_predictions
-  } else {
-    all_formatted_ensemble_predictions <- bind_rows(
-      all_formatted_ensemble_predictions,
-      formatted_ensemble_predictions
-    )
-  }
-}
-
-
-both_quantiles <- all_formatted_ensemble_predictions %>%
-  filter(location == 'US', quantile %in% c('0.025', '0.5', '0.975')) %>%
-  select(location, target, quantile, value) %>%
-  pivot_wider(names_from = 'quantile', names_prefix = 'both_q_') %>%
-  arrange(target)
-
-all_quantiles <- read_csv('https://raw.githubusercontent.com/reichlab/covid19-forecast-hub/master/data-processed/COVIDhub-ensemble/2020-07-06-COVIDhub-ensemble.csv') %>%
-  filter(location == 'US', quantile %in% c('0.025', '0.5', '0.975')) %>%
-  select(location, target, quantile, value) %>%
-  pivot_wider(names_from = 'quantile', names_prefix = 'separate_q_') %>%
-  arrange(target)
-
-both_quantiles %>%
-  left_join(all_quantiles) %>%
-  View()
-
-
+#  slice(8)
+#  print(n = 17)
+  print(n = nrow(.))
