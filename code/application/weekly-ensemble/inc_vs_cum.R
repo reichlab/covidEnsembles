@@ -8,10 +8,7 @@ options(error = recover)
 # Where to find component model submissions
 hub_repo_path <- '../covid19-forecast-hub'
 
-submissions_root <- '../covid19-forecast-hub/data-processed/'
-
-required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
-
+# which models to examine
 model_designations <- covidHubUtils::get_model_designations(
   source = "local_hub_repo",
   hub_repo_path = hub_repo_path)
@@ -19,9 +16,11 @@ candidate_model_abbreviations_to_include <- model_designations %>%
   dplyr::filter(designation %in% c("primary", "secondary")) %>%
   dplyr::pull(model)
 
+# which date we're looking at for submissions
 forecast_week_end_date <- lubridate::floor_date(Sys.Date(), unit = "week") - 1
 forecast_date <- forecast_week_end_date + 2
 
+# get the forecasts
 all_forecasts <- covidHubUtils::load_forecasts(
   models = candidate_model_abbreviations_to_include,
   last_forecast_date = forecast_date,
@@ -30,13 +29,18 @@ all_forecasts <- covidHubUtils::load_forecasts(
   hub_repo_path = hub_repo_path
 )
 
+# subset to US
 us_forecasts <- all_forecasts %>%
   dplyr::filter(location == 'US')
 
-View(us_forecasts %>%
-  dplyr::filter(inc_cum == "cum", !is.na(value)) %>%
-  dplyr::count(model))
+# For curiosity's sake, how many submissions per model?
+#View(us_forecasts %>%
+#  dplyr::filter(inc_cum == "cum", !is.na(value)) %>%
+#  dplyr::count(model))
 
+# what was the last observed value of cumulative deaths?
+# used later for calculating "implied incident deaths forecast" based on
+# cumulative deaths forecast
 last_cum <- covidData::load_jhu_data(
   issue_date = as.character(forecast_week_end_date + 1),
   spatial_resolution = 'national',
@@ -45,13 +49,7 @@ last_cum <- covidData::load_jhu_data(
   tail(1) %>%
   pull(cum)
 
-
-state_data <- covidData::load_jhu_data(
-  issue_date = as.character(forecast_week_end_date + 1),
-  spatial_resolution = 'state',
-  temporal_resolution = 'weekly',
-  measure = 'deaths')
-
+# implied incident deaths predictive median
 implied <- us_forecasts %>%
   dplyr::filter(
     quantile == '0.5',
@@ -67,6 +65,7 @@ implied <- us_forecasts %>%
   ) %>%
   dplyr::select(model, horizon, implied_median_inc)
 
+# actual incident deaths predictive median
 actual <- us_forecasts %>%
   dplyr::filter(
     quantile == '0.5',
@@ -77,9 +76,11 @@ actual <- us_forecasts %>%
     actual_median_inc = value
   )
 
+# put implied and actual together
 implied_and_actual <- implied %>%
   dplyr::left_join(actual, by = c('model', 'horizon'))
 
+# make a plot
 ggplot(
   data = implied_and_actual %>%
     dplyr::filter(!is.na(implied_median_inc), !is.na(actual_median_inc)),
@@ -92,6 +93,7 @@ ggplot(
   geom_abline(intercept = 0, slope = 1) +
   theme_bw()
 
+# make a table
 implied_and_actual %>%
   dplyr::mutate(
     observed_cum = last_cum,
