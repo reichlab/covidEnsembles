@@ -6,7 +6,13 @@ library(covidHubUtils)
 options(error = recover)
 
 # Where to find component model submissions
-hub_repo_path <- '../covid19-forecast-hub'
+hub_repo_path <- '../../../../covid19-forecast-hub/'
+
+# where to save inc vs cum comparison
+inc_vs_cum_path <- 'inc-vs-cum'
+if (!dir.exists(inc_vs_cum_path)) {
+  dir.create(inc_vs_cum_path)
+}
 
 # which models to examine
 model_designations <- covidHubUtils::get_model_designations(
@@ -121,6 +127,11 @@ implied_and_actual %>%
     actual_median_inc,
     diff
   ) %>%
-#  slice(8)
+  readr::write_csv(
+    path = file.path(
+      inc_vs_cum_path,
+      paste0("inc_vs_cum_", forecast_date, ".csv")
+    )
+  )
 #  print(n = 17)
-  print(n = nrow(.))
+#  print(n = nrow(.))

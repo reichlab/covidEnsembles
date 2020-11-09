@@ -11,7 +11,7 @@ HUB = ../../../../covid19-forecast-hub/
 PROCESSED = $(HUB)data-processed/
 
 # Define the full make, making plots and
-all: plots ensemble pull
+all: incvscum ensemble pull
 
 # Get the latest forecast files from the hub repository
 pull:
@@ -24,5 +24,10 @@ plots: pull
 # Build the ensemble
 ensemble: pull
 	Rscript build_ensembles.R
+
+# Compare one week ahead forecasts of incident and cumulative deaths at
+# national level
+incvscum: pull
+	Rscript inc_vs_cum.R
 
 # TODO: commit, push to github, file pull request
