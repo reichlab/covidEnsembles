@@ -148,6 +148,11 @@ get_observed_by_location_target_end_date <- function(
   ) %>%
     dplyr::distinct(type, measure)
 
+  if (identical(spatial_resolution, "state_no_territories")) {
+    effective_spatial_resolution <- "state"
+  } else {
+    effective_spatial_resolution <- spatial_resolution
+  }
 
   observed_by_location_target_end_date <-
     purrr::map_dfr(
@@ -158,7 +163,7 @@ get_observed_by_location_target_end_date <- function(
           dplyr::pull(type)
         covidData::load_jhu_data(
           issue_date = issue_date,
-          spatial_resolution = spatial_resolution,
+          spatial_resolution = effective_spatial_resolution,
           temporal_resolution = 'weekly',
           measure = measure
         ) %>%
@@ -175,6 +180,11 @@ get_observed_by_location_target_end_date <- function(
           )
       }
     )
+  
+  if (identical(spatial_resolution, "state_no_territories")) {
+    observed_by_location_target_end_date <- observed_by_location_target_end_date %>%
+      dplyr::filter(location <= "56")
+  }
 
   return(observed_by_location_target_end_date)
 }

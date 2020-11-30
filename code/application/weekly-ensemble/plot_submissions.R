@@ -37,7 +37,7 @@ candidate_model_abbreviations_to_include <- covidEnsembles::get_candidate_models
   include_COVIDhub_ensemble = TRUE,
   include_COVIDhub_baseline = TRUE)
 
-# Put this into covidData instead of here
+# location names and fips codes
 fips_codes <- covidData::fips_codes %>%
   dplyr::select(location, location_name = location_name_with_state)
 

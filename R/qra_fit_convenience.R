@@ -141,6 +141,8 @@ get_candidate_models <- function(
 #' c('1 wk ahead cum death', '2 wk ahead cum death')
 #' @param submissions_root path to the data-processed folder of the
 #' covid19-forecast-hub repository
+#' @param types character vector of types to retrieve, for example
+#' c("quantile", "point") to keep both quantile and point forecasts
 #'
 #' @return data frame with columns model, timezero, location, target, quantile,
 #' value
@@ -150,6 +152,7 @@ load_covid_forecasts <- function(
   model_abbrs,
   last_timezero,
   timezero_window_size,
+  types = "quantile",
   targets,
   submissions_root) {
   submission_dates <- as.character(last_timezero +
@@ -178,7 +181,7 @@ load_covid_forecasts <- function(
           value = col_double()
         )) %>%
         dplyr::filter(
-          tolower(type) == 'quantile',
+          tolower(type) %in% types,
           tolower(target) %in% targets) %>%
         dplyr::transmute(
           model = model_abbr,
@@ -277,19 +280,22 @@ build_covid_ensemble_from_local_files <- function(
   # obtain the quantile forecasts for required quantiles,
   # and the filter to last submission from each model for each week
   forecasts <-
-    # get forecasts from zoltar
+    # get forecasts from local files
     purrr::map_dfr(
       monday_dates,
       load_covid_forecasts,
       model_abbrs = candidate_model_abbreviations_to_include,
       timezero_window_size = timezero_window_size,
+      types = "quantile",
       targets = targets,
       submissions_root = submissions_root
     ) %>%
-    # keep only required quantiles
+    # keep only required quantiles and locations
     dplyr::filter(
       format(quantile, digits=3, nsmall=3) %in%
-        format(required_quantiles, digits=3, nsmall=3)) %>%
+        format(required_quantiles, digits=3, nsmall=3),
+      location %in% unique(observed_by_location_target_end_date$location)
+    ) %>%
     # put quantiles in columns
     tidyr::pivot_wider(names_from = quantile, values_from = value) %>%
     # create columns for horizon, forecast week end date of the forecast, and
@@ -313,6 +319,35 @@ build_covid_ensemble_from_local_files <- function(
     ungroup() %>%
     # add columns with location name and abbreviation
     left_join(fips_codes, by = 'location')
+  
+  # Add in fake rows for models that submitted point forecasts but not quantile
+  # forecasts -- this is done so those models will appear in the model
+  # eligibility metadata
+  point_forecasts <-
+    # get forecasts from local files
+    purrr::map_dfr(
+      tail(monday_dates, 1),
+      load_covid_forecasts,
+      model_abbrs = candidate_model_abbreviations_to_include,
+      timezero_window_size = timezero_window_size,
+      types = "point",
+      targets = targets,
+      submissions_root = submissions_root
+    ) %>%
+    # keep only required locations and models for which no quantile forecasts
+    # were provided
+    dplyr::filter(
+      location %in% unique(observed_by_location_target_end_date$location),
+      !(model %in% forecasts$model)
+    )
+  forecasts <- dplyr::bind_rows(
+    forecasts,
+    point_forecasts %>%
+      dplyr::mutate(
+        quantile = "0.500",
+        value = NA_real_
+      )
+  )
 
   # obtain ensemble fit(s)
   results <- get_ensemble_fit_and_predictions(
@@ -1139,14 +1174,74 @@ get_imputed_ensemble_fits_and_predictions <- function(
 
     train_row_inds <- which(target_end_date <= forecast_week_end_date)
     test_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
+
+    # training set and test set QuantileForecastMatrix
+    qfm_train <- forecast_matrix[train_row_inds, ]
+    qfm_test <- forecast_matrix[test_row_inds, ]
+
+    # drop combinations of model and location that don't
+    # appear in the training set from the test set
+    # essentially, this requires at least one previous submission for a given
+    # location to use a model for test set predictions in that location
+    train_row_index <- attr(qfm_train, 'row_index')
+    test_row_index <- attr(qfm_test, 'row_index')
+    all_locations <- unique(row_index$location)
+    train_locations <- unique(train_row_index$location)
+    locations_to_check <- all_locations[all_locations %in% train_locations]
+    for (model in unique(col_index$model)) {
+      model_cols <- which(col_index$model == model)
+
+      # identify locations for which this model has no submissions within the training window
+      missing_locations <- all_locations[!(all_locations %in% train_locations)]
+      missing_locations <- c(
+        missing_locations,
+        purrr::map(
+          locations_to_check,
+          function(loc) {
+            train_row_inds <- which(train_row_index$location == loc)
+            if (all(is.na(qfm_train[train_row_inds, model_cols]))) {
+              return(loc)
+            } else {
+              return(NULL)
+            }
+          }
+        ) %>% unlist()
+      )
+
+      # if any missing locations were identified, set the corresponding model
+      # forecasts to NA in the test set.
+      if (length(missing_locations) > 0) {
+        test_row_inds <- which(test_row_index$location %in% missing_locations)
+        if (length(test_row_inds) > 0) {
+          qfm_test[test_row_inds, model_cols] <- NA_real_
+        }
+      }
+    }
+
+    # drop models that don't appear in the test set from the training set
+    # we don't give weight to models that didn't make any predictions this week
+    # even though we checked for missingness above, this is necessary here in
+    # case we dropped locations in the immediately preceeding check.
+    models_to_drop <- NULL
+    for (model in unique(col_index$model)) {
+      model_cols <- which(col_index$model == model)
+      if (all(is.na(qfm_test[, model_cols]))) {
+        models_to_drop <- c(models_to_drop, model)
+      }
+    }
+    all_models <- unique(col_index$model)
+    models_to_keep <- all_models[!(all_models %in% models_to_drop)]
+    cols_to_keep <- which(col_index$model %in% models_to_keep)
+    qfm_train <- qfm_train[, cols_to_keep]
+    qfm_test <- qfm_test[, cols_to_keep]
   } else {
     train_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
     test_row_inds <- which(substr(row_index$target, 1, 4) == '1 wk')
-  }
 
-  # training set and test set QuantileForecastMatrix
-  qfm_train <- forecast_matrix[train_row_inds, ]
-  qfm_test <- forecast_matrix[test_row_inds, ]
+    # training set and test set QuantileForecastMatrix
+    qfm_train <- forecast_matrix[train_row_inds, ]
+    qfm_test <- forecast_matrix[test_row_inds, ]
+  }
 
   # impute missing values
   c(imputed_qfm_train, weight_transfer) %<-% impute_missing_per_quantile(
@@ -1349,7 +1444,21 @@ get_rescaled_ensemble_fits_and_predictions <- function(
       forecast_week_end_date == UQ(forecast_week_end_date),
       model %in% this_week_forecasts_train$model
     )
+  
+  # from the test set, drop combinations of model and location that don't
+  # appear in the training set
+  train_model_and_location <- paste0(
+    this_week_forecasts_train$model, "_", this_week_forecasts_train$location
+  ) %>%
+    unique()
+  this_week_forecasts_test <- this_week_forecasts_test %>%
+    dplyr::mutate(
+      model_and_location = paste(model, location, sep = "_")
+    ) %>%
+    dplyr::filter(model_and_location %in% train_model_and_location) %>%
+    dplyr::select(-model_and_location)
 
+  # when training, don't include models that aren't available in the test set
   this_week_forecasts_train <- this_week_forecasts_train %>%
     filter(model %in% this_week_forecasts_test$model)
 
