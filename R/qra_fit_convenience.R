@@ -344,7 +344,7 @@ build_covid_ensemble_from_local_files <- function(
     forecasts,
     point_forecasts %>%
       dplyr::mutate(
-        quantile = "0.500",
+        quantile = "0.5",
         value = NA_real_
       )
   )
