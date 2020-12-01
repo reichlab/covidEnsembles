@@ -286,6 +286,36 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
   }
 }
 
+# Check that all models that had any submission for each target are in the
+# eligibility metadata file
+for (response_var in c("inc_death", "cum_death", "inc_case")) {
+  all_forecasts <- covidHubUtils::load_latest_forecasts(
+    models = candidate_model_abbreviations_to_include,
+    last_forecast_date = forecast_date,
+    forecast_date_window_size = 6,
+    targets = paste0(1:4, ' wk ahead ', gsub("_", " ", response_var)),
+    hub_repo_path = "../covid19-forecast-hub"
+  )
+  all_models <- unique(all_forecasts$model)
+
+  save_dir <- paste0(root, "ensemble-metadata/")
+  eligibility <- read_csv(paste0(save_dir,
+    forecast_date,
+    '-',
+    response_var,
+    '-model-eligibility.csv'))
+
+  locations <- unique(eligibility$location)
+
+  message(paste0("CHECK THAT ALL MODELS ARE IN ELIGIBILITY FILE: ", response_var))
+  identical(
+    sort(paste0(eligibility$location, eligibility$model)),
+    tidyr::expand_grid(
+      location = locations
+    )
+    sort()
+  )
+}
 
 # make plots of ensemble submission
 submissions_root <- paste0(root, 'data-processed/')
@@ -432,33 +462,3 @@ for(model_abbr in candidate_model_abbreviations_to_include) {
     }
   }
 }
-
-
-# Upload to google drive
-gdrive_plot_folders <- googledrive::drive_ls(
-  path = googledrive::as_id("1lvEs1dHYANygB2EE-bHl1MIZyJbgMLr-"))
-if(as.character(forecast_date) %in% gdrive_plot_folders$name) {
-  gdrive_plots_root <- gdrive_plot_folders %>%
-    dplyr::filter(name == as.character(forecast_date))
-  existing_uploaded <- googledrive::drive_ls(path = gdrive_plots_root)$name
-} else {
-  gdrive_plots_root <- googledrive::drive_mkdir(
-    name = as.character(forecast_date),
-    path = googledrive::as_id("1lvEs1dHYANygB2EE-bHl1MIZyJbgMLr-"))
-  existing_uploaded <- NULL
-}
-
-current_wd <- getwd()
-setwd(plots_root)
-
-plot_paths <- paste0('COVIDhub-ensemble-', model_forecast_date, '-',
-  c("deaths", "cases"), '.pdf')
-for(local_file in plot_paths) {
-  if(!(local_file %in% existing_uploaded)) {
-    googledrive::drive_put(
-      media = local_file,
-      path = gdrive_plots_root)
-  }
-}
-
-setwd(current_wd)

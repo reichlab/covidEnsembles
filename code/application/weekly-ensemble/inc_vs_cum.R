@@ -6,7 +6,7 @@ library(covidHubUtils)
 options(error = recover)
 
 # Where to find component model submissions
-hub_repo_path <- '../../../../covid19-forecast-hub/'
+hub_repo_path <- '../../../../covid19-forecast-hub'
 
 # where to save inc vs cum comparison
 inc_vs_cum_path <- 'inc-vs-cum'
@@ -27,7 +27,7 @@ forecast_week_end_date <- lubridate::floor_date(Sys.Date(), unit = "week") - 1
 forecast_date <- forecast_week_end_date + 2
 
 # get the forecasts
-all_forecasts <- covidHubUtils::load_forecasts(
+all_forecasts <- covidHubUtils::load_latest_forecasts(
   models = candidate_model_abbreviations_to_include,
   last_forecast_date = forecast_date,
   forecast_date_window_size = 6,
@@ -59,7 +59,7 @@ last_cum <- covidData::load_jhu_data(
 implied <- us_forecasts %>%
   dplyr::filter(
     quantile == '0.5',
-    inc_cum == "cum") %>%
+    target_variable == "cum death") %>%
   dplyr::group_by(model) %>%
   dplyr::arrange(model, horizon) %>%
   dplyr::mutate(
@@ -75,7 +75,7 @@ implied <- us_forecasts %>%
 actual <- us_forecasts %>%
   dplyr::filter(
     quantile == '0.5',
-    inc_cum == "inc") %>%
+    target_variable == "inc death") %>%
   dplyr::transmute(
     model = model,
     horizon = horizon,
@@ -110,7 +110,7 @@ implied_and_actual %>%
     us_forecasts %>%
       dplyr::filter(
         quantile == "0.5",
-        inc_cum == "cum"
+        target_variable == "cum death"
       ) %>%
       dplyr::select(
         model, horizon, value
