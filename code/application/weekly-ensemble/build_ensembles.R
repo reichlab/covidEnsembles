@@ -157,7 +157,7 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
       spatial_resolution = spatial_resolution,
       targets = paste0(1:horizon, ' wk ahead ', gsub('_', ' ', response_var)),
       forecast_week_end_date = forecast_date - 2,
-      timezero_window_size = 7,
+      timezero_window_size = 6,
       window_size = 0,
       intercept = FALSE,
       combine_method = 'median',
@@ -307,14 +307,18 @@ for (response_var in c("inc_death", "cum_death", "inc_case")) {
 
   locations <- unique(eligibility$location)
 
-  message(paste0("CHECK THAT ALL MODELS ARE IN ELIGIBILITY FILE: ", response_var))
-  identical(
-    sort(paste0(eligibility$location, eligibility$model)),
-    tidyr::expand_grid(
-      location = locations
+  val_result <- identical(
+      sort(paste0(eligibility$location, eligibility$model)),
+      tidyr::expand_grid(
+        model = all_models,
+        location = locations
+      ) %>%
+        dplyr::mutate(lm = paste0(location, model)) %>%
+        dplyr::pull(lm) %>%
+        sort()
     )
-    sort()
-  )
+  message(paste0("CHECK THAT ALL MODELS ARE IN ELIGIBILITY FILE: ", response_var))
+  message(val_result)
 }
 
 # make plots of ensemble submission
