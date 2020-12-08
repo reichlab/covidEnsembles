@@ -5,7 +5,7 @@ library(covidData)
 library(googledrive)
 library(yaml)
 library(here)
-options(error=recover)
+options(error = recover)
 setwd(here())
 
 final_run <- TRUE
@@ -32,119 +32,163 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
 
 # Figure out what day it is; forecast creation date is set to a Monday,
 # even if we are delayed and create it Tuesday morning.
-forecast_week_end_date <- lubridate::floor_date(Sys.Date(), unit = "week") - 1
-forecast_date <- forecast_week_end_date + 2
+forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
 
-for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
-  if(response_var == 'cum_death') {
+for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
+#for (response_var in c("cum_death", "inc_death", "inc_case")) {
+  if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
-    required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
-    spatial_resolution <- c('state', 'national')
+    required_quantiles <-
+      c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
+    spatial_resolution <- c("state", "national")
+    temporal_resolution <- "wk"
     horizon <- 4L
+    targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
+    forecast_week_end_date <- forecast_date - 2
 
     # adjustments based on plots
-    if(forecast_date == '2020-06-08') {
+    if (forecast_date == "2020-06-08") {
       manual_eligibility_adjust <- c(
-        "Auquan-SEIR", "CAN-SEIR_CAN", "CU-select", "UA-EpiCovDA", "SWC-TerminusCM"
+        "Auquan-SEIR", "CAN-SEIR_CAN", "CU-select", "UA-EpiCovDA",
+        "SWC-TerminusCM"
       )
-    } else if(forecast_date == '2020-06-15') {
+    } else if (forecast_date == "2020-06-15") {
       manual_eligibility_adjust <- "Auquan-SEIR"
-    } else if(forecast_date == '2020-06-29') {
+    } else if (forecast_date == "2020-06-29") {
       manual_eligibility_adjust <- data.frame(
         model = c("epiforecasts-ensemble1", "NotreDame-mobility"),
-        location = "34"
+        location = "34",
+        message = "Visual misalignment of predictive quantiles with JHU reference data."
       )
-    } else if(forecast_date == "2020-07-06") {
+    } else if (forecast_date == "2020-07-06") {
       manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "CU-select", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
-                  "MITCovAlliance-SIR"),
-        location = fips_codes$location
+        model = c("COVIDhub-baseline", "CU-select", "RobertWalraven-ESG",
+          "USACE-ERDC_SEIR", "MITCovAlliance-SIR"),
+        location = fips_codes$location,
+        message = "Visual misalignment of predictive quantiles with JHU reference data."
       )
-    } else if(forecast_date == '2020-07-13') {
+    } else if (forecast_date == "2020-07-13") {
       manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "RobertWalraven-ESG", "USACE-ERDC_SEIR", "MITCovAlliance-SIR"),
-        location = fips_codes$location
+        model = c("COVIDhub-baseline", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
+          "MITCovAlliance-SIR"),
+        location = fips_codes$location,
+        message = "Visual misalignment of predictive quantiles with JHU reference data."
       )
-    } else if(forecast_date == '2020-07-20') {
+    } else if (forecast_date == "2020-07-20") {
       manual_eligibility_adjust <- tidyr::expand_grid(
         model = c(
-          "COVIDhub-baseline", "MITCovAlliance-SIR", "RobertWalraven-ESG", "USACE-ERDC_SEIR"),
-        location = fips_codes$location
+          "COVIDhub-baseline", "MITCovAlliance-SIR", "RobertWalraven-ESG",
+          "USACE-ERDC_SEIR"),
+        location = fips_codes$location,
+        message = "Visual misalignment of predictive quantiles with JHU reference data."
       )
     } else {
       manual_eligibility_adjust <- NULL
     }
-  } else if(response_var == 'inc_death') {
+  } else if (response_var == 'inc_death') {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-    required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
-    spatial_resolution <- c('state', 'national')
+    required_quantiles <-
+      c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
+    spatial_resolution <- c("state", "national")
+    temporal_resolution <- "wk"
     horizon <- 4L
+    targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
+    forecast_week_end_date <- forecast_date - 2
 
     # adjustments based on plots
-    if(forecast_date == '2020-06-08') {
+    if (forecast_date == "2020-06-08") {
       manual_eligibility_adjust <- c(
         "CAN-SEIR_CAN", "SWC-TerminusCM", "USACE-ERDC_SEIR", "IHME-CurveFit"
       )
-    } else if(forecast_date == '2020-06-15') {
+    } else if (forecast_date == "2020-06-15") {
       manual_eligibility_adjust <- c(
         "USACE-ERDC_SEIR", "LANL-GrowthRate"
       )
-    } else if(forecast_date == '2020-06-29') {
+    } else if (forecast_date == "2020-06-29") {
       manual_eligibility_adjust <- bind_rows(
         data.frame(
           model = c("epiforecasts-ensemble1", "NotreDame-mobility"),
           location = "34",
+          message = "Visual misalignment of predictive quantiles with JHU reference data.",
           stringsAsFactors = FALSE
         ),
         data.frame(
           model = "CU-select",
           location = fips_codes$location,
+          message = "Visual misalignment of predictive quantiles with JHU reference data.",
           stringsAsFactors = FALSE
         )
       )
-    } else if(forecast_date == "2020-07-06") {
+    } else if (forecast_date == "2020-07-06") {
       manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "CU-select", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
-                  "MITCovAlliance-SIR"),
-        location = fips_codes$location
+        model = c("COVIDhub-baseline", "CU-select", "RobertWalraven-ESG",
+          "USACE-ERDC_SEIR", "MITCovAlliance-SIR"),
+        location = fips_codes$location,
+        message = "Visual misalignment of predictive quantiles with JHU reference data."
       )
-    } else if(forecast_date == '2020-07-13') {
+    } else if (forecast_date == "2020-07-13") {
       manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "RobertWalraven-ESG", "USACE-ERDC_SEIR", "MITCovAlliance-SIR"),
-        location = fips_codes$location
+        model = c("COVIDhub-baseline", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
+          "MITCovAlliance-SIR"),
+        location = fips_codes$location,
+        message = "Visual misalignment of predictive quantiles with JHU reference data."
       )
-    } else if(forecast_date == '2020-07-20') {
+    } else if (forecast_date == "2020-07-20") {
       manual_eligibility_adjust <- tidyr::expand_grid(
         model = c(
           "COVIDhub-baseline", "MITCovAlliance-SIR", "MOBS-GLEAM_COVID",
           "RobertWalraven-ESG", "USACE-ERDC_SEIR"),
-        location = fips_codes$location
+        location = fips_codes$location,
+        message = "Visual misalignment of predictive quantiles with JHU reference data."
       )
     } else {
       manual_eligibility_adjust <- NULL
     }
-  } else if(response_var == 'inc_case') {
+  } else if (response_var == "inc_case") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
     required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
     spatial_resolution <- c('county', 'state', 'national')
+    temporal_resolution <- "wk"
     horizon <- 4L
+    targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
+    forecast_week_end_date <- forecast_date - 2
 
-    if(forecast_date == '2020-07-13') {
+    if (forecast_date == "2020-07-13") {
       manual_eligibility_adjust <- tidyr::expand_grid(
         model = c("CU-select", "IowaStateLW-STEM", "JHU_IDD-CovidSP",
                   "LANL-GrowthRate", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
                   "Covid19Sim-Simulator", "MIT_CovidAnalytics-DELPHI",
                   "CDDEP-SEIR"),
-        location = covidData::fips_codes$location
+        location = covidData::fips_codes$location,
+        message = "Visual misalignment of predictive quantiles with JHU reference data."
       )
-    } else if(forecast_date == '2020-07-20') {
+    } else if (forecast_date == "2020-07-20") {
       manual_eligibility_adjust <- tidyr::expand_grid(
         model = c(
           "CDDEP-SEIR_MCMC", "Covid19Sim-Simulator", "CovidAnalytics-DELPHI",
           "CU-select", "IHME-CurveFit", "IowaStateLW-STEM", "JHU_IDD-CovidSP",
           "MITCovAlliance-SIR", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
           "UVA-Ensemble"),
-        location = covidData::fips_codes$location
+        location = covidData::fips_codes$location,
+        message = "Visual misalignment of predictive quantiles with JHU reference data."
+      )
+    } else {
+      manual_eligibility_adjust <- NULL
+    }
+  } else if (response_var == "inc_hosp") {
+    do_q10_check <- do_nondecreasing_quantile_check <- FALSE
+    required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
+    spatial_resolution <- c("state", "national")
+    temporal_resolution <- "day"
+    horizon <- 28L
+    targets <- paste0(1:(horizon + 6), " day ahead ", gsub("_", " ", response_var))
+    forecast_week_end_date <- forecast_date
+
+    if (forecast_date == "2020-12-07") {
+      manual_eligibility_adjust <- tidyr::expand_grid(
+        model = c("Google_Harvard-CPF"),
+        location = covidData::fips_codes$location,
+        message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
       )
     } else {
       manual_eligibility_adjust <- NULL
@@ -153,10 +197,13 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
 
   c(model_eligibility, wide_model_eligibility, location_groups, component_forecasts) %<-%
     build_covid_ensemble_from_local_files(
-      candidate_model_abbreviations_to_include = candidate_model_abbreviations_to_include,
+      candidate_model_abbreviations_to_include =
+        candidate_model_abbreviations_to_include,
       spatial_resolution = spatial_resolution,
-      targets = paste0(1:horizon, ' wk ahead ', gsub('_', ' ', response_var)),
-      forecast_week_end_date = forecast_date - 2,
+      targets = targets,
+      forecast_date = forecast_date,
+      forecast_week_end_date = forecast_week_end_date,
+      horizon = horizon,
       timezero_window_size = 6,
       window_size = 0,
       intercept = FALSE,
@@ -191,9 +238,11 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
     dplyr::transmute(
       forecast_date = UQ(forecast_date),
       target = target,
-      target_end_date = calc_target_week_end_date(
-        forecast_week_end_date,
-        as.integer(substr(target, 1, 1))),
+      target_end_date = as.character(
+          lubridate::ymd(forecast_week_end_date) +
+            as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
+              ifelse(grepl("day", target), 1, 7)
+        ),
       location = location,
       location_name = location_name,
       type = 'quantile',
@@ -288,12 +337,17 @@ for(response_var in c('cum_death', 'inc_death', 'inc_case')) {
 
 # Check that all models that had any submission for each target are in the
 # eligibility metadata file
-for (response_var in c("inc_death", "cum_death", "inc_case")) {
+for (response_var in c("inc_death", "cum_death", "inc_case", "inc_hosp")) {
+  if (response_var == "inc_hosp") {
+    targets <- paste0(1:28, " day ahead inc hosp")
+  } else {
+    targets <- paste0(1:4, ' wk ahead ', gsub("_", " ", response_var))
+  }
   all_forecasts <- covidHubUtils::load_latest_forecasts(
     models = candidate_model_abbreviations_to_include,
     last_forecast_date = forecast_date,
     forecast_date_window_size = 6,
-    targets = paste0(1:4, ' wk ahead ', gsub("_", " ", response_var)),
+    targets = targets,
     hub_repo_path = "../covid19-forecast-hub"
   )
   all_models <- unique(all_forecasts$model)
@@ -322,147 +376,10 @@ for (response_var in c("inc_death", "cum_death", "inc_case")) {
 }
 
 # make plots of ensemble submission
-submissions_root <- paste0(root, 'data-processed/')
-
-submission_dates <- forecast_date + seq(from = -6, to = 0)
-
-# List of candidate models for inclusion in plot
-candidate_model_abbreviations_to_include <- 'COVIDhub-ensemble'
-
-
-for(model_abbr in candidate_model_abbreviations_to_include) {
-  results_path <- paste0(submissions_root, model_abbr, '/',
-                         submission_dates, '-', model_abbr, '.csv')
-  results_path <- results_path[file.exists(results_path)]
-  results_path <- tail(results_path, 1)
-
-  if(length(results_path) == 0) {
-    # no forecasts for this week
-    next
-  }
-
-  model_forecast_date <- strsplit(results_path, split = '/')[[1]] %>%
-    tail(1) %>%
-    substr(1, 10)
-
-  results <- readr::read_csv(
-    results_path,
-    col_types = cols(
-      forecast_date = col_date(format = ""),
-      target = col_character(),
-      target_end_date = col_date(format = ""),
-      location = col_character(),
-      type = col_character(),
-      quantile = col_double(),
-      value = col_double()
-    ))
-
-  one_week_target_date <- results %>%
-    dplyr::filter(grepl('^1 wk', target)) %>%
-    dplyr::pull(target_end_date) %>%
-    tail(1)
-  if(!(one_week_target_date == (forecast_week_end_date + 7))) {
-    # forecast file targets wrong week
-    next
-  }
-
-  for(measure in c('deaths', 'cases')) {
-    plot_path <- paste0(plots_root, model_abbr, '-', model_forecast_date, '-', measure, '.pdf')
-    if(!file.exists(plot_path)) {
-      if(measure == 'deaths') {
-        data <- covidData::load_jhu_data(
-          issue_date = as.character(forecast_week_end_date + 1),
-          spatial_resolution = c('state', 'national'),
-          temporal_resolution = 'weekly',
-          measure = measure)
-        horizon <- 4L
-        types <- c('inc', 'cum')
-        required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
-      } else if(measure == 'cases') {
-        data <- covidData::load_jhu_data(
-          issue_date = as.character(forecast_week_end_date + 1),
-          spatial_resolution = c('county', 'state', 'national'),
-          temporal_resolution = 'weekly',
-          measure = measure)
-        horizon <- 4L
-        types <- 'inc'
-        required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
-      }
-
-      location_batches <- results %>%
-        dplyr::filter(grepl(substr(measure, 1, nchar(measure) - 1), target)) %>%
-        dplyr::distinct(location) %>%
-        dplyr::arrange(nchar(location), location) %>%
-        dplyr::mutate(
-          location = factor(location, levels = location),
-          batch = rep(seq_len(ceiling(nrow(.)/30)), each = 30)[seq_len(nrow(.))]
-        )
-
-      made_plots <- FALSE
-      pdf(plot_path, width=24, height=14)
-
-      for(batch_val in unique(location_batches$batch)) {
-        print(batch_val)
-        batch_locations <- location_batches$location[location_batches$batch == batch_val]
-        plottable_predictions <- results %>%
-          dplyr::filter(
-            location %in% batch_locations,
-            grepl(substr(measure, 1, nchar(measure) - 1), target)) %>%
-          dplyr::mutate(
-            endpoint_type = ifelse(quantile < 0.5, 'lower', 'upper'),
-            alpha = ifelse(
-              endpoint_type == 'lower',
-              format(2*quantile, digits=3, nsmall=3),
-              format(2*(1-quantile), digits=3, nsmall=3))
-          ) %>%
-          dplyr::filter(alpha != "1.000") %>%
-          dplyr::select(-quantile) %>%
-          tidyr::pivot_wider(names_from='endpoint_type', values_from='value')
-
-        for(type in types) {
-          type_intervals <- plottable_predictions %>%
-            dplyr::filter(location %in% batch_locations) %>%
-            filter(alpha != "1.000", grepl(UQ(type), target))
-
-          if(nrow(type_intervals) > 0) {
-            made_plots <- TRUE
-            p <- ggplot() +
-              geom_line(data=data %>%
-                          dplyr::mutate(date = lubridate::ymd(date)) %>%
-                          dplyr::filter(location %in% batch_locations),
-                        mapping = aes_string(x = "date", y = type, group = "location")) +
-              geom_point(data=data %>%
-                           dplyr::mutate(date = lubridate::ymd(date)) %>%
-                           dplyr::filter(location %in% batch_locations),
-                         mapping = aes_string(x = "date", y = type, group = "location")) +
-              geom_ribbon(
-                data = type_intervals,
-                mapping = aes(x = target_end_date,
-                              ymin=lower, ymax=upper,
-                              fill=alpha)) +
-              geom_line(
-                data = results %>% dplyr::filter(location %in% batch_locations) %>%
-                  filter(quantile == 0.5,
-                         grepl(UQ(type), target),
-                         grepl(substr(measure, 1, nchar(measure) - 1), target)),
-                mapping = aes(x = target_end_date, y = value)) +
-              geom_point(
-                data = results %>% dplyr::filter(location %in% batch_locations) %>%
-                  filter(quantile == 0.5,
-                         grepl(UQ(type), target),
-                         grepl(substr(measure, 1, nchar(measure) - 1), target)),
-                mapping = aes(x = target_end_date, y = value)) +
-              facet_wrap(~location, ncol=6, scales = 'free_y') +
-              ggtitle(paste(type, measure, as.character(forecast_week_end_date))) +
-              theme_bw()
-            print(p)
-          }
-        }
-      }
-      dev.off()
-      if(!made_plots) {
-        unlink(plot_path)
-      }
-    }
-  }
-}
+plot_forecasts_single_model(
+  submissions_root = paste0(root, "data-processed/"),
+  plots_root = plots_root,
+  forecast_date = forecast_date,
+  model_abbrs = "COVIDhub-ensemble",
+  target_variables = c("cases", "deaths", "hospitalizations")
+)

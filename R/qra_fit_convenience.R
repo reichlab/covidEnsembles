@@ -172,9 +172,9 @@ load_covid_forecasts <- function(
 
       readr::read_csv(results_path,
         col_types = cols(
-          forecast_date = col_date(format = ""),
+          forecast_date = col_date(format = "%Y-%m-%d"),
           target = col_character(),
-          target_end_date = col_date(format = ""),
+          target_end_date = col_date(format = "%Y-%m-%d"),
           location = col_character(),
           type = col_character(),
           quantile = col_double(),
@@ -188,6 +188,7 @@ load_covid_forecasts <- function(
           timezero = forecast_date,
           location = location,
           target = tolower(target),
+          target_end_date = target_end_date,
           quantile = quantile,
           value = value
         )
@@ -203,7 +204,10 @@ load_covid_forecasts <- function(
 #' for models that may be included in ensemble forecast
 #' @param targets character vector of targets to retrieve, for example
 #' c('1 wk ahead cum death', '2 wk ahead cum death')
-#' @param forecast_week_end_date date of a s
+#' @param forecast_date the forecast date for the analysis, typically a Monday
+#' @param forecast_week_end_date date relative to week-ahead or day-ahead
+#' targets are defined. For week ahead targets, a Saturday; for day ahead
+#' targets, a Monday.
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
@@ -243,7 +247,9 @@ build_covid_ensemble_from_local_files <- function(
   candidate_model_abbreviations_to_include,
   spatial_resolution,
   targets,
+  forecast_date,
   forecast_week_end_date,
+  horizon,
   timezero_window_size = 1,
   window_size,
   intercept=FALSE,
@@ -266,15 +272,14 @@ build_covid_ensemble_from_local_files <- function(
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
     get_observed_by_location_target_end_date(
-      issue_date = as.character(lubridate::ymd(forecast_week_end_date)+1),
+      issue_date = as.character(lubridate::ymd(forecast_date) - 1),
       targets = targets,
       spatial_resolution = spatial_resolution
     )
 
   # Dates specifying mondays when forecasts were submitted that are relevant to
-  # this analysis.  If forecast_week_end_date is a Saturday, + 2 is a Monday;
-  # we then add in the previous window_size weeks
-  monday_dates <- forecast_week_end_date + 2 +
+  # this analysis: forecast_date and the previous window_size weeks
+  monday_dates <- forecast_date +
     seq(from = -window_size, to = 0, by = 1) * 7
 
   # obtain the quantile forecasts for required quantiles,
@@ -292,19 +297,25 @@ build_covid_ensemble_from_local_files <- function(
     ) %>%
     # keep only required quantiles and locations
     dplyr::filter(
-      format(quantile, digits=3, nsmall=3) %in%
-        format(required_quantiles, digits=3, nsmall=3),
+      format(quantile, digits = 3, nsmall = 3) %in%
+        format(required_quantiles, digits = 3, nsmall = 3),
       location %in% unique(observed_by_location_target_end_date$location)
     ) %>%
     # put quantiles in columns
     tidyr::pivot_wider(names_from = quantile, values_from = value) %>%
     # create columns for horizon, forecast week end date of the forecast, and
-    # target end date of the forecast
+    # target of the forecast
     dplyr::mutate(
-      horizon = as.integer(substr(target, 1, 1)),
-      forecast_week_end_date = calc_forecast_week_end_date(timezero),
-      target_end_date = calc_target_week_end_date(timezero, horizon)
+      # the forecast_week_end_date variable is now mis-named; it represents the
+      # date relative to which the horizons and targets are defined for the
+      # purpose of building the ensemble.
+      forecast_week_end_date = calc_forecast_week_end_date(timezero, target, return_type = "date"),
+      horizon = calc_relative_horizon(forecast_week_end_date, target_end_date, target),
+      target = calc_relative_target(forecast_week_end_date, target_end_date, target)
     ) %>%
+    # keep only forecasts targeting dates after the forecast_week_end_date
+    # and less than the specified horizon relative to the forecast week end date
+    dplyr::filter(horizon >= 1, horizon <= UQ(horizon)) %>%
     # keep only the last submission for each model for a given location, target,
     # and forecast week end date
     dplyr::group_by(
@@ -319,7 +330,7 @@ build_covid_ensemble_from_local_files <- function(
     ungroup() %>%
     # add columns with location name and abbreviation
     left_join(fips_codes, by = 'location')
-  
+
   # Add in fake rows for models that submitted point forecasts but not quantile
   # forecasts -- this is done so those models will appear in the model
   # eligibility metadata
@@ -334,12 +345,26 @@ build_covid_ensemble_from_local_files <- function(
       targets = targets,
       submissions_root = submissions_root
     ) %>%
+    # create columns for horizon, forecast week end date of the forecast, and
+    # target of the forecast
+    dplyr::mutate(
+      # the forecast_week_end_date variable is now mis-named; it represents the
+      # date relative to which the horizons and targets are defined for the
+      # purpose of building the ensemble.
+      forecast_week_end_date = calc_forecast_week_end_date(timezero, target, return_type = "date"),
+      horizon = calc_relative_horizon(forecast_week_end_date, target_end_date, target),
+      target = calc_relative_target(forecast_week_end_date, target_end_date, target)
+    ) %>%
+    # keep only forecasts targeting dates after the forecast_week_end_date
+    # and less than the specified horizon relative to the forecast week end date
+    dplyr::filter(horizon > 0, horizon < UQ(horizon)) %>%
     # keep only required locations and models for which no quantile forecasts
     # were provided
     dplyr::filter(
       location %in% unique(observed_by_location_target_end_date$location),
       !(model %in% forecasts$model)
     )
+  
   forecasts <- dplyr::bind_rows(
     forecasts,
     point_forecasts %>%
@@ -384,7 +409,10 @@ build_covid_ensemble_from_local_files <- function(
 #' for models that may be included in ensemble forecast
 #' @param targets character vector of targets to retrieve, for example
 #' c('1 wk ahead cum death', '2 wk ahead cum death')
-#' @param forecast_week_end_date date of a s
+#' @param forecast_date the forecast date for the analysis, typically a Monday
+#' @param forecast_week_end_date date relative to week-ahead or day-ahead
+#' targets are defined. For week ahead targets, a Saturday; for day ahead
+#' targets, a Monday.
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
@@ -422,6 +450,7 @@ build_covid_ensemble_from_local_files <- function(
 build_covid_ensemble_from_zoltar <- function(
   candidate_model_abbreviations_to_include,
   targets,
+  forecast_date,
   forecast_week_end_date,
   timezero_window_size = 1,
   window_size,
@@ -442,6 +471,8 @@ build_covid_ensemble_from_zoltar <- function(
   return_eligibility = TRUE,
   return_all = TRUE
 ) {
+  stop("build_covid_ensemble_from_zoltar is out of date and should not be used!")
+
   # Set up Zoltar
   zoltar_connection <- new_connection()
   zoltar_authenticate(zoltar_connection, Sys.getenv("Z_USERNAME"), Sys.getenv("Z_PASSWORD"))
@@ -449,15 +480,14 @@ build_covid_ensemble_from_zoltar <- function(
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
     get_observed_by_location_target_end_date(
-      issue_date = as.character(lubridate::ymd(forecast_week_end_date)+1),
+      issue_date = as.character(lubridate::ymd(forecast_date) + 1),
       targets = targets,
       spatial_resolution = c('national', 'state')
     )
 
   # Dates specifying mondays when forecasts were submitted that are relevant to
-  # this analysis.  If forecast_week_end_date is a Saturday, + 2 is a Monday;
-  # we then add in the previous window_size weeks
-  monday_dates <- forecast_week_end_date + 2 +
+  # this analysis: forecast_date and the previous window_size weeks
+  monday_dates <- forecast_date +
     seq(from = -window_size, to = 0, by = 1) * 7
 
   # obtain the quantile forecasts for required quantiles,
@@ -484,9 +514,9 @@ build_covid_ensemble_from_zoltar <- function(
     # create columns for horizon, forecast week end date of the forecast, and
     # target end date of the forecast
     dplyr::mutate(
-      horizon = as.integer(substr(target, 1, 1)),
-      forecast_week_end_date = calc_forecast_week_end_date(timezero),
-      target_end_date = calc_target_week_end_date(timezero, horizon)
+      horizon = as.integer(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)),
+      forecast_week_end_date = calc_forecast_week_end_date(timezero)#,
+#      target_end_date = calc_target_week_end_date(timezero, horizon)
     ) %>%
     # keep only the last submission for each model for a given location, target,
     # and forecast week end date
@@ -605,7 +635,8 @@ get_ensemble_fit_and_predictions <- function(
   if(missingness == "by_location_group") {
     results <- get_by_location_group_ensemble_fits_and_predictions(
       forecasts = forecasts,
-      observed_by_location_target_end_date = observed_by_location_target_end_date,
+      observed_by_location_target_end_date =
+        observed_by_location_target_end_date,
       forecast_week_end_date = forecast_week_end_date,
       window_size = window_size,
       intercept = intercept,
@@ -754,7 +785,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
           model_eligibility$location == manual_eligibility_adjust$location[i]
       )
       model_eligibility$overall_eligibility[el_inds] <-
-        'Visual misalignment of predictive quantiles with JHU reference data.'
+        manual_eligibility_adjust$message[i]
     }
   }
 
@@ -808,7 +839,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
       models <- colnames(location_groups)[model_inds]
       locations <- location_groups$locations[[i]]
 
-      covidEnsembles::new_QuantileForecastMatrix_from_df(
+      new_QuantileForecastMatrix_from_df(
         forecast_df = this_week_forecasts_train %>%
           dplyr::filter(
             model %in% models,
@@ -831,7 +862,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
       models <- colnames(location_groups)[model_inds]
       locations <- location_groups$locations[[i]]
 
-      covidEnsembles::new_QuantileForecastMatrix_from_df(
+      new_QuantileForecastMatrix_from_df(
         forecast_df = this_week_forecasts_test %>%
           dplyr::filter(
             model %in% models,
@@ -850,9 +881,11 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
       attr(qfm_train, 'row_index') %>%
         dplyr::mutate(
           target_end_date = as.character(
-            lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
+            lubridate::ymd(forecast_week_end_date) +
+              as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
+                ifelse(grepl("day", target), 1, 7)
           ),
-          base_target = substr(target, 3, nchar(target))
+          base_target = substr(target, regexpr(" ", target, fixed = TRUE) + 1, nchar(target))
         ) %>%
         dplyr::left_join(
           observed_by_location_target_end_date,
@@ -1167,8 +1200,10 @@ get_imputed_ensemble_fits_and_predictions <- function(
     target_end_date <- row_index %>%
       dplyr::mutate(
         target_end_date = as.character(
-          lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
-        )
+          lubridate::ymd(forecast_week_end_date) +
+            as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
+              ifelse(grepl("day", target), 1, 7)
+        ),
       ) %>%
       pull(target_end_date)
 
@@ -1256,15 +1291,21 @@ get_imputed_ensemble_fits_and_predictions <- function(
     dplyr::mutate(
       target_end_date = as.character(
         lubridate::ymd(forecast_week_end_date) +
-          as.numeric(substr(target, 1, 1)) * 7
+          as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
+            ifelse(grepl("day", target), 1, 7)
       ),
-      base_target = substr(target, 3, nchar(target))
+      base_target = substr(target, regexpr(" ", target, fixed = TRUE) + 1, nchar(target))
     ) %>%
     dplyr::left_join(
       observed_by_location_target_end_date,
       by = c('location', 'target_end_date', 'base_target')
     ) %>%
     dplyr::pull(observed)
+  
+  # Subset to training set observations for which a response has been observed
+  non_missing_inds <- which(!is.na(y_train))
+  y_train <- y_train[non_missing_inds]
+  imputed_qfm_train <- imputed_qfm_train[non_missing_inds, ]
 
   # fit ensembles and obtain predictions per group
   if(combine_method == 'ew') {
@@ -1489,9 +1530,11 @@ get_rescaled_ensemble_fits_and_predictions <- function(
   y_train <- attr(qfm_train, 'row_index') %>%
     dplyr::mutate(
       target_end_date = as.character(
-        lubridate::ymd(forecast_week_end_date) + as.numeric(substr(target, 1, 1))*7
+        lubridate::ymd(forecast_week_end_date) +
+          as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
+            ifelse(grepl("day", target), 1, 7)
       ),
-      base_target = substr(target, 3, nchar(target))
+      base_target = substr(target, regexpr(" ", target, fixed = TRUE) + 1, nchar(target))
     ) %>%
     dplyr::left_join(
       observed_by_location_target_end_date %>%

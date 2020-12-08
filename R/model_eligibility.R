@@ -152,7 +152,9 @@ calc_q10_check <- function(
   col_index <- attr(qfm_q10, 'col_index')
   model_id_name <- attr(qfm, 'model_col')
   observed <- row_index %>%
-    dplyr::left_join(observed_by_location_target_end_date,
+    dplyr::left_join(
+      observed_by_location_target_end_date %>%
+        dplyr::mutate(target_end_date = lubridate::ymd(target_end_date)),
       by = c('location'='location', 'forecast_week_end_date'='target_end_date')) %>%
     dplyr::pull(observed)
 

@@ -8,6 +8,7 @@ load_covid_forecasts(
   model_abbrs,
   last_timezero,
   timezero_window_size,
+  types = "quantile",
   targets,
   submissions_root
 )
@@ -19,6 +20,9 @@ load_covid_forecasts(
 
 \item{timezero_window_size}{The number of days back to go.  A window size of
 0 will retrieve only forecasts submitted on the \code{last_timezero} date.}
+
+\item{types}{character vector of types to retrieve, for example
+c("quantile", "point") to keep both quantile and point forecasts}
 
 \item{targets}{character vector of targets to retrieve, for example
 c('1 wk ahead cum death', '2 wk ahead cum death')}

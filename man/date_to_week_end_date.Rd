@@ -5,16 +5,22 @@
 \title{Calculate week end date (i.e., Saturday) for the MMWR epidemic week that is
 offset a specified number of epidemic week from a specified date}
 \usage{
-date_to_week_end_date(timezero, week_offset = 0)
+date_to_week_end_date(
+  forecast_date,
+  week_offset = 0,
+  return_type = "character"
+)
 }
 \arguments{
-\item{timezero}{character vector of dates in 'yyyy-mm-dd' format}
+\item{forecast_date}{vector of dates}
+
+\item{return_type}{character specifying return type as "date" or "character"}
 
 \item{integer}{vector of week offsets.  must be either length 1 or the same
 length as timezero}
 }
 \value{
-character vector of dates in 'yyyy-mm-dd' format
+vector of dates in 'yyyy-mm-dd' format
 }
 \description{
 Calculate week end date (i.e., Saturday) for the MMWR epidemic week that is

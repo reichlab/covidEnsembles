@@ -187,8 +187,9 @@ test_that("calc_forecast_missingness works: window_size 2, missing", {
 test_that("calc_q10_check works", {
   forecast_df <- expand.grid(
     location = letters[1:4],
-    forecast_week_end_date = c('2020-04-18', '2020-04-25', '2020-05-02'),
-    target = paste0(1:4, ' wk ahead cum death'),
+    forecast_week_end_date =
+      lubridate::ymd(c("2020-04-18", "2020-04-25", "2020-05-02")),
+    target = paste0(1:4, " wk ahead cum death"),
     model = paste0('m', 1:3),
     q_prob = c(0.025, 0.1, 0.5, 0.9, 0.975),
     stringsAsFactors = FALSE

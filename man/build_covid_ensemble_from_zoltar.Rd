@@ -7,6 +7,7 @@
 build_covid_ensemble_from_zoltar(
   candidate_model_abbreviations_to_include,
   targets,
+  forecast_date,
   forecast_week_end_date,
   timezero_window_size = 1,
   window_size,
@@ -35,7 +36,11 @@ for models that may be included in ensemble forecast}
 \item{targets}{character vector of targets to retrieve, for example
 c('1 wk ahead cum death', '2 wk ahead cum death')}
 
-\item{forecast_week_end_date}{date of a s}
+\item{forecast_date}{the forecast date for the analysis, typically a Monday}
+
+\item{forecast_week_end_date}{date relative to week-ahead or day-ahead
+targets are defined. For week ahead targets, a Saturday; for day ahead
+targets, a Monday.}
 
 \item{timezero_window_size}{The number of days back to go.  A window size of
 0 will retrieve only forecasts submitted on the \code{last_timezero} date.}
