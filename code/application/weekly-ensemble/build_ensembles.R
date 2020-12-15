@@ -31,7 +31,7 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
   include_COVIDhub_baseline = TRUE)
 
 # Drop hospitalizations ensemble from JHU APL
-candidate_model_abbreviations_to_include <- 
+candidate_model_abbreviations_to_include <-
   candidate_model_abbreviations_to_include[
     !(candidate_model_abbreviations_to_include == "JHUAPL-SLPHospEns")
   ]
@@ -194,6 +194,12 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     if (forecast_date == "2020-12-07") {
       manual_eligibility_adjust <- tidyr::expand_grid(
         model = c("Google_Harvard-CPF"),
+        location = covidData::fips_codes$location,
+        message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+      )
+    } else if (forecast_date == "2020-12-14") {
+      manual_eligibility_adjust <- tidyr::expand_grid(
+        model = c("Google_Harvard-CPF", "IHME-CurveFit", "UCLA-SuEIR"),
         location = covidData::fips_codes$location,
         message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
       )
