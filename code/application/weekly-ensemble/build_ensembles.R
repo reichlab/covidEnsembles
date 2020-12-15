@@ -30,6 +30,13 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
   include_COVIDhub_ensemble = FALSE,
   include_COVIDhub_baseline = TRUE)
 
+# Drop hospitalizations ensemble from JHU APL
+candidate_model_abbreviations_to_include <- 
+  candidate_model_abbreviations_to_include[
+    !(candidate_model_abbreviations_to_include == "JHUAPL-SLPHospEns")
+  ]
+
+
 # Figure out what day it is; forecast creation date is set to a Monday,
 # even if we are delayed and create it Tuesday morning.
 forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1

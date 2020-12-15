@@ -1,0 +1,683 @@
+---
+title: "Evaluation Options for Trained Ensembles for COVID-19"
+author: "Evan L. Ray"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+This document explores some options for trained ensembles we could start using for COVID-19.
+
+```{r include = FALSE}
+# load packages
+library(covidData)
+library(covidEnsembles)
+library(tidyverse)
+library(gridExtra)
+library(knitr)
+library(DT)
+
+knitr::opts_chunk$set(echo = FALSE, cache.lazy = FALSE)
+options(width = 200)
+
+#setwd("code/application/retrospective-qra-comparison/analyses/retrospective-scores-report/")
+```
+
+```{r include = FALSE, cache = TRUE}
+# load scores
+all_scores <- readRDS("../retrospective-scores/retrospective_scores.rds") %>%
+  dplyr::filter(
+    !grepl("ensemble_switching", model_and_scale),
+    combine_method != "positive"
+  ) %>%
+  dplyr::mutate(
+    base_target = substr(target, regexpr(" ", target) + 1, nchar(target)),
+    spatial_scale = ifelse(
+      location == "US",
+      "National",
+      ifelse(
+        nchar(location) == 2,
+        "State",
+        "County"
+      )
+    ),
+    estimation_grouping = substr(
+      model_and_scale,
+      regexpr("estimation_scale_", model_and_scale, fixed = TRUE) +
+        nchar("estimation_scale_"),
+      nchar(model_and_scale)
+    ),
+    model_brief = paste(
+      combine_method,
+      "window",
+      window_size,
+      quantile_groups,
+      estimation_grouping,
+      sep = "_"
+    )
+  ) %>%
+  dplyr::arrange(
+    combine_method,
+    as.integer(window_size),
+    quantile_groups,
+    estimation_grouping
+  )
+
+all_models <- unique(all_scores$model_brief)
+all_scores$model_brief <- factor(all_scores$model_brief, levels = all_models)
+# window_10_model_inds <- grepl("window_10", all_models)
+# new_levels <- c(
+#   all_models[!window_10_model_inds],
+#   all_models[window_10_model_inds])
+```
+
+
+
+```{r cache = TRUE}
+# subset scores to those that are comparable for all models within each
+# combination of spatial scale and base target
+# only among those models with any forecasts for that combination
+all_scores_common_by_base_target_spatial_scale <-
+  purrr::pmap_dfr(
+    all_scores %>%
+      distinct(base_target, spatial_scale),
+    function(base_target, spatial_scale) {
+#      browser()
+      reduced_scores <- all_scores %>%
+        dplyr::filter(
+          base_target == UQ(base_target),
+          spatial_scale == UQ(spatial_scale)
+        )
+
+      # subset to same forecasts made for each ensemble method
+      scores_to_keep <- reduced_scores %>%
+        dplyr::select(model_and_scale, forecast_week_end_date, location, target, wis_1) %>%
+        tidyr::pivot_wider(
+          names_from = "model_and_scale", values_from = "wis_1"
+        )
+      all_models <- unique(reduced_scores$model_and_scale)
+      scores_to_keep$keep <-
+        apply(scores_to_keep[all_models], 1, function(x) all(!is.na(x)))
+
+      # message(paste0(
+      #   "at ", spatial_scale, " for ", base_target,
+      #   ", missing forecasts for models: ",
+      #   paste0(
+      #     all_models[apply(scores_to_keep[all_models], 2, function(x) any(is.na(x)))]
+      #   )
+      # ))
+
+      scores_to_keep <- scores_to_keep %>%
+        dplyr::select(forecast_week_end_date, location, target, keep)
+
+      dplyr::left_join(
+        reduced_scores,
+        scores_to_keep,
+        by = c("forecast_week_end_date", "location", "target")
+      ) %>%
+        dplyr::filter(keep) %>%
+        dplyr::select(-keep)
+    }
+  )
+```
+
+```{r cache = TRUE}
+# subset forecasts to those that are comparable for all models within each week
+# only among those models with any forecasts for that week
+all_scores_common_by_base_target_spatial_scale_week <-
+  purrr::pmap_dfr(
+    all_scores %>%
+      distinct(base_target, spatial_scale, forecast_week_end_date) %>%
+      filter(spatial_scale != "state_national"),
+    function(base_target, spatial_scale, forecast_week_end_date) {
+      reduced_scores <- all_scores %>%
+        dplyr::filter(
+          base_target == UQ(base_target),
+          spatial_scale == UQ(spatial_scale),
+          forecast_week_end_date == UQ(forecast_week_end_date))
+
+      # subset to same forecasts made for each ensemble method
+      scores_to_keep <- reduced_scores %>%
+        dplyr::select(model_and_scale, forecast_week_end_date, location, target, wis_1) %>%
+        tidyr::pivot_wider(
+          names_from = "model_and_scale", values_from = "wis_1"
+        )
+      all_models <- unique(reduced_scores$model_and_scale)
+      scores_to_keep$keep <-
+        apply(scores_to_keep[all_models], 1, function(x) all(!is.na(x)))
+      scores_to_keep <- scores_to_keep %>%
+        dplyr::select(forecast_week_end_date, location, target, keep)
+
+      dplyr::left_join(
+        reduced_scores,
+        scores_to_keep,
+        by = c("forecast_week_end_date", "location", "target")
+      ) %>%
+        dplyr::filter(keep) %>%
+        dplyr::select(-keep)
+    }
+  )
+```
+
+# Forecast Score Availablity
+
+This section displays heat maps showing score availability by date, base_target, spatial scale, and model.
+In each cell, we expect to see a number of scores equal to the number of locations for the given spatial scale times
+the number of horizons for the given target.
+
+## All forecasts
+
+There are some unexpected differences in forecast availability at the state level across different models showing up here -- I need to
+investigate this more.
+
+```{r fig.width=10, fig.height=2}
+score_counts <- all_scores %>%
+  dplyr::count(
+    forecast_week_end_date,
+    base_target,
+    spatial_scale,
+    model_brief
+  )
+
+score_counts %>%
+  dplyr::filter(spatial_scale == "County") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("County Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "State") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("State Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "National") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("National Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+
+## Forecasts available for all models that are available within each combination of base target and spatial scale
+
+Here we have subset the forecasts to those that are comparable across all models within each combination of base target and spatial scale.
+We expect to see the exact same score counts for all models within each plot facet.
+Average scores computed within a combination of base target and spatial scale will be comparable.
+
+```{r fig.width=10, fig.height=2}
+score_counts <- all_scores_common_by_base_target_spatial_scale %>%
+  dplyr::count(
+    forecast_week_end_date,
+    base_target,
+    spatial_scale,
+    model_brief
+  )
+
+score_counts %>%
+  dplyr::filter(spatial_scale == "County") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("County Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "State") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("State Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "National") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("National Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+## Forecasts available for all models that are available within each combination of base target, spatial scale, and week
+
+Here we have subset the forecasts to those that are comparable across all models within each combination of base target, spatial scale, and week.
+We expect to see the exact same score counts within each column of the plot, for all models for which any forecasts are available.
+Average scores computed within a combination of base target, spatial scale, and forecast week will be comparable.
+
+```{r fig.width=10, fig.height=2}
+score_counts <- all_scores_common_by_base_target_spatial_scale_week %>%
+  dplyr::count(
+    forecast_week_end_date,
+    base_target,
+    spatial_scale,
+    model_brief
+  )
+
+score_counts %>%
+  dplyr::filter(spatial_scale == "County") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("County Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "State") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("State Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "National") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("National Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+# Overall Scores
+
+These scores summarize model skill for each combination of base target and spatial scale.
+
+```{r cache = TRUE, message=FALSE}
+# score summaries
+scores_overall <- all_scores_common_by_base_target_spatial_scale %>%
+  dplyr::mutate(
+    base_target = substr(target, regexpr(" ", target) + 1, nchar(target)),
+    spatial_scale = ifelse(
+      location == "US",
+      "National",
+      ifelse(
+        nchar(location) == 2,
+        "State",
+        "County"
+      )
+    )
+  ) %>%
+  dplyr::group_by(
+    model_and_scale, model_brief, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, estimation_grouping, base_target, spatial_scale) %>%
+  dplyr::summarize(
+    across(starts_with("wis"), mean),
+    across(starts_with("wiw"), mean),
+    across(starts_with("wip"), mean),
+    across(starts_with("coverage"), mean),
+    across(starts_with("one_sided_coverage"), mean)
+  )
+
+scores_by_week <- all_scores_common_by_base_target_spatial_scale_week %>%
+  dplyr::mutate(
+    base_target = substr(target, regexpr(" ", target) + 1, nchar(target)),
+    spatial_scale = ifelse(
+      location == "US",
+      "National",
+      ifelse(
+        nchar(location) == 2,
+        "State",
+        "County"
+      )
+    )
+  ) %>%
+  dplyr::group_by(
+    model_and_scale, model_brief, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, forecast_week_end_date, estimation_grouping, base_target, spatial_scale) %>%
+  dplyr::summarize(
+    across(starts_with("wis"), mean),
+    across(starts_with("wiw"), mean),
+    across(starts_with("wip"), mean),
+    across(starts_with("coverage"), mean),
+    across(starts_with("one_sided_coverage"), mean)
+  )
+
+scores_by_location_week <- all_scores_common_by_base_target_spatial_scale_week %>%
+  dplyr::filter(nchar(location) == 2) %>%
+  dplyr::mutate(
+    base_target = substr(target, regexpr(" ", target) + 1, nchar(target)),
+    spatial_scale = ifelse(
+      location == "US",
+      "National",
+      ifelse(
+        nchar(location) == 2,
+        "State",
+        "County"
+      )
+    )
+  ) %>%
+  dplyr::group_by(
+    model_and_scale, model_brief, intercept, combine_method, missingness, quantile_groups,
+    window_size, check_missingness_by_target, do_standard_checks,
+    do_baseline_check, forecast_week_end_date, estimation_grouping, base_target, location) %>%
+  dplyr::summarize(
+    across(starts_with("wis"), mean),
+    across(starts_with("wiw"), mean),
+    across(starts_with("wip"), mean),
+    across(starts_with("coverage"), mean),
+    across(starts_with("one_sided_coverage"), mean)
+  )
+```
+
+For brevity, we'll look here at performance for a subset of the variations on "trained" approaches that we have considered.
+Below are the settings we're examining, and reasons we chose them from among the alternatives.
+
+ * We use the constraint that the model weights are non-negative and sum to 1, and we do not include an intercept.  A more flexible variation only enforces that the weights are non-negative and includes an intercept; overall, the performance of this method can slightly better for cases than the convex versions, but its performance seems less stable, with a lot of variation in performance for different window sizes -- and it is consistently much worse for deaths.  I have stuck with the more constrained method with more stable performance.
+ * Missing forecasts are mean-imputed and then weights are redistributed according to missingness levels; this approach has limitations and needs refinement, but has been better than performing estimation separately for each group of locations with complete data in every evaluation I've looked at.
+ * We do not employ any checks of model forecasts other than the validations performed on submission.  I have not looked at approaches using these checks recently, but in analyses from a few months ago they were not very helpful for trained ensembles.
+
+Within these settings, we explore variations in the training set window size (the number of past weeks of forecasts used to estimate ensemble weights).
+
+We also consider three quantile grouping strategies: "per model" weights, "per quantile" approaches where there is a separate weight parameter for each combination of model and quantile level, and "3 groups" of quantile levels: the three lowest, the three highest, and the middle ones.
+
+We compare to two "untrained" ensembles: an equally-weighted mean (`ew`) at each quantile level and a `median` at each quantile level.
+
+We perform estimation either separately for each spatial scale (National, State, and County), or jointly across the State and National levels.
+
+The overall average scores in the tables below are computed across a comparable set of forecasts for all models, determined by the model evaluated with the fewest available forecasts (corresponding to a training set window of 10).  For incident deaths, the relative rankings of median and mean ("ew") can change as a few more weeks are added or removed from the evaluation set.  Per-week scores plotted further down are computed across a comparable set of forecasts for all models that are available within each week.
+
+## Incident Cases
+
+National level mean scores across comparable forecasts for all methods.
+
+```{r}
+overall_rankings_inc_case_national <- scores_overall %>%
+  filter(
+    spatial_scale == "National",
+    base_target == "wk ahead inc case") %>%
+  ungroup() %>%
+  select(model_brief, combine_method, estimation_grouping, quantile_groups, window_size, wis, mae = wis_1, coverage_0.50, coverage_0.80, coverage_0.95) %>%
+  arrange(wis)
+
+DT::datatable(overall_rankings_inc_case_national %>%
+  select(-model_brief))
+```
+
+State level mean scores across comparable forecasts for all methods:
+
+```{r}
+overall_rankings_inc_case_state <- scores_overall %>%
+  filter(
+    spatial_scale == "State",
+    base_target == "wk ahead inc case") %>%
+  ungroup() %>%
+  select(model_brief, combine_method, estimation_grouping, quantile_groups, window_size, wis, mae = wis_1, coverage_0.50, coverage_0.80, coverage_0.95) %>%
+  arrange(wis)
+
+DT::datatable(overall_rankings_inc_case_state %>%
+  select(-model_brief))
+```
+
+County level mean scores across comparable forecasts for all methods:
+
+```{r}
+overall_rankings_inc_case_county <- scores_overall %>%
+  filter(
+    spatial_scale == "County",
+    base_target == "wk ahead inc case") %>%
+  ungroup() %>%
+  select(model_brief, combine_method, estimation_grouping, quantile_groups, window_size, wis, mae = wis_1, coverage_0.50, coverage_0.80, coverage_0.95) %>%
+  arrange(wis) %>%
+  as.data.frame()
+
+DT::datatable(overall_rankings_inc_case_county %>%
+  select(-model_brief))
+```
+
+## Incident Deaths
+
+National level mean scores across comparable forecasts for all methods:
+
+```{r}
+overall_rankings_inc_death_national <- scores_overall %>%
+  filter(
+    spatial_scale == "National",
+    base_target == "wk ahead inc death") %>%
+  ungroup() %>%
+  select(model_brief, combine_method, estimation_grouping, quantile_groups, window_size, wis, mae = wis_1, coverage_0.50, coverage_0.80, coverage_0.95) %>%
+  arrange(wis) %>%
+  as.data.frame()
+
+DT::datatable(overall_rankings_inc_death_national %>%
+  select(-model_brief))
+```
+
+State level mean scores across comparable forecasts for all methods:
+
+```{r}
+overall_rankings_inc_death_state <- scores_overall %>%
+  filter(
+    spatial_scale == "State",
+    base_target == "wk ahead inc death") %>%
+  ungroup() %>%
+  select(model_brief, combine_method, estimation_grouping, quantile_groups, window_size, wis, mae = wis_1, coverage_0.50, coverage_0.80, coverage_0.95) %>%
+  arrange(wis) %>%
+  as.data.frame()
+
+DT::datatable(overall_rankings_inc_death_state %>%
+  select(-model_brief))
+```
+
+## Cumulative Deaths
+
+National level mean scores across comparable forecasts for all methods:
+
+```{r}
+overall_rankings_cum_death_national <- scores_overall %>%
+  filter(
+    spatial_scale == "National",
+    base_target == "wk ahead cum death") %>%
+  ungroup() %>%
+  select(model_brief, combine_method, estimation_grouping, quantile_groups, window_size, wis, mae = wis_1, coverage_0.50, coverage_0.80, coverage_0.95) %>%
+  arrange(wis) %>%
+  as.data.frame()
+
+DT::datatable(overall_rankings_cum_death_national %>%
+  select(-model_brief))
+```
+
+State level mean scores across comparable forecasts for all methods:
+
+```{r}
+overall_rankings_cum_death_state <- scores_overall %>%
+  filter(
+    spatial_scale == "State",
+    base_target == "wk ahead cum death") %>%
+  ungroup() %>%
+  select(model_brief, combine_method, estimation_grouping, quantile_groups, window_size, wis, mae = wis_1, coverage_0.50, coverage_0.80, coverage_0.95) %>%
+  arrange(wis) %>%
+  as.data.frame()
+
+DT::datatable(overall_rankings_cum_death_state %>%
+  select(-model_brief))
+```
+
+
+The high WIS for the equal weighted mean here is not a bug -- one forecast was crazy high in the upper tail; this shows up in WIS but not in the other metrics.
+
+## Plots showing scores by week
+
+In these plots we show results for the mean, median, and the top-performing convex approach within each combination of base target and spatial scale.
+
+For readability, we also drop the score for the unweighted mean ensemble forecast of state level cumulative deaths in the week where that method had very high WIS.
+
+```{r}
+reduced_scores_by_week <- scores_by_week %>%
+  dplyr::ungroup() %>%
+  dplyr::filter(
+    combine_method %in% c("ew", "median") |
+    (spatial_scale == "National" & base_target == "wk ahead inc case" &
+      model_brief == overall_rankings_inc_case_national$model_brief[1]) |
+    (spatial_scale == "State" & base_target == "wk ahead inc case" &
+      model_brief == overall_rankings_inc_case_state$model_brief[1]) |
+    (spatial_scale == "County" & base_target == "wk ahead inc case" &
+      model_brief == overall_rankings_inc_case_county$model_brief[1]) |
+    (spatial_scale == "National" & base_target == "wk ahead inc death" &
+      model_brief == overall_rankings_inc_death_national$model_brief[1]) |
+    (spatial_scale == "State" & base_target == "wk ahead inc death" &
+      model_brief == overall_rankings_inc_death_state$model_brief[1]) |
+    (spatial_scale == "National" & base_target == "wk ahead cum death" &
+      model_brief == overall_rankings_cum_death_national$model_brief[1]) |
+    (spatial_scale == "State" & base_target == "wk ahead cum death" &
+      model_brief == overall_rankings_cum_death_state$model_brief[1])
+  ) %>%
+  dplyr::mutate(
+    wis = ifelse(wis < 10000000, wis, NA_real_),
+    spatial_scale = factor(
+      spatial_scale,
+      levels = c("National", "State", "County")),
+    base_target = factor(
+      base_target,
+      levels = c("wk ahead inc case", "wk ahead inc death",
+        "wk ahead cum death"))
+  )
+```
+
+### WIS by week
+
+```{r fig.width=10, fig.height=10}
+# all scores by week
+ggplot(data = reduced_scores_by_week) +
+  geom_line(mapping = aes(
+    x = factor(forecast_week_end_date),
+    y = wis,
+    # color = model,
+    # linetype = model,
+    # group = model)) +
+    color = combine_method,
+    linetype = combine_method,
+    group = combine_method)) +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+### MAE by week
+
+```{r fig.width=10, fig.height=10}
+# all scores by week
+ggplot(data = reduced_scores_by_week %>% mutate(mae = wis_1)) +
+  geom_line(mapping = aes(
+    x = forecast_week_end_date,
+    y = mae,
+    color = combine_method,
+    linetype = combine_method,
+    group = combine_method)) +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+
+### Two-sided interval coverage by week: 50%
+
+```{r fig.width=10, fig.height=10}
+# all scores by week
+ggplot(data = reduced_scores_by_week) +
+  geom_line(mapping = aes(
+    x = forecast_week_end_date,
+    y = coverage_0.50,
+    color = combine_method,
+    linetype = combine_method,
+    group = combine_method)) +
+  geom_hline(yintercept = 0.5) +
+  ylim(c(0, 1)) +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+
+### Two-sided interval coverage by week: 80%
+
+```{r fig.width=10, fig.height=10}
+# all scores by week
+ggplot(data = reduced_scores_by_week) +
+  geom_line(mapping = aes(
+    x = forecast_week_end_date,
+    y = coverage_0.80,
+    color = combine_method,
+    linetype = combine_method,
+    group = combine_method)) +
+  geom_hline(yintercept = 0.8) +
+  ylim(c(0, 1)) +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+
+
+### Two-sided interval coverage by week: 95%
+
+```{r fig.width=10, fig.height=10}
+# all scores by week
+ggplot(data = reduced_scores_by_week) +
+  geom_line(mapping = aes(
+    x = forecast_week_end_date,
+    y = coverage_0.95,
+    color = combine_method,
+    linetype = combine_method,
+    group = combine_method)) +
+  geom_hline(yintercept = 0.95) +
+  ylim(c(0, 1)) +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+## Summary
+
+Other short term investigations/refinements to explore:
+
+ * This evaluation is not "honest" in the sense that it shows performance of the best estimated ensemble based on performance across all weeks. We should consider evaluating performance of a strategy that picks the best ensemble in the table at each week, which is closer to an honest real-time ensemble selection policy.
+ * A larger window size for the county level is not computationally feasible if parameters are estimated for all counties together; an alternative could be to estimate for 4 or 5 groups of counties, perhaps grouped by population size.
+ * I'd like to consider tracking missing forecast imputation and weight redistribution at the level of each location, rather than across all locations.  Currently, if a very good model submits forecasts for only a small number of locations, it would be assigned low weight because of the weight redistribution process.  This can be fixed by redistributing weight away from a model according to its missingness level within each location rather than its missingness level across all locations.
+ * State-level results

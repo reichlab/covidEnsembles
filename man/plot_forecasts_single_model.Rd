@@ -9,7 +9,7 @@ plot_forecasts_single_model(
   plots_root,
   forecast_date,
   model_abbrs,
-  measures
+  target_variables
 )
 }
 \arguments{

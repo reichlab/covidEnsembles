@@ -64,7 +64,7 @@ do_zoltar_query <- function(
 
 
 #' Get a list of candidate models with specified model designations
-#' 
+#'
 #' @param submissions_root path to the data-processed folder of the
 #' covid19-forecast-hub repository
 #' @param include_designations character vector of model designations to
@@ -77,9 +77,9 @@ do_zoltar_query <- function(
 #' COVIDhub-baseline model is included depends on whether it falls within one
 #' of the specified \code{include_designations}; if FALSE, it will never be
 #' included
-#' 
+#'
 #' @return character vector of model abbreviations
-#' 
+#'
 #' @export
 get_candidate_models <- function(
   submissions_root,
@@ -115,7 +115,7 @@ get_candidate_models <- function(
   candidate_models <- model_info %>%
     dplyr::filter(team_model_designation %in% include_designations) %>%
     dplyr::pull(model_abbr)
-  
+
   # drop COVIDhub models if requested
   if(!include_COVIDhub_ensemble) {
     candidate_models <- candidate_models[
@@ -137,12 +137,15 @@ get_candidate_models <- function(
 #' @param last_timezero The last timezero date of forecasts to retrieve
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
+#' @param types character vector of types to retrieve, for example
+#' c("quantile", "point") to keep both quantile and point forecasts
 #' @param targets character vector of targets to retrieve, for example
 #' c('1 wk ahead cum death', '2 wk ahead cum death')
 #' @param submissions_root path to the data-processed folder of the
 #' covid19-forecast-hub repository
-#' @param types character vector of types to retrieve, for example
-#' c("quantile", "point") to keep both quantile and point forecasts
+#' @param keep_last logical; if TRUE, keep only the last identified file
+#' within the submission time frame determined by last_timezero and
+#' timezero_window_size. if FALSE, keep all files.
 #'
 #' @return data frame with columns model, timezero, location, target, quantile,
 #' value
@@ -154,48 +157,201 @@ load_covid_forecasts <- function(
   timezero_window_size,
   types = "quantile",
   targets,
-  submissions_root) {
+  submissions_root,
+  keep_last = TRUE) {
   submission_dates <- as.character(last_timezero +
     seq(from = -timezero_window_size, to = 0, by = 1))
 
   results <- purrr::map_dfr(
     model_abbrs,
     function(model_abbr) {
-      results_path <- paste0(submissions_root, model_abbr, '/',
-                             submission_dates, '-', model_abbr, '.csv')
-      results_path <- results_path[file.exists(results_path)]
-      results_path <- tail(results_path, 1)
+      # identify submission files within specified dates
+      results_paths <- Sys.glob(paste0(submissions_root, model_abbr,
+          "/*", submission_dates, "-", model_abbr, ".csv"))
 
-      if(length(results_path) == 0) {
+      if (keep_last) {
+        results_paths <- tail(results_paths, 1)
+      }
+
+      # if no results, return
+      if (length(results_paths) == 0) {
         return(NULL)
       }
 
-      readr::read_csv(results_path,
-        col_types = cols(
-          forecast_date = col_date(format = "%Y-%m-%d"),
-          target = col_character(),
-          target_end_date = col_date(format = "%Y-%m-%d"),
-          location = col_character(),
-          type = col_character(),
-          quantile = col_double(),
-          value = col_double()
-        )) %>%
-        dplyr::filter(
-          tolower(type) %in% types,
-          tolower(target) %in% targets) %>%
-        dplyr::transmute(
-          model = model_abbr,
-          timezero = forecast_date,
-          location = location,
-          target = tolower(target),
-          target_end_date = target_end_date,
-          quantile = quantile,
-          value = value
-        )
+      purrr::map_dfr(
+        results_paths,
+        function(results_path) {
+          readr::read_csv(results_path,
+            col_types = cols(
+              forecast_date = col_date(format = "%Y-%m-%d"),
+              target = col_character(),
+              target_end_date = col_date(format = "%Y-%m-%d"),
+              location = col_character(),
+              type = col_character(),
+              quantile = col_double(),
+              value = col_double()
+            )) %>%
+            dplyr::filter(
+              tolower(type) %in% types,
+              tolower(target) %in% targets) %>%
+            dplyr::transmute(
+              model = model_abbr,
+              timezero = forecast_date,
+              location = location,
+              target = tolower(target),
+              target_end_date = target_end_date,
+              quantile = quantile,
+              value = value
+            )
+        }
+      )
     }
   )
 
   return(results)
+}
+
+#' Load forecasts from multiple models over multiple weeks, keep only the last
+#' forecast from each model each week, and adjust the targets for daily
+#' forecasts to be relative to the Monday on or after submission.
+#'
+#' @param monday_dates Date vector of Mondays that are submission deadlines
+#' @param model_abbrs Character vector of model abbreviations
+#' @param timezero_window_size The number of days back to go.  A window size of
+#' 0 will retrieve only forecasts submitted on the `last_timezero` date.
+#' @param locations character vector of locations; FIPS codes
+#' @param targets character vector of targets to retrieve, for example
+#' c('1 wk ahead cum death', '2 wk ahead cum death')
+#' @param horizon maximum horizon relative to the monday dates that should be
+#' retained
+#' @param required_quantiles numeric vector of quantiles component models are
+#' required to have submitted
+#' @param submissions_root path to the data-processed folder of the
+#' covid19-forecast-hub repository
+#' @param include_null_point_forecasts boolean; if TRUE, quantile forecasts are
+#' augmented with NA point forecasts from all models that submitted point
+#' forecasts
+#' @param keep_last logical; if TRUE, keep only the last identified file
+#' within each week. if FALSE, keep all files.
+#'
+#' @return data frame with columns model, timezero, location, target, quantile,
+#' value
+#'
+#' @export
+load_covid_forecasts_relative_horizon <- function(
+  monday_dates,
+  model_abbrs,
+  timezero_window_size,
+  locations,
+  targets,
+  horizon,
+  required_quantiles,
+  submissions_root,
+  include_null_point_forecasts = FALSE,
+  keep_last = TRUE) {
+  # obtain the quantile forecasts for required quantiles,
+  # and the filter to last submission from each model for each week
+  forecasts <-
+    # get forecasts from local files
+    purrr::map_dfr(
+      monday_dates,
+      load_covid_forecasts,
+      model_abbrs = model_abbrs,
+      timezero_window_size = timezero_window_size,
+      types = "quantile",
+      targets = targets,
+      submissions_root = submissions_root,
+      keep_last = keep_last
+    ) %>%
+    # keep only required quantiles and locations
+    dplyr::filter(
+      format(quantile, digits = 3, nsmall = 3) %in%
+        format(required_quantiles, digits = 3, nsmall = 3),
+      location %in% locations
+    ) %>%
+    # put quantiles in columns
+    tidyr::pivot_wider(names_from = quantile, values_from = value) %>%
+    # create columns for horizon, forecast week end date of the forecast, and
+    # target of the forecast
+    dplyr::mutate(
+      # the forecast_week_end_date variable is now mis-named; it represents the
+      # date relative to which the horizons and targets are defined for the
+      # purpose of building the ensemble.
+      forecast_week_end_date =
+        calc_forecast_week_end_date(timezero, target, return_type = "date"),
+      horizon =
+        calc_relative_horizon(forecast_week_end_date, target_end_date, target),
+      target =
+        calc_relative_target(forecast_week_end_date, target_end_date, target)
+    ) %>%
+    # keep only forecasts targeting dates after the forecast_week_end_date
+    # and less than the specified horizon relative to the forecast week end date
+    dplyr::filter(horizon >= 1, horizon <= UQ(horizon)) %>%
+    # keep only the last submission for each model for a given location, target,
+    # and forecast week end date
+    dplyr::group_by(
+      location, target, forecast_week_end_date, model
+    ) %>%
+    dplyr::top_n(1, timezero) %>%
+    # pivot longer; quantiles are in rows again
+    tidyr::pivot_longer(
+      cols = all_of(as.character(required_quantiles)),
+      names_to = 'quantile',
+      values_to = 'value') %>%
+    ungroup() %>%
+    # add columns with location name and abbreviation
+    left_join(fips_codes, by = 'location')
+
+  # Add in fake rows for models that submitted point forecasts but not quantile
+  # forecasts -- this is done so those models will appear in the model
+  # eligibility metadata
+  if (include_null_point_forecasts) {
+    point_forecasts <-
+      # get forecasts from local files
+      purrr::map_dfr(
+        tail(monday_dates, 1),
+        load_covid_forecasts,
+        model_abbrs = candidate_model_abbreviations_to_include,
+        timezero_window_size = timezero_window_size,
+        types = "point",
+        targets = targets,
+        submissions_root = submissions_root,
+        keep_last = keep_last
+      ) %>%
+      # create columns for horizon, forecast week end date of the forecast, and
+      # target of the forecast
+      dplyr::mutate(
+        # the forecast_week_end_date variable is now mis-named; it represents the
+        # date relative to which the horizons and targets are defined for the
+        # purpose of building the ensemble.
+        forecast_week_end_date =
+          calc_forecast_week_end_date(timezero, target, return_type = "date"),
+        horizon =
+          calc_relative_horizon(forecast_week_end_date, target_end_date, target),
+        target =
+          calc_relative_target(forecast_week_end_date, target_end_date, target)
+      ) %>%
+      # keep only forecasts targeting dates after the forecast_week_end_date
+      # and less than the specified horizon relative to the forecast week end date
+      dplyr::filter(horizon > 0, horizon < UQ(horizon)) %>%
+      # keep only required locations and models for which no quantile forecasts
+      # were provided
+      dplyr::filter(
+        location %in% locations,
+        !(model %in% forecasts$model)
+      )
+
+    forecasts <- dplyr::bind_rows(
+      forecasts,
+      point_forecasts %>%
+        dplyr::mutate(
+          quantile = "0.5",
+          value = NA_real_
+        )
+    )
+  }
+
+  return(forecasts)
 }
 
 #' Read in covid forecasts from local files and fit one ensemble
@@ -282,96 +438,16 @@ build_covid_ensemble_from_local_files <- function(
   monday_dates <- forecast_date +
     seq(from = -window_size, to = 0, by = 1) * 7
 
-  # obtain the quantile forecasts for required quantiles,
-  # and the filter to last submission from each model for each week
-  forecasts <-
-    # get forecasts from local files
-    purrr::map_dfr(
-      monday_dates,
-      load_covid_forecasts,
-      model_abbrs = candidate_model_abbreviations_to_include,
-      timezero_window_size = timezero_window_size,
-      types = "quantile",
-      targets = targets,
-      submissions_root = submissions_root
-    ) %>%
-    # keep only required quantiles and locations
-    dplyr::filter(
-      format(quantile, digits = 3, nsmall = 3) %in%
-        format(required_quantiles, digits = 3, nsmall = 3),
-      location %in% unique(observed_by_location_target_end_date$location)
-    ) %>%
-    # put quantiles in columns
-    tidyr::pivot_wider(names_from = quantile, values_from = value) %>%
-    # create columns for horizon, forecast week end date of the forecast, and
-    # target of the forecast
-    dplyr::mutate(
-      # the forecast_week_end_date variable is now mis-named; it represents the
-      # date relative to which the horizons and targets are defined for the
-      # purpose of building the ensemble.
-      forecast_week_end_date = calc_forecast_week_end_date(timezero, target, return_type = "date"),
-      horizon = calc_relative_horizon(forecast_week_end_date, target_end_date, target),
-      target = calc_relative_target(forecast_week_end_date, target_end_date, target)
-    ) %>%
-    # keep only forecasts targeting dates after the forecast_week_end_date
-    # and less than the specified horizon relative to the forecast week end date
-    dplyr::filter(horizon >= 1, horizon <= UQ(horizon)) %>%
-    # keep only the last submission for each model for a given location, target,
-    # and forecast week end date
-    dplyr::group_by(
-      location, target, forecast_week_end_date, model
-    ) %>%
-    dplyr::top_n(1, timezero) %>%
-    # pivot longer; quantiles are in rows again
-    tidyr::pivot_longer(
-      cols = all_of(as.character(required_quantiles)),
-      names_to = 'quantile',
-      values_to = 'value') %>%
-    ungroup() %>%
-    # add columns with location name and abbreviation
-    left_join(fips_codes, by = 'location')
-
-  # Add in fake rows for models that submitted point forecasts but not quantile
-  # forecasts -- this is done so those models will appear in the model
-  # eligibility metadata
-  point_forecasts <-
-    # get forecasts from local files
-    purrr::map_dfr(
-      tail(monday_dates, 1),
-      load_covid_forecasts,
-      model_abbrs = candidate_model_abbreviations_to_include,
-      timezero_window_size = timezero_window_size,
-      types = "point",
-      targets = targets,
-      submissions_root = submissions_root
-    ) %>%
-    # create columns for horizon, forecast week end date of the forecast, and
-    # target of the forecast
-    dplyr::mutate(
-      # the forecast_week_end_date variable is now mis-named; it represents the
-      # date relative to which the horizons and targets are defined for the
-      # purpose of building the ensemble.
-      forecast_week_end_date = calc_forecast_week_end_date(timezero, target, return_type = "date"),
-      horizon = calc_relative_horizon(forecast_week_end_date, target_end_date, target),
-      target = calc_relative_target(forecast_week_end_date, target_end_date, target)
-    ) %>%
-    # keep only forecasts targeting dates after the forecast_week_end_date
-    # and less than the specified horizon relative to the forecast week end date
-    dplyr::filter(horizon > 0, horizon < UQ(horizon)) %>%
-    # keep only required locations and models for which no quantile forecasts
-    # were provided
-    dplyr::filter(
-      location %in% unique(observed_by_location_target_end_date$location),
-      !(model %in% forecasts$model)
-    )
-  
-  forecasts <- dplyr::bind_rows(
-    forecasts,
-    point_forecasts %>%
-      dplyr::mutate(
-        quantile = "0.5",
-        value = NA_real_
-      )
+  forecasts <- load_covid_forecasts_relative_horizon(
+    monday_dates = monday_dates,
+    model_abbrs = candidate_model_abbreviations_to_include,
+    timezero_window_size = timezero_window_size,
+    locations = unique(observed_by_location_target_end_date$location),
+    targets = targets,
+    horizon = horizon,
+    required_quantiles = required_quantiles,
+    submissions_root =submissions_root,
+    include_null_point_forecasts = TRUE
   )
 
   # obtain ensemble fit(s)

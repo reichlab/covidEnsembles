@@ -10,7 +10,8 @@ load_covid_forecasts(
   timezero_window_size,
   types = "quantile",
   targets,
-  submissions_root
+  submissions_root,
+  keep_last = TRUE
 )
 }
 \arguments{
@@ -29,6 +30,10 @@ c('1 wk ahead cum death', '2 wk ahead cum death')}
 
 \item{submissions_root}{path to the data-processed folder of the
 covid19-forecast-hub repository}
+
+\item{keep_last}{logical; if TRUE, keep only the last identified file
+within the submission time frame determined by last_timezero and
+timezero_window_size. if FALSE, keep all files.}
 }
 \value{
 data frame with columns model, timezero, location, target, quantile,
