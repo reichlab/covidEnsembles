@@ -15,8 +15,14 @@ parse_model_case <- function(model_abbr) {
           target_variable = case_part
         ))
       } else if(substr(case_part, 1, min(nc, 13)) == "forecast_week") {
+        file_date <- lubridate::ymd(substr(case_part, 15, nc))
+        if (lubridate::wday(file_date, label = TRUE) == "Sat") {
+          forecast_date <- file_date + 2
+        } else if(lubridate::wday(file_date, label = TRUE) == "Mon") {
+          forecast_date <- file_date
+        }
         return(data.frame(
-          forecast_date = lubridate::ymd(substr(case_part, 15, nc)) + 2
+          forecast_date = forecast_date
         ))
       } else if(substr(case_part, 1, min(nc, 9)) == "intercept") {
         return(data.frame(
@@ -68,6 +74,13 @@ weight_estimates <- purrr::map_dfr(
       spatial_resolution)
     fit_files <- Sys.glob(paste0(fits_path, "/", included_base_targets, "*.rds"))
 
+    junk <- fit_files[
+      grepl("window_size_8", fit_files) &
+      grepl("per_model", fit_files) &
+      grepl("inc_case", fit_files)# &
+#      (grepl("2020-08-0", fit_files) | grepl("2020-07", fit_files))
+    ]
+
     sr_res <- purrr::map_dfr(
       fit_files,
       function(ff) {
@@ -85,7 +98,7 @@ weight_estimates <- purrr::map_dfr(
         if (
           model_case$combine_method != "convex" |
           model_case$quantile_groups != "per_model" |
-          !(model_case$window_size %in% c(4, 7, 9))
+          !(model_case$window_size %in% c(4, 7, 8, 9))
           ) {
           return(NULL)
         }
@@ -131,5 +144,5 @@ weight_estimates <- purrr::map_dfr(
 )
 
 saveRDS(
-  weight_estimates,
-  "code/application/retrospective-qra-comparison/retrospective-weight-estimates/retrospective_weight_estimates.rds")
+  distinct(weight_estimates),
+  "code/application/retrospective-qra-comparison/analyses/retrospective-weight-estimates/retrospective_weight_estimates.rds")
