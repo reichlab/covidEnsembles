@@ -603,7 +603,9 @@ plot_top_weighted_models <- function(weight_dat, fcast_date, win_size, target_va
     forecast_date_window_size = 7,
     locations = loc, 
     targets = paste(1:4, "wk ahead", target_var), 
-    source = "zoltar")
+    source = "local_hub_repo",
+    hub_repo_path = "../../../../../../covid19-forecast-hub"
+  )
   
   p <- plot_forecast(death_forecast_plot_data,
     facet=.~model, 
