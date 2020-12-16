@@ -2,7 +2,12 @@
 title: "Evaluation Options for Trained Ensembles for COVID-19"
 author: "Evan L. Ray"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
 ---
 
 This document explores some options for trained ensembles we could start using for COVID-19.
@@ -164,11 +169,14 @@ This section displays heat maps showing score availability by date, base_target,
 In each cell, we expect to see a number of scores equal to the number of locations for the given spatial scale times
 the number of horizons for the given target.
 
-## All forecasts
+
+##All forecasts {.tabset .tabset-fade}
+
 
 There are some unexpected differences in forecast availability at the state level across different models showing up here -- I need to
 investigate this more.
 
+###County
 ```{r fig.width=10, fig.height=2}
 score_counts <- all_scores %>%
   dplyr::count(
@@ -190,6 +198,7 @@ score_counts %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
+###State
 ```{r fig.width=10, fig.height=16}
 score_counts %>%
   dplyr::filter(spatial_scale == "State") %>%
@@ -203,6 +212,7 @@ score_counts %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
+###National
 ```{r fig.width=10, fig.height=16}
 score_counts %>%
   dplyr::filter(spatial_scale == "National") %>%
@@ -217,12 +227,14 @@ score_counts %>%
 ```
 
 
-## Forecasts available for all models that are available within each combination of base target and spatial scale
+
+## Forecasts available for all models that are available within each combination of base target and spatial scale {.tabset .tabset-fade}
 
 Here we have subset the forecasts to those that are comparable across all models within each combination of base target and spatial scale.
 We expect to see the exact same score counts for all models within each plot facet.
 Average scores computed within a combination of base target and spatial scale will be comparable.
 
+### County
 ```{r fig.width=10, fig.height=2}
 score_counts <- all_scores_common_by_base_target_spatial_scale %>%
   dplyr::count(
@@ -244,6 +256,7 @@ score_counts %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
+### State
 ```{r fig.width=10, fig.height=16}
 score_counts %>%
   dplyr::filter(spatial_scale == "State") %>%
@@ -257,6 +270,7 @@ score_counts %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
+### National
 ```{r fig.width=10, fig.height=16}
 score_counts %>%
   dplyr::filter(spatial_scale == "National") %>%
@@ -270,12 +284,13 @@ score_counts %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
-## Forecasts available for all models that are available within each combination of base target, spatial scale, and week
+## Forecasts available for all models that are available within each combination of base target, spatial scale, and week {.tabset .tabset-fade}
 
 Here we have subset the forecasts to those that are comparable across all models within each combination of base target, spatial scale, and week.
 We expect to see the exact same score counts within each column of the plot, for all models for which any forecasts are available.
 Average scores computed within a combination of base target, spatial scale, and forecast week will be comparable.
 
+###County
 ```{r fig.width=10, fig.height=2}
 score_counts <- all_scores_common_by_base_target_spatial_scale_week %>%
   dplyr::count(
@@ -297,6 +312,7 @@ score_counts %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
+###State
 ```{r fig.width=10, fig.height=16}
 score_counts %>%
   dplyr::filter(spatial_scale == "State") %>%
@@ -310,6 +326,7 @@ score_counts %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
+###National
 ```{r fig.width=10, fig.height=16}
 score_counts %>%
   dplyr::filter(spatial_scale == "National") %>%
@@ -323,7 +340,7 @@ score_counts %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
-# Overall Scores
+# Overall Scores {.tabset .tabset-fade}
 
 These scores summarize model skill for each combination of base target and spatial scale.
 
@@ -423,10 +440,11 @@ We perform estimation either separately for each spatial scale (National, State,
 
 The overall average scores in the tables below are computed across a comparable set of forecasts for all models, determined by the model evaluated with the fewest available forecasts (corresponding to a training set window of 10).  For incident deaths, the relative rankings of median and mean ("ew") can change as a few more weeks are added or removed from the evaluation set.  Per-week scores plotted further down are computed across a comparable set of forecasts for all models that are available within each week.
 
-## Incident Cases
+## Incident Cases  {.tabset .tabset-fade}
 
+
+###National 
 National level mean scores across comparable forecasts for all methods.
-
 ```{r}
 overall_rankings_inc_case_national <- scores_overall %>%
   filter(
@@ -440,6 +458,7 @@ DT::datatable(overall_rankings_inc_case_national %>%
   select(-model_brief))
 ```
 
+###State
 State level mean scores across comparable forecasts for all methods:
 
 ```{r}
@@ -455,6 +474,7 @@ DT::datatable(overall_rankings_inc_case_state %>%
   select(-model_brief))
 ```
 
+###County
 County level mean scores across comparable forecasts for all methods:
 
 ```{r}
@@ -471,8 +491,9 @@ DT::datatable(overall_rankings_inc_case_county %>%
   select(-model_brief))
 ```
 
-## Incident Deaths
+## Incident Deaths  {.tabset .tabset-fade}
 
+###National
 National level mean scores across comparable forecasts for all methods:
 
 ```{r}
@@ -489,6 +510,8 @@ DT::datatable(overall_rankings_inc_death_national %>%
   select(-model_brief))
 ```
 
+
+###State
 State level mean scores across comparable forecasts for all methods:
 
 ```{r}
@@ -505,8 +528,9 @@ DT::datatable(overall_rankings_inc_death_state %>%
   select(-model_brief))
 ```
 
-## Cumulative Deaths
+## Cumulative Deaths  {.tabset .tabset-fade}
 
+### National
 National level mean scores across comparable forecasts for all methods:
 
 ```{r}
@@ -523,6 +547,7 @@ DT::datatable(overall_rankings_cum_death_national %>%
   select(-model_brief))
 ```
 
+### State
 State level mean scores across comparable forecasts for all methods:
 
 ```{r}
@@ -542,7 +567,7 @@ DT::datatable(overall_rankings_cum_death_state %>%
 
 The high WIS for the equal weighted mean here is not a bug -- one forecast was crazy high in the upper tail; this shows up in WIS but not in the other metrics.
 
-## Plots showing scores by week
+# Plots showing scores by week {.tabset .tabset-fade}
 
 In these plots we show results for the mean, median, and the top-performing convex approach within each combination of base target and spatial scale.
 
@@ -580,7 +605,7 @@ reduced_scores_by_week <- scores_by_week %>%
   )
 ```
 
-### WIS by week
+## WIS by week
 
 ```{r fig.width=10, fig.height=10}
 # all scores by week
@@ -599,7 +624,7 @@ ggplot(data = reduced_scores_by_week) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
-### MAE by week
+## MAE by week
 
 ```{r fig.width=10, fig.height=10}
 # all scores by week
@@ -616,7 +641,9 @@ ggplot(data = reduced_scores_by_week %>% mutate(mae = wis_1)) +
 ```
 
 
-### Two-sided interval coverage by week: 50%
+## Two-sided interval coverage by week: {.tabset .tabset-fade}
+
+### 50% 
 
 ```{r fig.width=10, fig.height=10}
 # all scores by week
@@ -635,7 +662,7 @@ ggplot(data = reduced_scores_by_week) +
 ```
 
 
-### Two-sided interval coverage by week: 80%
+### 80%
 
 ```{r fig.width=10, fig.height=10}
 # all scores by week
@@ -655,7 +682,7 @@ ggplot(data = reduced_scores_by_week) +
 
 
 
-### Two-sided interval coverage by week: 95%
+### 95%
 
 ```{r fig.width=10, fig.height=10}
 # all scores by week
@@ -673,7 +700,7 @@ ggplot(data = reduced_scores_by_week) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
-## Summary
+# Summary
 
 Other short term investigations/refinements to explore:
 
