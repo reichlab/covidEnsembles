@@ -1,6 +1,6 @@
 ---
 title: "Evaluation Options for Trained Ensembles for COVID-19"
-author: "Evan L. Ray"
+author: "Evan L. Ray, Estee Cramer, Nicholas G. Reich"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -10,19 +10,35 @@ output:
       smooth_scroll: false
 ---
 
+<!-- Code for adding logo at the top of TOC -->
+
+<style>
+#TOC {
+  background: url("https://github.com/reichlab/covid19-forecast-hub-web/raw/master/images/forecast-hub-logo_DARKBLUE.png");
+  background-size: contain;
+  padding-top: 80px !important;
+  background-repeat: no-repeat;
+}
+</style>
+
+
 This document explores some options for trained ensembles we could start using for COVID-19.
 
 ```{r include = FALSE}
 # load packages
 library(covidData)
 library(covidEnsembles)
+library(covidHubUtils)
 library(tidyverse)
+library(plotly)
 library(gridExtra)
 library(knitr)
 library(DT)
 
 knitr::opts_chunk$set(echo = FALSE, cache.lazy = FALSE)
 options(width = 200)
+
+theme_set(theme_bw())
 
 #setwd("code/application/retrospective-qra-comparison/analyses/retrospective-scores-report/")
 ```
@@ -163,182 +179,6 @@ all_scores_common_by_base_target_spatial_scale_week <-
   )
 ```
 
-# Forecast Score Availablity
-
-This section displays heat maps showing score availability by date, base_target, spatial scale, and model.
-In each cell, we expect to see a number of scores equal to the number of locations for the given spatial scale times
-the number of horizons for the given target.
-
-
-##All forecasts {.tabset .tabset-fade}
-
-
-There are some unexpected differences in forecast availability at the state level across different models showing up here -- I need to
-investigate this more.
-
-###County
-```{r fig.width=10, fig.height=2}
-score_counts <- all_scores %>%
-  dplyr::count(
-    forecast_week_end_date,
-    base_target,
-    spatial_scale,
-    model_brief
-  )
-
-score_counts %>%
-  dplyr::filter(spatial_scale == "County") %>%
-  ggplot() +
-    geom_raster(mapping = aes(
-      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
-    )) +
-    facet_wrap( ~ base_target, ncol = 1) +
-    ggtitle("County Level Forecast Availability") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
-
-###State
-```{r fig.width=10, fig.height=16}
-score_counts %>%
-  dplyr::filter(spatial_scale == "State") %>%
-  ggplot() +
-    geom_raster(mapping = aes(
-      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
-    )) +
-    facet_wrap( ~ base_target, ncol = 1) +
-    ggtitle("State Level Forecast Availability") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
-
-###National
-```{r fig.width=10, fig.height=16}
-score_counts %>%
-  dplyr::filter(spatial_scale == "National") %>%
-  ggplot() +
-    geom_raster(mapping = aes(
-      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
-    )) +
-    facet_wrap( ~ base_target, ncol = 1) +
-    ggtitle("National Level Forecast Availability") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
-
-
-
-## Forecasts available for all models that are available within each combination of base target and spatial scale {.tabset .tabset-fade}
-
-Here we have subset the forecasts to those that are comparable across all models within each combination of base target and spatial scale.
-We expect to see the exact same score counts for all models within each plot facet.
-Average scores computed within a combination of base target and spatial scale will be comparable.
-
-### County
-```{r fig.width=10, fig.height=2}
-score_counts <- all_scores_common_by_base_target_spatial_scale %>%
-  dplyr::count(
-    forecast_week_end_date,
-    base_target,
-    spatial_scale,
-    model_brief
-  )
-
-score_counts %>%
-  dplyr::filter(spatial_scale == "County") %>%
-  ggplot() +
-    geom_raster(mapping = aes(
-      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
-    )) +
-    facet_wrap( ~ base_target, ncol = 1) +
-    ggtitle("County Level Forecast Availability") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
-
-### State
-```{r fig.width=10, fig.height=16}
-score_counts %>%
-  dplyr::filter(spatial_scale == "State") %>%
-  ggplot() +
-    geom_raster(mapping = aes(
-      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
-    )) +
-    facet_wrap( ~ base_target, ncol = 1) +
-    ggtitle("State Level Forecast Availability") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
-
-### National
-```{r fig.width=10, fig.height=16}
-score_counts %>%
-  dplyr::filter(spatial_scale == "National") %>%
-  ggplot() +
-    geom_raster(mapping = aes(
-      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
-    )) +
-    facet_wrap( ~ base_target, ncol = 1) +
-    ggtitle("National Level Forecast Availability") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
-
-## Forecasts available for all models that are available within each combination of base target, spatial scale, and week {.tabset .tabset-fade}
-
-Here we have subset the forecasts to those that are comparable across all models within each combination of base target, spatial scale, and week.
-We expect to see the exact same score counts within each column of the plot, for all models for which any forecasts are available.
-Average scores computed within a combination of base target, spatial scale, and forecast week will be comparable.
-
-###County
-```{r fig.width=10, fig.height=2}
-score_counts <- all_scores_common_by_base_target_spatial_scale_week %>%
-  dplyr::count(
-    forecast_week_end_date,
-    base_target,
-    spatial_scale,
-    model_brief
-  )
-
-score_counts %>%
-  dplyr::filter(spatial_scale == "County") %>%
-  ggplot() +
-    geom_raster(mapping = aes(
-      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
-    )) +
-    facet_wrap( ~ base_target, ncol = 1) +
-    ggtitle("County Level Forecast Availability") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
-
-###State
-```{r fig.width=10, fig.height=16}
-score_counts %>%
-  dplyr::filter(spatial_scale == "State") %>%
-  ggplot() +
-    geom_raster(mapping = aes(
-      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
-    )) +
-    facet_wrap( ~ base_target, ncol = 1) +
-    ggtitle("State Level Forecast Availability") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
-
-###National
-```{r fig.width=10, fig.height=16}
-score_counts %>%
-  dplyr::filter(spatial_scale == "National") %>%
-  ggplot() +
-    geom_raster(mapping = aes(
-      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
-    )) +
-    facet_wrap( ~ base_target, ncol = 1) +
-    ggtitle("National Level Forecast Availability") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
-```
 
 # Overall Scores {.tabset .tabset-fade}
 
@@ -700,7 +540,99 @@ ggplot(data = reduced_scores_by_week) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
-# Summary
+# Exploration of ensemble weights {.tabset .tabset-fade}
+
+The following interactive figures provide some insight into which models would have received weight in some of the different ensemble specifications. Each plot shows weights over time faceted by target variable in columns (inc case and inc death) and geographic level (state and national level) in rows. The versions of the ensemble shown here provide the same model weights for each state.
+
+## Window size 7
+```{r}
+weights <- readRDS("../retrospective-weight-estimates/retrospective_weight_estimates.rds")
+# weights %>%
+#     group_by(intercept, combine_method, missingness, quantile_groups, window_size, check_missingness_by_target, do_standard_checks, do_baseline_check, spatial_resolution) %>%
+#     summarize(n())
+weights_tmp <- weights %>%
+    #filter(forecast_date != "2020-11-30") %>%
+    filter(location %in% c("01", "US")) %>% #, forecast_date %in% c(as.Date("2020-05-25"))) %>% #, as.Date("2020-05-18"))) %>%
+    mutate(model = reorder(model, -weight, FUN = sum)) %>%
+    left_join(covidHubUtils::hub_locations, by=c("location" = "fips"))
+# p <- weights_tmp %>%
+#     filter(window_size==4) %>%
+#     ggplot(aes(x=forecast_date, y=weight, fill=model)) +
+#     geom_bar(stat = "identity") +
+#     facet_grid(spatial_resolution ~ target_variable) +
+#     ggtitle(paste("window size =", 4))
+# ggplotly(p, width=1000, height=800)
+p <- weights_tmp %>%
+    filter(window_size==7) %>%
+    ggplot(aes(x=forecast_date, y=weight, fill=model)) +
+    geom_bar(stat = "identity") +
+    facet_grid(spatial_resolution ~ target_variable) +
+    ggtitle(paste("window size =", 7))
+ggplotly(p, width=1000, height=800)
+```
+
+## Window size 9
+
+```{r}
+p <- weights_tmp %>%
+    filter(window_size==9) %>%
+    ggplot(aes(x=forecast_date, y=weight, fill=model)) +
+    geom_bar(stat = "identity") +
+    facet_grid(spatial_resolution ~ target_variable) +
+    ggtitle(paste("window size =", 9))
+ggplotly(p, width=1000, height=800)
+```
+
+## Forecast plots Nov 23
+
+These plots show the forecasts of the "top weighted models" (i.e. models with more than 1% weight) in a given week. 
+
+```{r plot_top_weighted_models}
+plot_top_weighted_models <- function(weight_dat, fcast_date, win_size, target_var, loc) {
+  
+  top_models_deaths <- weight_dat %>%
+    filter(forecast_date == fcast_date, 
+      window_size==win_size, 
+      target_variable==gsub(" ", "_", target_var),
+      location==loc, 
+      weight>0.01)
+  
+  death_forecast_plot_data <- load_latest_forecasts(
+    models = as.character(top_models_deaths$model),
+    last_forecast_date = fcast_date, 
+    forecast_date_window_size = 7,
+    locations = loc, 
+    targets = paste(1:4, "wk ahead", target_var), 
+    source = "zoltar")
+  
+  p <- plot_forecast(death_forecast_plot_data,
+    facet=.~model, 
+    target_variable = target_var,
+    fill_by_model = TRUE, 
+    show_caption = FALSE,
+    plot=FALSE) 
+  p +
+    scale_x_date(name=NULL, date_breaks = "1 months", date_labels = "%b") +
+    theme(axis.ticks.length.x = unit(0.5, "cm"),
+      axis.text.x = element_text(vjust = 7, hjust = -0.2)) +
+    geom_text(data=top_models_deaths, aes(x=as.Date("2020-07-15"), y=max(death_forecast_plot_data$value)*.8, label=paste("weight =",round(weight, 3))))
+}
+
+```
+
+
+
+```{r, message=FALSE}
+plot_top_weighted_models(weight_dat = weights_tmp, 
+  fcast_date = "2020-11-23", 
+  win_size = 9,
+  target_var = "inc death",
+  loc="US")
+```
+
+
+
+# Future directions
 
 Other short term investigations/refinements to explore:
 
@@ -708,3 +640,181 @@ Other short term investigations/refinements to explore:
  * A larger window size for the county level is not computationally feasible if parameters are estimated for all counties together; an alternative could be to estimate for 4 or 5 groups of counties, perhaps grouped by population size.
  * I'd like to consider tracking missing forecast imputation and weight redistribution at the level of each location, rather than across all locations.  Currently, if a very good model submits forecasts for only a small number of locations, it would be assigned low weight because of the weight redistribution process.  This can be fixed by redistributing weight away from a model according to its missingness level within each location rather than its missingness level across all locations.
  * State-level results
+
+# Forecast Score Availablity
+
+This section displays heat maps showing score availability by date, base_target, spatial scale, and model.
+In each cell, we expect to see a number of scores equal to the number of locations for the given spatial scale times
+the number of horizons for the given target.
+
+
+##All forecasts {.tabset .tabset-fade}
+
+
+There are some unexpected differences in forecast availability at the state level across different models showing up here -- I need to
+investigate this more.
+
+###County
+```{r fig.width=10, fig.height=2}
+score_counts <- all_scores %>%
+  dplyr::count(
+    forecast_week_end_date,
+    base_target,
+    spatial_scale,
+    model_brief
+  )
+
+score_counts %>%
+  dplyr::filter(spatial_scale == "County") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("County Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+###State
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "State") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("State Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+###National
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "National") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("National Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+
+
+## Forecasts available for all models that are available within each combination of base target and spatial scale {.tabset .tabset-fade}
+
+Here we have subset the forecasts to those that are comparable across all models within each combination of base target and spatial scale.
+We expect to see the exact same score counts for all models within each plot facet.
+Average scores computed within a combination of base target and spatial scale will be comparable.
+
+### County
+```{r fig.width=10, fig.height=2}
+score_counts <- all_scores_common_by_base_target_spatial_scale %>%
+  dplyr::count(
+    forecast_week_end_date,
+    base_target,
+    spatial_scale,
+    model_brief
+  )
+
+score_counts %>%
+  dplyr::filter(spatial_scale == "County") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("County Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+### State
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "State") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("State Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+### National
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "National") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("National Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+## Forecasts available for all models that are available within each combination of base target, spatial scale, and week {.tabset .tabset-fade}
+
+Here we have subset the forecasts to those that are comparable across all models within each combination of base target, spatial scale, and week.
+We expect to see the exact same score counts within each column of the plot, for all models for which any forecasts are available.
+Average scores computed within a combination of base target, spatial scale, and forecast week will be comparable.
+
+###County
+```{r fig.width=10, fig.height=2}
+score_counts <- all_scores_common_by_base_target_spatial_scale_week %>%
+  dplyr::count(
+    forecast_week_end_date,
+    base_target,
+    spatial_scale,
+    model_brief
+  )
+
+score_counts %>%
+  dplyr::filter(spatial_scale == "County") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("County Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+###State
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "State") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("State Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+###National
+```{r fig.width=10, fig.height=16}
+score_counts %>%
+  dplyr::filter(spatial_scale == "National") %>%
+  ggplot() +
+    geom_raster(mapping = aes(
+      x = factor(forecast_week_end_date), y = model_brief, fill = factor(n)
+    )) +
+    facet_wrap( ~ base_target, ncol = 1) +
+    ggtitle("National Level Forecast Availability") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
