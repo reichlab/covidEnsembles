@@ -204,11 +204,11 @@ scores_overall <- all_scores_common_by_base_target_spatial_scale %>%
     window_size, check_missingness_by_target, do_standard_checks,
     do_baseline_check, estimation_grouping, base_target, spatial_scale) %>%
   dplyr::summarize(
-    across(starts_with("wis"), mean),
-    across(starts_with("wiw"), mean),
-    across(starts_with("wip"), mean),
-    across(starts_with("coverage"), mean),
-    across(starts_with("one_sided_coverage"), mean)
+    across(starts_with("wis"), function(x) round(mean(x), 3)),
+    across(starts_with("wiw"), function(x) round(mean(x), 3)),
+    across(starts_with("wip"), function(x) round(mean(x), 3)),
+    across(starts_with("coverage"), function(x) round(mean(x), 3)),
+    across(starts_with("one_sided_coverage"), function(x) round(mean(x), 3))
   )
 
 scores_by_week <- all_scores_common_by_base_target_spatial_scale_week %>%
@@ -331,6 +331,39 @@ DT::datatable(overall_rankings_inc_case_county %>%
   select(-model_brief))
 ```
 
+## Incident Hospitalizations  {.tabset .tabset-fade}
+
+###National
+National level mean scores across comparable forecasts for all methods.
+```{r}
+overall_rankings_inc_hosp_national <- scores_overall %>%
+  filter(
+    spatial_scale == "National",
+    base_target == "day ahead inc hosp") %>%
+  ungroup() %>%
+  select(model_brief, combine_method, estimation_grouping, quantile_groups, window_size, wis, mae = wis_1, coverage_0.50, coverage_0.80, coverage_0.95) %>%
+  arrange(wis)
+
+DT::datatable(overall_rankings_inc_hosp_national %>%
+  select(-model_brief))
+```
+
+###State
+State level mean scores across comparable forecasts for all methods:
+
+```{r}
+overall_rankings_inc_hosp_state <- scores_overall %>%
+  filter(
+    spatial_scale == "State",
+    base_target == "day ahead inc hosp") %>%
+  ungroup() %>%
+  select(model_brief, combine_method, estimation_grouping, quantile_groups, window_size, wis, mae = wis_1, coverage_0.50, coverage_0.80, coverage_0.95) %>%
+  arrange(wis)
+
+DT::datatable(overall_rankings_inc_hosp_state %>%
+  select(-model_brief))
+```
+
 ## Incident Deaths  {.tabset .tabset-fade}
 
 ###National
@@ -419,19 +452,50 @@ reduced_scores_by_week <- scores_by_week %>%
   dplyr::filter(
     combine_method %in% c("ew", "median") |
     (spatial_scale == "National" & base_target == "wk ahead inc case" &
-      model_brief == overall_rankings_inc_case_national$model_brief[1]) |
+      model_brief == overall_rankings_inc_case_national %>%
+        dplyr::filter(!(combine_method %in% c("ew", "median"))) %>%
+        dplyr::pull(model_brief) %>%
+        `[`(1)) |
     (spatial_scale == "State" & base_target == "wk ahead inc case" &
-      model_brief == overall_rankings_inc_case_state$model_brief[1]) |
+      model_brief == overall_rankings_inc_case_state %>%
+        dplyr::filter(!(combine_method %in% c("ew", "median"))) %>%
+        dplyr::pull(model_brief) %>%
+        `[`(1)) |
     (spatial_scale == "County" & base_target == "wk ahead inc case" &
-      model_brief == overall_rankings_inc_case_county$model_brief[1]) |
+      model_brief == overall_rankings_inc_case_county %>%
+        dplyr::filter(!(combine_method %in% c("ew", "median"))) %>%
+        dplyr::pull(model_brief) %>%
+        `[`(1)) |
+    (spatial_scale == "National" & base_target == "day ahead inc hosp" &
+      model_brief == overall_rankings_inc_hosp_national %>%
+        dplyr::filter(!(combine_method %in% c("ew", "median"))) %>%
+        dplyr::pull(model_brief) %>%
+        `[`(1)) |
+    (spatial_scale == "State" & base_target == "day ahead inc hosp" &
+      model_brief == overall_rankings_inc_hosp_state %>%
+        dplyr::filter(!(combine_method %in% c("ew", "median"))) %>%
+        dplyr::pull(model_brief) %>%
+        `[`(1)) |
     (spatial_scale == "National" & base_target == "wk ahead inc death" &
-      model_brief == overall_rankings_inc_death_national$model_brief[1]) |
+      model_brief == overall_rankings_inc_death_national %>%
+        dplyr::filter(!(combine_method %in% c("ew", "median"))) %>%
+        dplyr::pull(model_brief) %>%
+        `[`(1)) |
     (spatial_scale == "State" & base_target == "wk ahead inc death" &
-      model_brief == overall_rankings_inc_death_state$model_brief[1]) |
+      model_brief == overall_rankings_inc_death_state %>%
+        dplyr::filter(!(combine_method %in% c("ew", "median"))) %>%
+        dplyr::pull(model_brief) %>%
+        `[`(1)) |
     (spatial_scale == "National" & base_target == "wk ahead cum death" &
-      model_brief == overall_rankings_cum_death_national$model_brief[1]) |
+      model_brief == overall_rankings_cum_death_national %>%
+        dplyr::filter(!(combine_method %in% c("ew", "median"))) %>%
+        dplyr::pull(model_brief) %>%
+        `[`(1)) |
     (spatial_scale == "State" & base_target == "wk ahead cum death" &
-      model_brief == overall_rankings_cum_death_state$model_brief[1])
+      model_brief == overall_rankings_cum_death_state %>%
+        dplyr::filter(!(combine_method %in% c("ew", "median"))) %>%
+        dplyr::pull(model_brief) %>%
+        `[`(1))
   ) %>%
   dplyr::mutate(
     wis = ifelse(wis < 10000000, wis, NA_real_),
@@ -440,7 +504,7 @@ reduced_scores_by_week <- scores_by_week %>%
       levels = c("National", "State", "County")),
     base_target = factor(
       base_target,
-      levels = c("wk ahead inc case", "wk ahead inc death",
+      levels = c("wk ahead inc case", "day ahead inc hosp", "wk ahead inc death",
         "wk ahead cum death"))
   )
 ```
@@ -459,7 +523,7 @@ ggplot(data = reduced_scores_by_week) +
     color = combine_method,
     linetype = combine_method,
     group = combine_method)) +
-  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y", ncol = 4) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
@@ -475,7 +539,7 @@ ggplot(data = reduced_scores_by_week %>% mutate(mae = wis_1)) +
     color = combine_method,
     linetype = combine_method,
     group = combine_method)) +
-  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y", ncol = 4) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
@@ -496,7 +560,7 @@ ggplot(data = reduced_scores_by_week) +
     group = combine_method)) +
   geom_hline(yintercept = 0.5) +
   ylim(c(0, 1)) +
-  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y", ncol = 4) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
@@ -515,7 +579,7 @@ ggplot(data = reduced_scores_by_week) +
     group = combine_method)) +
   geom_hline(yintercept = 0.8) +
   ylim(c(0, 1)) +
-  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y", ncol = 4) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
@@ -535,7 +599,7 @@ ggplot(data = reduced_scores_by_week) +
     group = combine_method)) +
   geom_hline(yintercept = 0.95) +
   ylim(c(0, 1)) +
-  facet_wrap( ~ spatial_scale + base_target, scales = "free_y") +
+  facet_wrap( ~ spatial_scale + base_target, scales = "free_y", ncol = 4) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
@@ -554,7 +618,7 @@ weights_tmp <- weights %>%
     #filter(forecast_date != "2020-11-30") %>%
     filter(location %in% c("01", "US")) %>% #, forecast_date %in% c(as.Date("2020-05-25"))) %>% #, as.Date("2020-05-18"))) %>%
     mutate(model = reorder(model, -weight, FUN = sum)) %>%
-    left_join(covidHubUtils::hub_locations, by=c("location" = "fips"))
+    left_join(covidHubUtils::hub_locations, by = c("location" = "fips"))
 # p <- weights_tmp %>%
 #     filter(window_size==4) %>%
 #     ggplot(aes(x=forecast_date, y=weight, fill=model)) +
@@ -563,8 +627,8 @@ weights_tmp <- weights %>%
 #     ggtitle(paste("window size =", 4))
 # ggplotly(p, width=1000, height=800)
 p <- weights_tmp %>%
-    filter(window_size==7) %>%
-    ggplot(aes(x=forecast_date, y=weight, fill=model)) +
+    filter(window_size == 7) %>%
+    ggplot(aes(x = forecast_date, y = weight, fill = model)) +
     geom_bar(stat = "identity") +
     facet_grid(spatial_resolution ~ target_variable) +
     ggtitle(paste("window size =", 7))
@@ -610,6 +674,7 @@ plot_top_weighted_models <- function(weight_dat, fcast_date, win_size, target_va
   p <- plot_forecast(death_forecast_plot_data,
     facet=.~model, 
     target_variable = target_var,
+    truth_source = "JHU",
     fill_by_model = TRUE, 
     show_caption = FALSE,
     plot=FALSE) 
