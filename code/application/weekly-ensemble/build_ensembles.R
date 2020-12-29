@@ -203,6 +203,23 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         location = covidData::fips_codes$location,
         message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
       )
+    } else if (forecast_date == "2020-12-21") {
+      manual_eligibility_adjust <- tidyr::expand_grid(
+        model = c("Google_Harvard-CPF", "IHME-CurveFit", "UCLA-SuEIR"),
+        location = covidData::fips_codes$location,
+        message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+      )
+    } else if (forecast_date == "2020-12-28") {
+      manual_eligibility_adjust <- readr::read_csv(
+        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_2020-12-29.csv"
+      ) %>%
+        dplyr::mutate(
+          location_name =
+            ifelse(location_name == "National", "US", location_name),
+          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+        ) %>%
+        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
+        dplyr::select(model, location, message)
     } else {
       manual_eligibility_adjust <- NULL
     }
