@@ -1,0 +1,62 @@
+"","model","location_name","exclude"
+"1","CU-select","Indiana",1
+"2","CU-select","Washington",1
+"3","Google_Harvard-CPF","Alabama",1
+"4","Google_Harvard-CPF","Arizona",1
+"5","Google_Harvard-CPF","Florida",1
+"6","Google_Harvard-CPF","Georgia",1
+"7","Google_Harvard-CPF","Illinois",1
+"8","Google_Harvard-CPF","Indiana",1
+"9","Google_Harvard-CPF","Kentucky",1
+"10","Google_Harvard-CPF","Louisiana",1
+"11","Google_Harvard-CPF","Maryland",1
+"12","Google_Harvard-CPF","Mississippi",1
+"13","Google_Harvard-CPF","Missouri",1
+"14","Google_Harvard-CPF","New Jersey",1
+"15","Google_Harvard-CPF","New Mexico",1
+"16","Google_Harvard-CPF","New York",1
+"17","Google_Harvard-CPF","North Carolina",1
+"18","Google_Harvard-CPF","Ohio",1
+"19","Google_Harvard-CPF","Oklahoma",1
+"20","Google_Harvard-CPF","Pennsylvania",1
+"21","Google_Harvard-CPF","Texas",1
+"22","Google_Harvard-CPF","Utah",1
+"23","Google_Harvard-CPF","Wisconsin",1
+"24","IHME-CurveFit","Alabama",1
+"25","IHME-CurveFit","Arizona",1
+"26","IHME-CurveFit","Delaware",1
+"27","IHME-CurveFit","Florida",1
+"28","IHME-CurveFit","Indiana",1
+"29","IHME-CurveFit","Kentucky",1
+"30","IHME-CurveFit","Louisiana",1
+"31","IHME-CurveFit","Maryland",1
+"32","IHME-CurveFit","Missouri",1
+"33","IHME-CurveFit","National",1
+"34","IHME-CurveFit","North Carolina",1
+"35","IHME-CurveFit","Ohio",1
+"36","IHME-CurveFit","Oklahoma",1
+"37","IHME-CurveFit","Virginia",1
+"38","JHU_IDD-CovidSP","Alabama",1
+"39","JHU_IDD-CovidSP","Indiana",1
+"40","JHU_IDD-CovidSP","Kentucky",1
+"41","JHU_IDD-CovidSP","New Mexico",1
+"42","JHU_IDD-CovidSP","Oklahoma",1
+"43","JHUAPL-Bucky","Florida",1
+"44","JHUAPL-Bucky","Indiana",1
+"45","JHUAPL-Bucky","Kentucky",1
+"46","JHUAPL-Bucky","New Mexico",1
+"47","JHUAPL-Bucky","Oklahoma",1
+"48","JHUAPL-Bucky","Utah",1
+"49","JHUAPL-Bucky","Wisconsin",1
+"50","LANL-GrowthRate","Indiana",1
+"51","LANL-GrowthRate","New Mexico",1
+"52","UCLA-SuEIR","Alabama",1
+"53","UCLA-SuEIR","Arkansas",1
+"54","UCLA-SuEIR","Idaho",1
+"55","UCLA-SuEIR","Kentucky",1
+"56","UCLA-SuEIR","Louisiana",1
+"57","UCLA-SuEIR","Missouri",1
+"58","UCLA-SuEIR","New Mexico",1
+"59","UCLA-SuEIR","Pennsylvania",1
+"60","UCLA-SuEIR","Texas",1
+"61","UCLA-SuEIR","Wisconsin",1
