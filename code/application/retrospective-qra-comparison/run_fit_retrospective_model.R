@@ -6,7 +6,7 @@ library(doParallel)
 library(zeallot)
 library(covidEnsembles)
 
-registerDoParallel(cores = 20)
+registerDoParallel(cores = 24)
 
 output_path <- "code/application/retrospective-qra-comparison/log/"
 
@@ -26,12 +26,12 @@ trained_analysis_combinations <- tidyr::expand_grid(
   quantile_group_str = c("per_quantile", "3_groups", "per_model"),
   missingness = c("mean_impute"),
   window_size = 3:10,
-  check_missingness_by_target = "FALSE",
+  check_missingness_by_target = c("FALSE", "TRUE"),
   do_standard_checks = "FALSE",
   do_baseline_check = "FALSE"
 ) %>%
   dplyr::filter(
-    response_var %in% c("cum_death", "inc_death") |
+    (response_var %in% c("cum_death", "inc_death") & spatial_resolution != "county") |
     (response_var == "inc_case" & forecast_date >= "2020-08-03") |
     (response_var == "inc_hosp" & forecast_date >= "2020-11-16" &
       spatial_resolution != "county" & window_size <= 4),# |

@@ -17,7 +17,7 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
   include_COVIDhub_baseline = TRUE)
 
 # Drop hospitalizations ensemble from JHU APL
-candidate_model_abbreviations_to_include <- 
+candidate_model_abbreviations_to_include <-
   candidate_model_abbreviations_to_include[
     !(candidate_model_abbreviations_to_include == "JHUAPL-SLPHospEns")
   ]
@@ -111,8 +111,6 @@ if (response_var %in% c("inc_death", "cum_death")) {
 }
 
 
-
-
 if(quantile_group_str == "per_model") {
   quantile_groups <- rep(1, length(required_quantiles))
 } else if(quantile_group_str == "3_groups") {
@@ -135,20 +133,6 @@ if (spatial_resolution_arg == "all") {
   spatial_resolution_path <- spatial_resolution
 }
 
-result_filename <- paste0(
-  "code/application/retrospective-qra-comparison/retrospective-fits-", spatial_resolution_path, "/",
-  response_var,
-  "-forecast_week_", as.character(forecast_date),
-  "-intercept_", as.character(intercept),
-  "-combine_method_", combine_method,
-  "-missingness_", missingness,
-  "-quantile_groups_", quantile_group_str,
-  "-window_size_", window_size,
-  "-check_missingness_by_target_", check_missingness_by_target,
-  "-do_standard_checks_", do_standard_checks,
-  "-do_baseline_check_", do_baseline_check,
-  ".rds")
-
 case_str <- paste0(
   "intercept_", as.character(intercept),
   "-combine_method_", combine_method,
@@ -159,21 +143,48 @@ case_str <- paste0(
   "-do_standard_checks_", do_standard_checks,
   "-do_baseline_check_", do_baseline_check)
 
-csv_dir <- paste0(
-  "code/application/retrospective-qra-comparison/retrospective-forecasts-", spatial_resolution_path, "/",
-  case_str, "/")
-
-if (!dir.exists(csv_dir)) {
-  dir.create(csv_dir)
+# create folder where model fits should be saved
+fits_dir <- file.path(
+  "code/application/retrospective-qra-comparison/retrospective-fits",
+  spatial_resolution_path,
+  case_str)
+if (!dir.exists(fits_dir)) {
+  dir.create(fits_dir)
 }
+fit_filename <- paste0(
+  fits_dir, "/",
+  response_var, "-", forecast_date, "-",
+  case_str, ".rds")
 
-csv_filename <- paste0(
-  csv_dir,
+# create folder where model weights should be saved
+weights_dir <- file.path(
+  "code/application/retrospective-qra-comparison/retrospective-weights",
+  spatial_resolution_path,
+  case_str)
+if (!dir.exists(weights_dir)) {
+  dir.create(weights_dir)
+}
+weight_filename <- paste0(
+  weights_dir, "/",
   response_var, "-", forecast_date, "-",
   case_str, ".csv")
 
+# create folder where model forecasts should be saved
+forecasts_dir <- file.path(
+  "code/application/retrospective-qra-comparison/retrospective-forecasts",
+  spatial_resolution_path,
+  case_str)
+if (!dir.exists(forecasts_dir)) {
+  dir.create(forecasts_dir)
+}
+forecast_filename <- paste0(
+  forecasts_dir, "/",
+  response_var, "-", forecast_date, "-",
+  case_str, ".csv")
+
+
 tic <- Sys.time()
-if(!file.exists(csv_filename)) {
+if(!file.exists(forecast_filename)) {
   do_q10_check <- do_nondecreasing_quantile_check <- do_standard_checks
 
   results <- build_covid_ensemble_from_local_files(
@@ -204,8 +215,38 @@ if(!file.exists(csv_filename)) {
     return_all = TRUE
   )
 
-  # save full results including estimated weights, etc.
-  saveRDS(results, file = result_filename)
+  # save full results including estimated weights, training data, etc.
+  saveRDS(results, file = fit_filename)
+
+  # extract and save just the estimated weights in csv format
+  estimated_weights <- purrr::pmap_dfr(
+    results$location_groups %>% dplyr::select(locations, qra_fit),
+    function(locations, qra_fit) {
+      weights <- qra_fit$coefficients
+
+      data.frame(
+        quantile = if ("quantile" %in% colnames(weights)) {
+            weights$quantile
+          } else {
+            rep(NA, nrow(weights))
+          },
+        model = weights$model,
+        weight = weights$beta, #[, 1],
+        join_field = "temp",
+        stringsAsFactors = FALSE
+      ) %>%
+        dplyr::left_join(
+          data.frame(
+            location = locations,
+            join_field = "temp",
+            stringsAsFactors = FALSE
+          )
+        ) %>%
+        dplyr::select(-join_field)
+    }
+  )
+  write_csv(estimated_weights, weight_filename)
+
 
   # save csv formatted forecasts
   if (missingness == "impute") {
@@ -284,7 +325,7 @@ if(!file.exists(csv_filename)) {
         )
     )
     
-    write_csv(formatted_ensemble_predictions, csv_filename)
+    write_csv(formatted_ensemble_predictions, forecast_filename)
   }
 }
 toc <- Sys.time()
