@@ -60,6 +60,8 @@ candidate_model_abbreviations_to_include <-
 #args <- c("inc_case", "2020-10-24", "TRUE", "positive", "mean_impute", "3_groups", "4", "FALSE", "FALSE", "FALSE")
 #args <- c("inc_case", "2020-05-09", "FALSE", "ew", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE")
 #args <- c("inc_death", "2020-05-09", "FALSE", "convex", "mean_impute", "3_groups", "4", "FALSE", "FALSE", "FALSE", "state_no_territories")
+#args <- c("inc_death", "2020-10-05", "FALSE", "ew", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE", "state")
+#args <- c("inc_death", "2020-10-05", "FALSE", "convex", "mean_impute", "3_groups", "4", "FALSE", "FALSE", "FALSE", "state")
 
 args <- commandArgs(trailingOnly = TRUE)
 response_var <- args[1]
@@ -253,15 +255,15 @@ if(!file.exists(csv_filename)) {
         location = location,
         type = 'quantile',
         quantile = quantile,
-        value = ifelse(
-          quantile < 0.5,
-          floor(value),
-          ifelse(
-            quantile == 0.5,
-            round(value),
-            ceiling(value)
-          )
-        )
+        value = value # ifelse(
+        #   quantile < 0.5,
+        #   floor(value),
+        #   ifelse(
+        #     quantile == 0.5,
+        #     round(value),
+        #     ceiling(value)
+        #   )
+        # )
       )
 
     formatted_ensemble_predictions <- bind_rows(
