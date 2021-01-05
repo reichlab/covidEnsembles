@@ -309,3 +309,110 @@ test_that("calc_nondecreasing_quantile_check works", {
   )
 })
 
+
+test_that("calc_sd_check works", {
+
+  # lookback window length 
+  n_back <- 14
+  # total observations per setting
+  n_obs <- 17
+  extra <-  n_obs - n_back
+  # base level of obs
+  lev_back <- 100
+  sd <- 10
+  # constant upto time zero and has given sd over lookback window
+  obs <- c(rep(lev_back,n_obs-1),lev_back-sd*(n_back)^.5)
+
+
+  A <- diag(1:10)
+  for (i in 1:9) {A[i+1,i] <- -A[i,i]}
+  # A converts a mean series back to series producing those means
+  # i.e., inverts x -> cumsum(x)/seq_along(x)
+  # or almost... e.g.,
+  # x <- rnorm(10)
+  # (A%*%(cumsum(x)/seq_along(x)))-x
+  # Let's consider this noise the test should be robust against...
+
+  # current cutoff for exclusion
+  cut <- mean(tail(obs, n_back)) - 4*sd
+
+  eps_up <- 1e-6
+  eps_dn <- 1e+6
+  # a mean series whose producing series' model should be excluded
+  m010 <- c(rep(cut,5),cut+eps_up, cut-eps_dn, cut+eps_up, rep(cut,2))
+  # and 2 for which models should be included
+  m001 <- c(rep(cut,5),cut+eps_up, cut+eps_up, cut-eps_dn, rep(cut,2))
+  m100 <- c(rep(cut,5),cut-eps_dn, cut+eps_up, cut+eps_up, rep(cut,2))
+
+  v010 <- A%*%m010
+  v001 <- A%*%m001
+  v100 <- A%*%m100
+  # Note: eps_up > 0 deals with error from A
+
+  observed_by_location_target_end_date <- expand.grid(
+    location = letters[1:4],
+    target_end_date = as.character(lubridate::ymd("2021-01-11") - (n_obs-1):0),
+    stringsAsFactors = FALSE
+  ) %>% 
+  arrange(location) %>% 
+  mutate(observed = rep(obs, 4))
+
+  forecast_df <- tidyr::expand_grid(
+    location = letters[1:4],
+    model = paste0('m', 1:3),
+    q_prob = c(0.1, 0.5, 0.9),
+    forecast_week_end_date = lubridate::ymd("2021-01-11"),
+    target = paste0(1:10, ' day ahead inc hosp')
+  )
+
+  forecast_df <- forecast_df %>% 
+  mutate(target_end_date = calc_target_string_end_date(forecast_week_end_date, target)) %>% 
+  arrange(location, model, q_prob) 
+
+  forecast_df$val <- 0
+
+  forecast_df <- within(forecast_df, {
+  val[q_prob == 0.1] <- lev_back - 5*sd
+  val[q_prob == 0.9] <- lev_back + sd
+  # in a and b exclude m1
+  val[q_prob == 0.5 & location %in% c("a","b") & model == "m1"] <- v010
+  val[q_prob == 0.5 & location %in% c("a","b") & model == "m2"] <- v100  
+  val[q_prob == 0.5 & location %in% c("a","b") & model == "m3"] <- v001  
+  # in c exclude m3
+  val[q_prob == 0.5 & location == "c" & model %in% c("m1", "m2")] <- lev_back - sd
+  val[q_prob == 0.5 & location == "c" & model == "m3"] <- v010
+  # in d include all
+  val[q_prob == 0.5 & location == "d"] <- lev_back - sd
+  })
+
+  forecast_matrix <- new_QuantileForecastMatrix_from_df(
+    forecast_df,
+    model_col = 'model',
+    id_cols = c('location', 'forecast_week_end_date', 'target'),
+    quantile_name_col = 'q_prob',
+    quantile_value_col = 'val'
+  )
+
+  actual <- calc_sd_check(
+    qfm = forecast_matrix,
+    observed_by_location_target_end_date = observed_by_location_target_end_date
+  )
+
+  expected <- tidyr::expand_grid(
+    location = letters[1:4],
+    model = paste0('m', 1:3),
+    sd_eligibility = 'eligible'
+  ) %>%
+    arrange(location, model)
+
+  expected$sd_eligibility[
+    expected$location %in% c('b', 'c') &
+      expected$model == 'm2'
+    ] <- 'decreasing quantiles over time'
+
+  expect_equal(
+    actual,
+    expected
+  )
+})
+
