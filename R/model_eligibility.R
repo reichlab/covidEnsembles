@@ -504,3 +504,84 @@ calc_baseline_check <- function(
 
   return(eligibility)
 }
+
+
+
+#' Compute check of whether mean daily point (median) forecast for first seven days 
+#' is less than mean reported hospitalizations over past two weeks minus 
+#' four standard deviations.
+#'
+#' @param qfm matrix of model forecasts of class QuantileForecastMatrix
+#' @param observed_by_location_target_end_date data frame of observed values
+#'
+#' @return data frame with a row for each combination of
+#'   location and model and a logical column called
+#'   'eligibility' with entry "more than four SDs below 2-week mean of 
+#'   hospitalization point forecasts" if check fails
+#'
+#' @export
+calc_4sd_hosp_check <- function(
+  qfm,
+  observed_by_location_target_end_date
+) {
+  ## subset to median forecasts for next 7 days
+  row_index <- attr(qfm, 'row_index')
+  rows_to_keep <- grep("^[1-7] day ahead inc hosp", row_index$target)
+  row_index <- row_index[rows_to_keep,]
+
+  col_index <- attr(qfm, 'col_index')
+  quantile_name_col <- attr(qfm, 'quantile_name_col')
+  cols_to_keep <- which(col_index[[quantile_name_col]] == "0.5")
+  
+  model_id_name <- attr(qfm, 'model_col')
+
+  qfm_7 <- qfm[rows_to_keep, cols_to_keep]
+  
+  day0 <- attr(qfm,"row_index")$forecast_week_end_date[1]
+
+  past_2wk <- observed_by_location_target_end_date %>% 
+    dplyr::filter(between(lubridate::ymd(target_end_date),
+                          lubridate::ymd(day0) - 14,
+                          lubridate::ymd(day0))) %>% 
+    dplyr::group_by(location) %>% 
+    dplyr::summarise(past_2wk_mean = mean(observed, na.rm = TRUE),
+                     sd = sd(observed, na.rm = TRUE),
+                     m_4sd = past_2wk_mean - 4*sd,
+                     .groups = "drop")
+  
+  eligibility <- purrr::pmap_dfr(
+    row_index %>% distinct(location, forecast_week_end_date),
+    function(location, forecast_week_end_date) {
+      row_inds <- which(row_index$location == location &
+                          row_index$forecast_week_end_date == forecast_week_end_date)
+      row_inds <- row_inds[
+        sort(row_index$target[row_inds], index.return=TRUE)$ix
+      ]
+      
+      purrr::map_dfr(
+        unique(col_index[[model_id_name]]),
+        function(model_id) {
+          col_inds <- which(col_index[[model_id_name]] == model_id)
+          mean7 <- mean(qfm[row_inds, col_inds], na.rm = TRUE)
+          
+          result <- row_index[row_inds[1], ] %>% select(-target)
+          result[[model_id_name]] <- model_id
+          
+          if(is.nan(mean7)) {
+            result[['eligibility']] <- 'missing forecasts; cannot evaluate less than 4 SD below criterion'
+          } else if(mean7 < past_2wk %>% dplyr::filter(location == !!location) %>% pull(m_4sd)) {
+            result[['eligibility']] <- 'mean of next 7 daily point forecasts more than 4 SD below mean of past 2 weeks'
+          } else {
+            result[['eligibility']] <- 'eligible'
+          }
+          
+          return(result)
+        }
+      )
+    }
+  )
+
+  # return(list(qfm_7, past_2wk, day0))
+  return(eligibility)
+
+}
