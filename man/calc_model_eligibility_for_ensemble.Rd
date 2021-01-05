@@ -12,6 +12,9 @@ calc_model_eligibility_for_ensemble(
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
   do_baseline_check = FALSE,
+  do_sd_check = FALSE,
+  sd_check_table_path = NULL,
+  sd_check_plot_path = NULL,
   window_size = 0,
   decrease_tol = 1,
   baseline_tol = 1.2
@@ -36,6 +39,10 @@ model, and quantile probability level}
 
 \item{do_baseline_check}{logical; if TRUE, check condition that WIS for model
 is within specified tolerance of WIS for baseline}
+
+\item{do_sd_check}{logical; if TRUE, check condition that mean of next (7) predicted
+medians is not more than (4) sample standard deviations below the mean of the last
+(14) observations}
 
 \item{window_size}{non-negative integer number of historic weeks that
 are examined for forecast missingness; 0 is appropriate for equal weight
