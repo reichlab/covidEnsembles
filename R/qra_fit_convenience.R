@@ -311,7 +311,7 @@ load_covid_forecasts_relative_horizon <- function(
       purrr::map_dfr(
         tail(monday_dates, 1),
         load_covid_forecasts,
-        model_abbrs = candidate_model_abbreviations_to_include,
+        model_abbrs = model_abbrs,
         timezero_window_size = timezero_window_size,
         types = "point",
         targets = targets,
