@@ -6,3 +6,4 @@ covidEnsembles.Rproj
 .Rbuildignore
 .Rhistory
 code/application/weekly-ensemble/*.pdf
+.Rdata
