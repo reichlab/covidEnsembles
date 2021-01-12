@@ -1,0 +1,37 @@
+"","model","location_name","exclude"
+"1","Covid19Sim-Simulator","Kentucky",1
+"2","Google_Harvard-CPF","Alabama",1
+"3","Google_Harvard-CPF","California",1
+"4","Google_Harvard-CPF","Connecticut",1
+"5","Google_Harvard-CPF","Florida",1
+"6","Google_Harvard-CPF","Georgia",1
+"7","Google_Harvard-CPF","Illinois",1
+"8","Google_Harvard-CPF","Kentucky",1
+"9","Google_Harvard-CPF","Michigan",1
+"10","Google_Harvard-CPF","Minnesota",1
+"11","Google_Harvard-CPF","Missouri",1
+"12","Google_Harvard-CPF","Montana",1
+"13","Google_Harvard-CPF","Nevada",1
+"14","Google_Harvard-CPF","New York",1
+"15","Google_Harvard-CPF","North Carolina",1
+"16","Google_Harvard-CPF","Ohio",1
+"17","Google_Harvard-CPF","Oklahoma",1
+"18","Google_Harvard-CPF","Pennsylvania",1
+"19","Google_Harvard-CPF","Tennessee",1
+"20","Google_Harvard-CPF","Texas",1
+"21","Google_Harvard-CPF","Wisconsin",1
+"22","JHUAPL-Bucky","Kentucky",1
+"23","JHUAPL-Bucky","Minnesota",1
+"24","JHUAPL-Bucky","Oklahoma",1
+"25","JHUAPL-Bucky","Oregon",1
+"26","JHUAPL-Bucky","Wisconsin",1
+"27","LANL-GrowthRate","Kansas",1
+"28","MOBS-GLEAM_COVID","California",1
+"29","UCLA-SuEIR","Alabama",1
+"30","UCLA-SuEIR","Connecticut",1
+"31","UCLA-SuEIR","Idaho",1
+"32","UCLA-SuEIR","Kentucky",1
+"33","UCLA-SuEIR","Montana",1
+"34","UCLA-SuEIR","Pennsylvania",1
+"35","UCLA-SuEIR","Texas",1
+"36","UCLA-SuEIR","Wisconsin",1
