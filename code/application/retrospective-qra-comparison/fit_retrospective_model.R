@@ -45,9 +45,10 @@ candidate_model_abbreviations_to_include <-
 #args <- c("inc_case", "2020-10-24", "TRUE", "positive", "mean_impute", "3_groups", "4", "FALSE", "FALSE", "FALSE")
 #args <- c("inc_case", "2020-05-09", "FALSE", "ew", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE")
 #args <- c("inc_case", "2020-06-27", "FALSE", "ew", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE", "national")
-#args <- c("inc_hosp", "2020-11-16", "FALSE", "median", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE", "state")
+#args <- c("inc_death", "2020-11-30", "FALSE", "median", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE", "state")
 #args <- c("inc_hosp", "2020-11-16", "FALSE", "convex", "mean_impute", "per_model", "3", "FALSE", "FALSE", "FALSE", "state")
 #args <- c("inc_death", "2020-11-30", "FALSE", "convex", "mean_impute", "per_quantile", "4", "FALSE", "FALSE", "FALSE", "state")
+#args <- c("inc_death", "2020-05-18", "FALSE", "convex", "mean_impute", "per_model", "10", "TRUE", "FALSE", "FALSE", "state_national")
 
 args <- commandArgs(trailingOnly = TRUE)
 response_var <- args[1]
@@ -56,7 +57,7 @@ intercept <- as.logical(args[3])
 combine_method <- args[4]
 missingness <- args[5]
 quantile_group_str <- args[6]
-window_size <- as.integer(args[7])
+window_size_arg <- args[7]
 check_missingness_by_target <- as.logical(args[8])
 do_standard_checks <- as.logical(args[9])
 do_baseline_check <- as.logical(args[10])
@@ -82,6 +83,7 @@ if (response_var %in% c("inc_death", "cum_death")) {
   horizon <- 4L
   targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
   forecast_week_end_date <- forecast_date - 2
+  full_history_start <- lubridate::ymd("2020-06-22") - 7 * 10
 } else if (response_var == "inc_case") {
   required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
   if (spatial_resolution_arg == "all") {
@@ -95,6 +97,7 @@ if (response_var %in% c("inc_death", "cum_death")) {
   horizon <- 4L
   targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
   forecast_week_end_date <- forecast_date - 2
+  full_history_start <- lubridate::ymd("2020-09-14") - 7 * 10
 } else if (response_var == "inc_hosp") {
   required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
   if (spatial_resolution_arg == "all") {
@@ -108,6 +111,13 @@ if (response_var %in% c("inc_death", "cum_death")) {
   horizon <- 28L
   targets <- paste0(1:(horizon + 6), " day ahead ", gsub("_", " ", response_var))
   forecast_week_end_date <- forecast_date
+  full_history_start <- lubridate::ymd("2020-11-16") - 7 * 10
+}
+
+if (window_size_arg == "full_history") {
+  window_size <- as.integer((forecast_date - full_history_start) / 7)
+} else {
+  window_size <- as.integer(window_size_arg)
 }
 
 
@@ -138,7 +148,7 @@ case_str <- paste0(
   "-combine_method_", combine_method,
   "-missingness_", missingness,
   "-quantile_groups_", quantile_group_str,
-  "-window_size_", window_size,
+  "-window_size_", window_size_arg,
   "-check_missingness_by_target_", check_missingness_by_target,
   "-do_standard_checks_", do_standard_checks,
   "-do_baseline_check_", do_baseline_check)
@@ -219,33 +229,35 @@ if(!file.exists(forecast_filename)) {
   saveRDS(results, file = fit_filename)
 
   # extract and save just the estimated weights in csv format
-  estimated_weights <- purrr::pmap_dfr(
-    results$location_groups %>% dplyr::select(locations, qra_fit),
-    function(locations, qra_fit) {
-      weights <- qra_fit$coefficients
+  if (!(combine_method %in% c("mean", "median"))) {
+    estimated_weights <- purrr::pmap_dfr(
+      results$location_groups %>% dplyr::select(locations, qra_fit),
+      function(locations, qra_fit) {
+        weights <- qra_fit$coefficients
 
-      data.frame(
-        quantile = if ("quantile" %in% colnames(weights)) {
-            weights$quantile
-          } else {
-            rep(NA, nrow(weights))
-          },
-        model = weights$model,
-        weight = weights$beta, #[, 1],
-        join_field = "temp",
-        stringsAsFactors = FALSE
-      ) %>%
-        dplyr::left_join(
-          data.frame(
-            location = locations,
-            join_field = "temp",
-            stringsAsFactors = FALSE
-          )
+        data.frame(
+          quantile = if ("quantile" %in% colnames(weights)) {
+              weights$quantile
+            } else {
+              rep(NA, nrow(weights))
+            },
+          model = weights$model,
+          weight = weights$beta, #[, 1],
+          join_field = "temp",
+          stringsAsFactors = FALSE
         ) %>%
-        dplyr::select(-join_field)
-    }
-  )
-  write_csv(estimated_weights, weight_filename)
+          dplyr::left_join(
+            data.frame(
+              location = locations,
+              join_field = "temp",
+              stringsAsFactors = FALSE
+            )
+          ) %>%
+          dplyr::select(-join_field)
+      }
+    )
+    write_csv(estimated_weights, weight_filename)
+  }
 
 
   # save csv formatted forecasts

@@ -6,7 +6,7 @@ library(doParallel)
 library(zeallot)
 library(covidEnsembles)
 
-registerDoParallel(cores = 24)
+registerDoParallel(cores = 16)
 
 output_path <- "code/application/retrospective-qra-comparison/log/"
 
@@ -25,14 +25,16 @@ trained_analysis_combinations <- tidyr::expand_grid(
   combine_method = c("convex"),
   quantile_group_str = c("per_quantile", "3_groups", "per_model"),
   missingness = c("mean_impute"),
-  window_size = 3:10,
+  window_size = c(3:10, "full_history"),
   check_missingness_by_target = c("FALSE", "TRUE"),
   do_standard_checks = "FALSE",
   do_baseline_check = "FALSE"
 ) %>%
   dplyr::filter(
-    (response_var %in% c("cum_death", "inc_death") & spatial_resolution != "county") |
-    (response_var == "inc_case" & forecast_date >= "2020-08-03") |
+    (response_var %in% c("cum_death", "inc_death") &
+      spatial_resolution != "county" &
+      forecast_date >= "2020-06-22") |
+    (response_var == "inc_case" & forecast_date >= "2020-09-14") |
     (response_var == "inc_hosp" & forecast_date >= "2020-11-16" &
       spatial_resolution != "county" & window_size <= 4),# |
 #    (response_var == "inc_hosp" & forecast_week >= "2020-11-16"),
@@ -57,15 +59,46 @@ unweighted_analysis_combinations <- tidyr::expand_grid(
   do_baseline_check = "FALSE"
 ) %>%
   dplyr::filter(
-    (response_var %in% c("cum_death", "inc_death") & spatial_resolution != "county") |
-    (response_var == "inc_case" & forecast_date >= "2020-08-03") |
-    (response_var == "inc_hosp" & forecast_date >= "2020-11-16" & spatial_resolution != "county")
+    (response_var %in% c("cum_death", "inc_death") &
+      spatial_resolution != "county" &
+      forecast_date >= "2020-06-22") |
+    (response_var == "inc_case" & forecast_date >= "2020-09-14") |
+    (response_var == "inc_hosp" & forecast_date >= "2020-11-16" &
+      spatial_resolution != "county")
   )
 
 analysis_combinations <- dplyr::bind_rows(
   trained_analysis_combinations,
   unweighted_analysis_combinations
 )
+
+# filter to keep only cases that have not successfully run previously
+analysis_combinations <- analysis_combinations %>%
+  dplyr::mutate(
+    case_str = paste0(
+      "intercept_", as.character(intercept),
+      "-combine_method_", combine_method,
+      "-missingness_", ifelse(missingness == "mean_impute", "impute", missingness),
+      "-quantile_groups_", quantile_group_str,
+      "-window_size_", window_size,
+      "-check_missingness_by_target_", check_missingness_by_target,
+      "-do_standard_checks_", do_standard_checks,
+      "-do_baseline_check_", do_baseline_check),
+    spatial_resolution_path = dplyr::case_when(
+      spatial_resolution == "all" ~ "",
+      TRUE ~ spatial_resolution),
+    forecasts_dir = file.path(
+      "code/application/retrospective-qra-comparison/retrospective-forecasts",
+      spatial_resolution_path,
+      case_str),
+    forecast_filename = paste0(
+      forecasts_dir, "/",
+      response_var, "-", forecast_date, "-",
+      case_str, ".csv"),
+    job_complete = file.exists(forecast_filename)) %>%
+  dplyr::filter(!job_complete)
+
+dim(analysis_combinations)
 
 # analysis_combinations <- analysis_combinations %>%
 #   dplyr::filter(response_var == "inc_hosp")
