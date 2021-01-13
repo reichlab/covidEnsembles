@@ -829,7 +829,11 @@ estimate_qra_quantgen <- function(qfm_train, y_train, qfm_test, intercept, const
   }
 
   qra_fit <- new_qra_fit(
-    parameters = list(coefficients=coefficients, intercept=intercept),
+    parameters = list(
+      coefficients = coefficients,
+      intercept = intercept,
+      quantgen_qarr_train = qarr_train,
+      quantgen_y_train = y_train),
     convex = FALSE
   )
 

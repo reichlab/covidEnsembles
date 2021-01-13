@@ -1357,10 +1357,10 @@ get_imputed_ensemble_fits_and_predictions <- function(
   # impute missing values
   c(imputed_qfm_train, weight_transfer) %<-% impute_missing_per_quantile(
     qfm=qfm_train,
-    impute_method = 'mean')
+    impute_method = impute_method)
   c(imputed_qfm_test, test_weight_transfer) %<-% impute_missing_per_quantile(
     qfm=qfm_test,
-    impute_method = 'mean')
+    impute_method = impute_method)
 
   # observed responses to date
   y_train <- attr(qfm_train, 'row_index') %>%
@@ -1397,6 +1397,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
       backend = backend)
 
     # do weight transfer among models
+    # save original weights for retrospective exploration
+    orig_qra_fit <- qra_fit
     if(nrow(qra_fit$coefficients) == nrow(weight_transfer)) {
       # single weight per model
       qra_fit$coefficients$beta <-
@@ -1427,6 +1429,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
         y_train = list(y_train),
         imputed_qfm_train = list(imputed_qfm_train),
         imputed_qfm_test = list(imputed_qfm_test),
+        orig_qra_fit = list(orig_qra_fit),
         qra_fit = list(qra_fit),
         qra_forecast = list(qra_forecast)
       )),

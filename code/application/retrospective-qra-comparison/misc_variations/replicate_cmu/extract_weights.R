@@ -70,7 +70,7 @@ weight_estimates <- purrr::map_dfr(
   c("state", "national"),
   function(spatial_resolution) {
     fits_path <- paste0(
-      "code/application/retrospective-qra-comparison/retrospective-fits-",
+      "code/application/retrospective-qra-comparison/misc_variations/replicate_cmu/retrospective-fits/",
       spatial_resolution)
     fit_files <- Sys.glob(paste0(fits_path, "/", included_base_targets, "*.rds"))
 
@@ -97,8 +97,8 @@ weight_estimates <- purrr::map_dfr(
 
         if (
           model_case$combine_method != "convex" |
-          model_case$quantile_groups != "per_model" |
-          !(model_case$window_size %in% c(4, 7, 8, 9))
+          model_case$quantile_groups != "3_groups" |
+          !(model_case$window_size %in% c(4, 8))
           ) {
           return(NULL)
         }
@@ -145,4 +145,4 @@ weight_estimates <- purrr::map_dfr(
 
 saveRDS(
   distinct(weight_estimates),
-  "code/application/retrospective-qra-comparison/analyses/retrospective-weight-estimates/retrospective_weight_estimates.rds")
+  "code/application/retrospective-qra-comparison/misc_variations/replicate_cmu/retrospective_weight_estimates.rds")
