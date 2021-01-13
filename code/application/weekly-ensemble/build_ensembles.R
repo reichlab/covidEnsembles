@@ -18,6 +18,9 @@ submissions_root <- '../covid19-forecast-hub/data-processed/'
 save_roots <- c('code/application/weekly-ensemble/forecasts/')
 for (root in save_roots) {
   if (!file.exists(root)) dir.create(root, recursive = TRUE)
+  if (!file.exists(paste0(root,"ensemble-metadata/"))) {
+  dir.create(paste0(root,"ensemble-metadata/"), recursive = TRUE)
+}
 }
 
 # Where to save plots
@@ -232,6 +235,17 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         ) %>%
         dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
         dplyr::select(model, location, message)
+    } else if (forecast_date == "2021-01-11") {
+      manual_eligibility_adjust <- readr::read_csv(
+        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-12.csv"
+      ) %>%
+        dplyr::mutate(
+          location_name =
+            ifelse(location_name == "National", "US", location_name),
+          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+        ) %>%
+        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
+        dplyr::select(model, location, message)        
     } else {
       manual_eligibility_adjust <- NULL
     }
