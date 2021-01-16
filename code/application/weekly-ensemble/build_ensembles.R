@@ -1,7 +1,7 @@
 library(tidyverse)
 library(zeallot)
-library(covidEnsembles)
 library(covidHubUtils)
+library(covidEnsembles)
 library(covidData)
 library(googledrive)
 library(yaml)
@@ -418,15 +418,15 @@ for (response_var in c("inc_death", "cum_death", "inc_case", "inc_hosp")) {
   locations <- unique(eligibility$location)
 
   val_result <- identical(
-      sort(paste0(eligibility$location, eligibility$model)),
-      tidyr::expand_grid(
-        model = all_models,
-        location = locations
-      ) %>%
-        dplyr::mutate(lm = paste0(location, model)) %>%
-        dplyr::pull(lm) %>%
-        sort()
-    )
+    sort(paste0(eligibility$location, eligibility$model)),
+    tidyr::expand_grid(
+      model = all_models,
+      location = locations
+    ) %>%
+    dplyr::mutate(lm = paste0(location, model)) %>%
+    dplyr::pull(lm) %>%
+    sort()
+  )
   message(paste0("CHECK THAT ALL MODELS ARE IN ELIGIBILITY FILE: ", response_var))
   message(val_result)
 }
