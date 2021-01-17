@@ -278,11 +278,11 @@ load_covid_forecasts_relative_horizon <- function(
       # date relative to which the horizons and targets are defined for the
       # purpose of building the ensemble.
       forecast_week_end_date =
-        calc_forecast_week_end_date(timezero, target, return_type = "date"),
+        covidEnsembles::calc_forecast_week_end_date(timezero, target, return_type = "date"),
       horizon =
-        calc_relative_horizon(forecast_week_end_date, target_end_date, target),
+        covidEnsembles::calc_relative_horizon(forecast_week_end_date, target_end_date, target),
       target =
-        calc_relative_target(forecast_week_end_date, target_end_date, target)
+        covidEnsembles::calc_relative_target(forecast_week_end_date, target_end_date, target)
     ) %>%
     # keep only forecasts targeting dates after the forecast_week_end_date
     # and less than the specified horizon relative to the forecast week end date
@@ -325,11 +325,11 @@ load_covid_forecasts_relative_horizon <- function(
         # date relative to which the horizons and targets are defined for the
         # purpose of building the ensemble.
         forecast_week_end_date =
-          calc_forecast_week_end_date(timezero, target, return_type = "date"),
+          covidEnsembles::calc_forecast_week_end_date(timezero, target, return_type = "date"),
         horizon =
-          calc_relative_horizon(forecast_week_end_date, target_end_date, target),
+          covidEnsembles::calc_relative_horizon(forecast_week_end_date, target_end_date, target),
         target =
-          calc_relative_target(forecast_week_end_date, target_end_date, target)
+          covidEnsembles::calc_relative_target(forecast_week_end_date, target_end_date, target)
       ) %>%
       # keep only forecasts targeting dates after the forecast_week_end_date
       # and less than the specified horizon relative to the forecast week end date
@@ -798,6 +798,8 @@ get_ensemble_fit_and_predictions <- function(
 #' @param return_eligibility if TRUE, return model eligibility
 #'
 #' @return tibble or data frame with ensemble fits and results
+#' 
+#' @export
 get_by_location_group_ensemble_fits_and_predictions <- function(
   forecasts,
   observed_by_location_target_end_date,
