@@ -6,3 +6,5 @@ covidEnsembles.Rproj
 .Rbuildignore
 .Rhistory
 code/application/weekly-ensemble/*.pdf
+run*.out
+run*.err

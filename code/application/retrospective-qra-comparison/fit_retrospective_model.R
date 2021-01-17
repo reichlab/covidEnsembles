@@ -7,21 +7,6 @@ library(zeallot)
 library(gridExtra)
 library(yaml)
 
-submissions_root <- "~/research/epi/covid/covid19-forecast-hub/data-processed/"
-
-# List of candidate models for inclusion in ensemble
-candidate_model_abbreviations_to_include <- get_candidate_models(
-  submissions_root = submissions_root,
-  include_designations = c("primary", "secondary"),
-  include_COVIDhub_ensemble = FALSE,
-  include_COVIDhub_baseline = TRUE)
-
-# Drop hospitalizations ensemble from JHU APL
-candidate_model_abbreviations_to_include <-
-  candidate_model_abbreviations_to_include[
-    !(candidate_model_abbreviations_to_include == "JHUAPL-SLPHospEns")
-  ]
-
 #options(warn=2, error=recover)
 
 #debug(covidEnsembles:::get_by_location_group_ensemble_fits_and_predictions)
@@ -51,17 +36,64 @@ candidate_model_abbreviations_to_include <-
 #args <- c("inc_death", "2020-05-18", "FALSE", "convex", "mean_impute", "per_model", "10", "TRUE", "FALSE", "FALSE", "state_national")
 
 args <- commandArgs(trailingOnly = TRUE)
-response_var <- args[1]
-forecast_date <- lubridate::ymd(args[2])
-intercept <- as.logical(args[3])
-combine_method <- args[4]
-missingness <- args[5]
-quantile_group_str <- args[6]
-window_size_arg <- args[7]
-check_missingness_by_target <- as.logical(args[8])
-do_standard_checks <- as.logical(args[9])
-do_baseline_check <- as.logical(args[10])
-spatial_resolution_arg <- args[11]
+run_setting <- args[1]
+
+if (run_setting == "local") {
+  # running locally -- run settings passed as command line arguments
+  response_var <- args[2]
+  forecast_date <- lubridate::ymd(args[3])
+  intercept <- as.logical(args[4])
+  combine_method <- args[5]
+  missingness <- args[6]
+  quantile_group_str <- args[7]
+  window_size_arg <- args[8]
+  check_missingness_by_target <- as.logical(args[9])
+  do_standard_checks <- as.logical(args[10])
+  do_baseline_check <- as.logical(args[11])
+  spatial_resolution_arg <- args[12]
+
+  submissions_root <- "~/research/epi/covid/covid19-forecast-hub/data-processed/"
+} else {
+  # running on cluster -- extract run settings from csv file of analysis
+  # combinations, row specified by job run index passed as command line
+  # argument
+  print("Args:")
+  print(args)
+  job_ind <- as.integer(Sys.getenv("SLURM_ARRAY_TASK_ID"))
+  print(paste0("Job index: ", job_ind))
+
+  analysis_combinations <- readr::read_csv(
+    "code/application/retrospective-qra-comparison/analysis_combinations.csv"
+  )
+  
+  response_var <- analysis_combinations$response_var[job_ind]
+  forecast_date <- analysis_combinations$forecast_date[job_ind]
+  intercept <- analysis_combinations$intercept[job_ind]
+  combine_method <- analysis_combinations$combine_method[job_ind]
+  missingness <- analysis_combinations$missingness[job_ind]
+  quantile_group_str <- analysis_combinations$quantile_group_str[job_ind]
+  window_size_arg <- analysis_combinations$window_size[job_ind]
+  check_missingness_by_target <- analysis_combinations$check_missingness_by_target[job_ind]
+  do_standard_checks <- analysis_combinations$do_standard_checks[job_ind]
+  do_baseline_check <- analysis_combinations$do_baseline_check[job_ind]
+  spatial_resolution_arg <- analysis_combinations$spatial_resolution[job_ind]
+
+  submissions_root <- "~/covid19-forecast-hub/data-processed/"
+}
+
+# List of candidate models for inclusion in ensemble
+candidate_model_abbreviations_to_include <- get_candidate_models(
+  submissions_root = submissions_root,
+  include_designations = c("primary", "secondary"),
+  include_COVIDhub_ensemble = FALSE,
+  include_COVIDhub_baseline = TRUE)
+
+# Drop hospitalizations ensemble from JHU APL
+candidate_model_abbreviations_to_include <-
+  candidate_model_abbreviations_to_include[
+    !(candidate_model_abbreviations_to_include == "JHUAPL-SLPHospEns")
+  ]
+
 
 if (missingness == "mean_impute") {
   missingness <- "impute"
@@ -125,7 +157,7 @@ if(quantile_group_str == "per_model") {
   quantile_groups <- rep(1, length(required_quantiles))
 } else if(quantile_group_str == "3_groups") {
   if (length(required_quantiles) == 23) {
-    quantile_groups <- c(rep(1, 3), rep(2, 23 - 6), rep(3, 3))
+    quantile_groups <- c(rep(1, 4), rep(2, 23 - 8), rep(3, 4))
   } else if (length(required_quantiles) == 7) {
     quantile_groups <- c(1, rep(2, 5), 3)
   }
@@ -226,10 +258,13 @@ if(!file.exists(forecast_filename)) {
   )
 
   # save full results including estimated weights, training data, etc.
-  saveRDS(results, file = fit_filename)
+  # only if running locally; cluster has limited space
+  if (run_setting == "local") {
+    saveRDS(results, file = fit_filename)
+  }
 
   # extract and save just the estimated weights in csv format
-  if (!(combine_method %in% c("mean", "median"))) {
+  if (!(combine_method %in% c("ew", "mean", "median"))) {
     estimated_weights <- purrr::pmap_dfr(
       results$location_groups %>% dplyr::select(locations, qra_fit),
       function(locations, qra_fit) {
