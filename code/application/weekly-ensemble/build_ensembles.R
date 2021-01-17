@@ -294,11 +294,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     dplyr::transmute(
       forecast_date = UQ(forecast_date),
       target = target,
-      target_end_date = as.character(
-          lubridate::ymd(forecast_week_end_date) +
-            as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
-              ifelse(grepl("day", target), 1, 7)
-        ),
+      target_end_date = target_end_date,
       location = location,
       location_name = location_name,
       type = 'quantile',
