@@ -1388,6 +1388,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   # fit ensembles and obtain predictions per group
   if(combine_method == 'ew') {
     qra_fit <- estimate_qra(imputed_qfm_train, combine_method = 'ew')
+    orig_qra_fit <- qra_fit    
   } else {
     qra_fit <- estimate_qra(
       qfm_train = imputed_qfm_train,
