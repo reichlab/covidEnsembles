@@ -833,7 +833,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
     forecast_df = forecasts,
     model_col = "model",
-    id_cols = c("location", "forecast_week_end_date", "target", "target_end_date"),
+    id_cols = c("location", "forecast_week_end_date", "target"),
     quantile_name_col = "quantile",
     quantile_value_col = "value"
   )
@@ -923,7 +923,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
             model %in% models,
             location %in% locations),
         model_col = 'model',
-        id_cols = c('location', 'forecast_week_end_date', 'target', 'target_end_date'),
+        id_cols = c('location', 'forecast_week_end_date', 'target'),
         quantile_name_col = 'quantile',
         quantile_value_col = 'value',
         drop_missing_id_levels = TRUE
@@ -946,7 +946,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
             model %in% models,
             location %in% locations),
         model_col = 'model',
-        id_cols = c('location', 'forecast_week_end_date', 'target', 'target_end_date'),
+        id_cols = c('location', 'forecast_week_end_date', 'target'),
         quantile_name_col = 'quantile',
         quantile_value_col = 'value'
       )
@@ -1170,7 +1170,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
     forecast_df = forecasts,
     model_col = 'model',
-    id_cols = c('location', 'forecast_week_end_date', 'target', 'target_end_date'),
+    id_cols = c('location', 'forecast_week_end_date', 'target'),
     quantile_name_col = 'quantile',
     quantile_value_col = 'value'
   )
@@ -1230,7 +1230,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
     forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
       forecast_df = forecasts,
       model_col = "model",
-      id_cols = c("location", "forecast_week_end_date", "target", 'target_end_date'),
+      id_cols = c("location", "forecast_week_end_date", "target"),
       quantile_name_col = "quantile",
       quantile_value_col = "value"
     )
@@ -1486,7 +1486,7 @@ get_rescaled_ensemble_fits_and_predictions <- function(
     forecast_df = forecasts %>%
       filter(forecast_week_end_date == UQ(forecast_week_end_date)),
     model_col = 'model',
-    id_cols = c('location', 'forecast_week_end_date', 'target', 'target_end_date'),
+    id_cols = c('location', 'forecast_week_end_date', 'target'),
     quantile_name_col = 'quantile',
     quantile_value_col = 'value'
   )
@@ -1527,7 +1527,7 @@ get_rescaled_ensemble_fits_and_predictions <- function(
       forecast_df = forecasts %>%
         filter(forecast_week_end_date == UQ(forecast_week_end_date) - 7*w),
       model_col = 'model',
-      id_cols = c('location', 'forecast_week_end_date', 'target', 'target_end_date'),
+      id_cols = c('location', 'forecast_week_end_date', 'target'),
       quantile_name_col = 'quantile',
       quantile_value_col = 'value'
     )
@@ -1588,7 +1588,7 @@ get_rescaled_ensemble_fits_and_predictions <- function(
   qfm_train <- new_QuantileForecastMatrix_from_df(
     forecast_df = this_week_forecasts_train,
     model_col = 'model',
-    id_cols = c('location', 'forecast_week_end_date', 'target', 'target_end_date'),
+    id_cols = c('location', 'forecast_week_end_date', 'target'),
     quantile_name_col = 'quantile',
     quantile_value_col = 'value',
     drop_missing_id_levels = TRUE
@@ -1604,7 +1604,7 @@ get_rescaled_ensemble_fits_and_predictions <- function(
         forecast_week_end_date == max(forecast_week_end_date),
         !is.na(observed)),
     model_col = 'model',
-    id_cols = c('location', 'forecast_week_end_date', 'target', 'target_end_date'),
+    id_cols = c('location', 'forecast_week_end_date', 'target'),
     quantile_name_col = 'quantile',
     quantile_value_col = 'value'
   )
