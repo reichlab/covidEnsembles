@@ -245,7 +245,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
           message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
         ) %>%
         dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
-        dplyr::select(model, location, message)        
+        dplyr::select(model, location, message)
     } else {
       manual_eligibility_adjust <- NULL
     }

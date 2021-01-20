@@ -44,15 +44,13 @@ get_observed_by_location_target_end_date <- function(
           dplyr::pull(type)
 
         if (measure %in% c("case", "death")) {
-          load_data <- covidData::load_jhu_data
           temporal_resolution <- "weekly"
         } else if (measure == "hosp") {
-          load_data <- covidData::load_healthdata_data
           temporal_resolution <- "daily"
         }
 
-        load_data(
-          issue_date = issue_date,
+        covidData::load_data(
+          as_of = issue_date,
           spatial_resolution = effective_spatial_resolution,
           temporal_resolution = temporal_resolution,
           measure = measure
