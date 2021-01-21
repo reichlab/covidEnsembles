@@ -1,0 +1,72 @@
+"","model","location_name","exclude"
+"1","Covid19Sim-Simulator","Kentucky",1
+"2","Google_Harvard-CPF","Alabama",1
+"3","Google_Harvard-CPF","Arizona",1
+"4","Google_Harvard-CPF","Arkansas",1
+"5","Google_Harvard-CPF","California",1
+"6","Google_Harvard-CPF","Colorado",1
+"7","Google_Harvard-CPF","Connecticut",1
+"8","Google_Harvard-CPF","Delaware",1
+"9","Google_Harvard-CPF","Florida",1
+"10","Google_Harvard-CPF","Illinois",1
+"11","Google_Harvard-CPF","Indiana",1
+"12","Google_Harvard-CPF","Kansas",1
+"13","Google_Harvard-CPF","Kentucky",1
+"14","Google_Harvard-CPF","Maryland",1
+"15","Google_Harvard-CPF","Massachusetts",1
+"16","Google_Harvard-CPF","Michigan",1
+"17","Google_Harvard-CPF","Missouri",1
+"18","Google_Harvard-CPF","Montana",1
+"19","Google_Harvard-CPF","Nevada",1
+"20","Google_Harvard-CPF","New Jersey",1
+"21","Google_Harvard-CPF","New Mexico",1
+"22","Google_Harvard-CPF","New York",1
+"23","Google_Harvard-CPF","North Carolina",1
+"24","Google_Harvard-CPF","Ohio",1
+"25","Google_Harvard-CPF","Oklahoma",1
+"26","Google_Harvard-CPF","Pennsylvania",1
+"27","Google_Harvard-CPF","South Carolina",1
+"28","Google_Harvard-CPF","Texas",1
+"29","Google_Harvard-CPF","Utah",1
+"30","Google_Harvard-CPF","Virginia",1
+"31","Google_Harvard-CPF","Washington",1
+"32","Google_Harvard-CPF","West Virginia",1
+"33","Google_Harvard-CPF","Wisconsin",1
+"34","IHME-CurveFit","Alabama",1
+"35","IHME-CurveFit","Connecticut",1
+"36","IHME-CurveFit","Delaware",1
+"37","IHME-CurveFit","Florida",1
+"38","IHME-CurveFit","Kentucky",1
+"39","IHME-CurveFit","Maryland",1
+"40","IHME-CurveFit","New York",1
+"41","IHME-CurveFit","Ohio",1
+"42","IHME-CurveFit","Texas",1
+"43","IHME-CurveFit","Virginia",1
+"44","IHME-CurveFit","Wisconsin",1
+"45","JHU_IDD-CovidSP","Alabama",1
+"46","JHU_IDD-CovidSP","Arizona",1
+"47","JHU_IDD-CovidSP","Delaware",1
+"48","JHU_IDD-CovidSP","Kentucky",1
+"49","JHU_IDD-CovidSP","Maryland",1
+"50","JHU_IDD-CovidSP","Nevada",1
+"51","JHU_IDD-CovidSP","New Jersey",1
+"52","JHU_IDD-CovidSP","New Mexico",1
+"53","JHU_IDD-CovidSP","Ohio",1
+"54","JHU_IDD-CovidSP","Texas",1
+"55","JHUAPL-Bucky","Colorado",1
+"56","JHUAPL-Bucky","Kansas",1
+"57","JHUAPL-Bucky","Kentucky",1
+"58","JHUAPL-Bucky","Maryland",1
+"59","JHUAPL-Bucky","New Mexico",1
+"60","JHUAPL-Bucky","Ohio",1
+"61","JHUAPL-Bucky","Utah",1
+"62","JHUAPL-Bucky","Wisconsin",1
+"63","LANL-GrowthRate","Kansas",1
+"64","LANL-GrowthRate","Utah",1
+"65","UCLA-SuEIR","Colorado",1
+"66","UCLA-SuEIR","Connecticut",1
+"67","UCLA-SuEIR","Kentucky",1
+"68","UCLA-SuEIR","Montana",1
+"69","UCLA-SuEIR","New Mexico",1
+"70","UCLA-SuEIR","Pennsylvania",1
+"71","UCLA-SuEIR","Texas",1
