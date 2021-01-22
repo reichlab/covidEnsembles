@@ -19,7 +19,7 @@ save_roots <- c('code/application/weekly-ensemble/forecasts/')
 for (root in save_roots) {
   if (!file.exists(root)) dir.create(root, recursive = TRUE)
   if (!file.exists(paste0(root,"ensemble-metadata/"))) {
-  dir.create(paste0(root,"ensemble-metadata/"), recursive = TRUE)
+    dir.create(paste0(root,"ensemble-metadata/"), recursive = TRUE)
   }
 }
 
