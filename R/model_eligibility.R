@@ -739,7 +739,6 @@ calc_sd_check <- function(
 
   if (show_stats) return(el_detail)
 
-  return(eligibility)
+  return(eligibility %>% dplyr::select(-mean_ahead))
 }
-
 
