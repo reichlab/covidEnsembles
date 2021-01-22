@@ -19,7 +19,7 @@ save_roots <- c('code/application/weekly-ensemble/forecasts/')
 for (root in save_roots) {
   if (!file.exists(root)) dir.create(root, recursive = TRUE)
   if (!file.exists(paste0(root,"ensemble-metadata/"))) {
-  dir.create(paste0(root,"ensemble-metadata/"), recursive = TRUE)
+    dir.create(paste0(root,"ensemble-metadata/"), recursive = TRUE)
   }
 }
 
@@ -30,8 +30,8 @@ if (!file.exists(plots_root)) dir.create(plots_root, recursive = TRUE)
 # Where to save hospitalization exclusion tables
 sd_check_table_path <- 'code/application/weekly-ensemble/exclusion-outputs/tables/'
 if (!file.exists(sd_check_table_path)) dir.create(sd_check_table_path, recursive = TRUE)
-sd_check_plots_path <- 'code/application/weekly-ensemble/exclusion-outputs/plots/'
-if (!file.exists(sd_check_plots_path)) dir.create(sd_check_plots_path, recursive = TRUE)
+sd_check_plot_path <- 'code/application/weekly-ensemble/exclusion-outputs/plots/'
+if (!file.exists(sd_check_plot_path)) dir.create(sd_check_plot_path, recursive = TRUE)
 
 # List of candidate models for inclusion in ensemble
 candidate_model_abbreviations_to_include <- get_candidate_models(
