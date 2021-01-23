@@ -664,18 +664,20 @@ calc_sd_check <- function(
   }
 
   if (!is.null(sd_check_table_path)) {
-    tab <- el_detail %>%
-    dplyr::filter(sd_eligibility != "eligible") %>% 
+    tab <- el_detail %>% 
     transmute(location, location_name, model,
       `mean ahead` = round(mean_ahead),
       `past mean` = round(past_mean),
       SD = round(sd, 1),
       cutoff = round(past_mean - num_sd*sd,1),
       `reason excluded` = sd_eligibility)
-    write_csv(tab, file = paste0(sd_check_table_path,
-     "sd_eligibility_",
+    fnames <- paste0(sd_check_table_path,
+     c("sd_eligible_", "sd_ineligible_", "sd_missing_"),
      el_detail$forecast_week_end_date[1],
-     ".csv"))
+     ".csv")
+    write_csv(tab %>% dplyr::filter(str_starts(`reason excluded`, "eligible")), file = fnames[1])
+    write_csv(tab %>% dplyr::filter(str_starts(`reason excluded`, "mean")), file = fnames[2])
+    write_csv(tab %>% dplyr::filter(str_starts(`reason excluded`, "missing")), file = fnames[3])
   }
 
   if (!is.null(sd_check_plot_path)) { 
@@ -752,7 +754,17 @@ calc_sd_check <- function(
     height = 14)  
   }
 
-  if (show_stats) return(el_detail)
+  if (show_stats) {
+    return(el_detail %>% dplyr::select(
+      location,
+      location_name, 
+      model, 
+      mean_ahead, 
+      past_mean, 
+      sd, 
+      m_sd, 
+      sd_eligibility))
+  }
 
   ## Note: With multiple time-zero functionality as in calc_q10_check e.g.,
   ## we wouldn't need to remove forecast_week_end_date
