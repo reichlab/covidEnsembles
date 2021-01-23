@@ -657,10 +657,6 @@ calc_sd_check <- function(
 
   eligibility <- eligibility %>% as_tibble()
 
-  ## Note: This step could be removed after multiple time-zero functionality
-  ## introduced and groupwise summary removes dates as in calc_q10_check e.g.
-  eligibility <- eligibility %>% dplyr::select(-forecast_week_end_date)
-
   if (!is.null(sd_check_table_path) | !is.null(sd_check_plot_path) | show_stats) {
     el_detail <- eligibility %>% 
     dplyr::left_join(lookback_stats, by = "location") %>% 
@@ -688,11 +684,19 @@ calc_sd_check <- function(
       levels = c("US", sort(unique(el_detail$location_name[el_detail$location_name!="US"]))))
 
     p_point <- ggplot(el_detail, aes(x = model, y = mean_ahead, color = model)) +
-    geom_point() +
-    geom_hline(aes(yintercept = past_mean), alpha = .4) +
-    geom_hline(aes(yintercept = past_mean - num_sd*sd), linetype = "dashed") +
-    geom_hline(aes(yintercept = past_mean + num_sd*sd), linetype = "dashed") +
+    geom_point(size = 3) +
+    geom_hline(aes(yintercept = past_mean, linetype = "Mean"), alpha = .4) +
+    geom_hline(aes(yintercept = past_mean - num_sd*sd, linetype = "4 SD up and down")) +
+    geom_hline(aes(yintercept = past_mean + num_sd*sd, linetype = "4 SD up and down")) +
     facet_wrap(~location_name, scales = "free_y") +
+    scale_linetype_manual(name = "Reported values", 
+      breaks = c("Mean", "4 SD up and down"),
+      values = c(1, 2)) +
+    guides(
+      linetype = guide_legend(ncol = 1,
+        title.position = "top",
+        override.aes = list(alpha = c(.4,1))), 
+      color = guide_legend(title = "Means of forecast medians", title.position = "top")) +
     theme_bw() +
     theme(axis.title.x = element_blank(),
       axis.title.y = element_blank(),
@@ -709,19 +713,30 @@ calc_sd_check <- function(
 
     dat <- lookback_data %>% 
     dplyr::mutate(
-      model = "observed", 
+      model = "Reported", 
       target_end_date = as.Date(target_end_date), 
       value = observed) %>% 
     dplyr::bind_rows(as.data.frame(qfm)) %>% 
     dplyr::left_join(fips_codes)
     dat$location_name <- factor(dat$location_name,
       levels = c("US", sort(unique(dat$location_name[dat$location_name!="US"]))))
-    p_line <- ggplot(dat, aes(x = target_end_date, y = value, color = model)) +
-    geom_line() +
-    geom_hline(data = el_detail, aes(yintercept = past_mean), alpha = .4) +
-    geom_hline(data = el_detail, aes(yintercept = past_mean - num_sd*sd), linetype = "dashed") +
-    geom_hline(data = el_detail, aes(yintercept = past_mean + num_sd*sd), linetype = "dashed") +
+    p_line <- ggplot() +
+    geom_line(data = dat %>% dplyr::filter(model == "Reported"), 
+      aes(x = target_end_date, y = value, linetype = "Reported")) +
+    geom_line(data = dat %>% dplyr::filter(model != "Reported"), 
+      aes(x = target_end_date, y = value, color = model)) +
+    geom_hline(data = el_detail, aes(yintercept = past_mean, linetype = "Mean"), alpha = .4) +
+    geom_hline(data = el_detail, aes(yintercept = past_mean - num_sd*sd, linetype = "4 SD up and down")) +
+    geom_hline(data = el_detail, aes(yintercept = past_mean + num_sd*sd, linetype = "4 SD up and down")) +
     facet_wrap(~location_name, scales = "free_y") +
+    scale_linetype_manual(name = "Reported values", 
+      breaks = c("Reported", "Mean", "4 SD up and down"),
+       values = c(1, 1, 2)) +
+    guides(
+      linetype = guide_legend(ncol = 1,
+       title.position = "top",
+       override.aes = list(alpha = c(1,.4,1))), 
+      color = guide_legend(title = "Forecast medians", title.position = "top")) +
     theme_bw() +
     theme(axis.title.x = element_blank(),
       axis.title.y = element_blank(),
@@ -739,6 +754,8 @@ calc_sd_check <- function(
 
   if (show_stats) return(el_detail)
 
-  return(eligibility %>% dplyr::select(-mean_ahead))
+  ## Note: With multiple time-zero functionality as in calc_q10_check e.g.,
+  ## we wouldn't need to remove forecast_week_end_date
+  return(eligibility %>% dplyr::select(-mean_ahead, -forecast_week_end_date))
 }
 
