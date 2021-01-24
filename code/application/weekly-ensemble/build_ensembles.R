@@ -57,6 +57,9 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date - 2
 
+    # date for which retrieved deaths truth data should be current
+    data_as_of_date <- covidData::jhu_deaths_data$issue_date %>% max()
+
     # adjustments based on plots
     if (forecast_date == "2020-06-08") {
       manual_eligibility_adjust <- c(
@@ -105,6 +108,10 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     horizon <- 4L
     targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date - 2
+
+    # date for which retrieved deaths truth data should be current
+    # repeated from cum_death block for clarity
+    data_as_of_date <- covidData::jhu_deaths_data$issue_date %>% max()
 
     # adjustments based on plots
     if (forecast_date == "2020-06-08") {
@@ -164,6 +171,9 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date - 2
 
+    # date for which retrieved cases truth data should be current
+    data_as_of_date <- covidData::jhu_cases_data$issue_date %>% max()
+
     if (forecast_date == "2020-07-13") {
       manual_eligibility_adjust <- tidyr::expand_grid(
         model = c("CU-select", "IowaStateLW-STEM", "JHU_IDD-CovidSP",
@@ -194,6 +204,9 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     horizon <- 28L
     targets <- paste0(1:(horizon + 6), " day ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date
+
+    # date for which retrieved hospitalization truth data should be current
+    data_as_of_date <- covidData::healthdata_hosp_data$issue_date %>% max()
 
     if (forecast_date == "2020-12-07") {
       manual_eligibility_adjust <- tidyr::expand_grid(
@@ -246,6 +259,17 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         ) %>%
         dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
         dplyr::select(model, location, message)
+    } else if (forecast_date == "2021-01-18") {
+      manual_eligibility_adjust <- readr::read_csv(
+        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-19.csv"
+      ) %>%
+        dplyr::mutate(
+          location_name =
+            ifelse(location_name == "National", "US", location_name),
+          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+        ) %>%
+        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
+        dplyr::select(model, location, message)        
     } else {
       manual_eligibility_adjust <- NULL
     }
@@ -262,6 +286,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       horizon = horizon,
       timezero_window_size = 6,
       window_size = 0,
+      data_as_of_date = data_as_of_date,
       intercept = FALSE,
       combine_method = 'median',
       quantile_groups = rep(1, 23),

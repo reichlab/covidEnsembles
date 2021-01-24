@@ -367,6 +367,7 @@ load_covid_forecasts_relative_horizon <- function(
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
+#' @param data_as_of_date
 #' @param intercept logical specifying whether an intercept is included
 #' @param combine_method character specifying the approach to model
 #' combination: "equal", "convex", "positive", "unconstrained", or "median".
@@ -408,6 +409,7 @@ build_covid_ensemble_from_local_files <- function(
   horizon,
   timezero_window_size = 1,
   window_size,
+  data_as_of_date,
   intercept=FALSE,
   combine_method,
   quantile_groups,
@@ -428,7 +430,7 @@ build_covid_ensemble_from_local_files <- function(
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
     get_observed_by_location_target_end_date(
-      issue_date = as.character(lubridate::ymd(forecast_date) - 1),
+      as_of = as.character(data_as_of_date),
       targets = targets,
       spatial_resolution = spatial_resolution
     )
@@ -530,6 +532,7 @@ build_covid_ensemble_from_zoltar <- function(
   forecast_week_end_date,
   timezero_window_size = 1,
   window_size,
+  data_as_of_date,
   intercept=FALSE,
   combine_method,
   quantile_groups,
@@ -556,7 +559,7 @@ build_covid_ensemble_from_zoltar <- function(
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
     get_observed_by_location_target_end_date(
-      issue_date = as.character(lubridate::ymd(forecast_date) + 1),
+      as_of = as.character(data_as_of_date),
       targets = targets,
       spatial_resolution = c('national', 'state')
     )
