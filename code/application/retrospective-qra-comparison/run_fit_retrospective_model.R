@@ -5,110 +5,158 @@ library(lubridate)
 library(zeallot)
 library(covidEnsembles)
 
-run_setting <- "cluster"
-#run_setting <- "local"
-#num_local_cores <- 16L
+args <- commandArgs(trailingOnly = TRUE)
+run_setting <- args[1]
+
+if (is.na(run_setting)) {
+  stop("no run setting")
+#  run_setting <- "cluster"
+  #run_setting <- "local"
+  #num_local_cores <- 16L
+}
 
 output_path <- "code/application/retrospective-qra-comparison/log/"
 
-first_forecast_date <- lubridate::ymd("2020-05-11")
-last_forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
-num_forecast_weeks <-
-  as.numeric(last_forecast_date - first_forecast_date) / 7 + 1
+if (run_setting == "cluster_single_node") {
+  # number of available cores on cluster node
+  num_cores <- 39L
 
-trained_analysis_combinations <- tidyr::expand_grid(
-  spatial_resolution = c("county", "state", "national", "state_national"),
-  response_var = c("inc_case", "inc_death", "cum_death", "inc_hosp"),
-  forecast_date = as.character(
-    lubridate::ymd(first_forecast_date) +
-      seq(from = 0, length = num_forecast_weeks) * 7),
-  intercept = c("FALSE"),
-  combine_method = c("convex"),
-  quantile_group_str = c("per_quantile", "3_groups", "per_model"),
-  missingness = c("mean_impute"),
-  window_size = c(3:10, "full_history"),
-  check_missingness_by_target = "TRUE",
-  do_standard_checks = "FALSE",
-  do_baseline_check = "FALSE"
-) %>%
-  dplyr::filter(
-    (response_var %in% c("cum_death", "inc_death") &
-      spatial_resolution != "county" &
-      forecast_date >= "2020-06-22") |
-    (response_var == "inc_case" & forecast_date >= "2020-09-14") |
-    (response_var == "inc_hosp" & forecast_date >= "2020-11-16" &
-      spatial_resolution != "county"),# |
-#    (response_var == "inc_hosp" & forecast_week >= "2020-11-16"),
-    spatial_resolution != "county" | window_size %in% c("3", "4")
-  ) %>%
-  dplyr::arrange(window_size, forecast_date)
+  job_ind <- as.integer(Sys.getenv("SLURM_ARRAY_TASK_ID"))
 
-unweighted_analysis_combinations <- tidyr::expand_grid(
-  spatial_resolution = c("county", "state", "national"),
-  response_var = c("inc_case", "inc_death", "cum_death", "inc_hosp"),
-  forecast_date = as.character(
-    lubridate::ymd(first_forecast_date) +
-      seq(from = 0, length = num_forecast_weeks) * 7),
-  intercept = c("FALSE"),
-  combine_method = c("ew", "median"),
-  quantile_group_str = c("per_model"),
-  missingness = c("by_location_group"),
-  window_size = "0",
-  check_missingness_by_target = "FALSE",
-  do_standard_checks = "FALSE",
-  do_baseline_check = "FALSE"
-) %>%
-  dplyr::filter(
-    (response_var %in% c("cum_death", "inc_death") &
-      spatial_resolution != "county" &
-      forecast_date >= "2020-06-22") |
-    (response_var == "inc_case" & forecast_date >= "2020-09-14") |
-    (response_var == "inc_hosp" & forecast_date >= "2020-11-16" &
-      spatial_resolution != "county")
+  analysis_combinations <- readr::read_csv(
+    "code/application/retrospective-qra-comparison/analysis_combinations.csv"
   )
+  first_ind <- (job_ind - 1) * 39 + 1
+  if (first_ind > nrow(analysis_combinations)) {
+    analysis_combinations <- NULL
+  } else {
+    analysis_combinations <- analysis_combinations[
+      seq(from = first_ind, length = min(39, nrow(analysis_combinations))), ,
+      drop = FALSE]
+  }
+} else {
+  # number of cores to use for local runs
+  num_cores <- 16L
 
-analysis_combinations <- dplyr::bind_rows(
-  trained_analysis_combinations,
-  unweighted_analysis_combinations
-)
+  first_forecast_date <- lubridate::ymd("2020-05-11")
+  last_forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
+  num_forecast_weeks <-
+    as.numeric(last_forecast_date - first_forecast_date) / 7 + 1
 
-# filter to keep only cases that have not successfully run previously
-analysis_combinations <- analysis_combinations %>%
-  dplyr::mutate(
-    case_str = paste0(
-      "intercept_", as.character(intercept),
-      "-combine_method_", combine_method,
-      "-missingness_", ifelse(missingness == "mean_impute", "impute", missingness),
-      "-quantile_groups_", quantile_group_str,
-      "-window_size_", window_size,
-      "-check_missingness_by_target_", check_missingness_by_target,
-      "-do_standard_checks_", do_standard_checks,
-      "-do_baseline_check_", do_baseline_check),
-    spatial_resolution_path = dplyr::case_when(
-      spatial_resolution == "all" ~ "",
-      TRUE ~ spatial_resolution),
-    forecasts_dir = file.path(
-      "code/application/retrospective-qra-comparison/retrospective-forecasts",
-      spatial_resolution_path,
-      case_str),
-    forecast_filename = paste0(
-      forecasts_dir, "/",
-      response_var, "-", forecast_date, "-",
-      case_str, ".csv"),
-    job_complete = file.exists(forecast_filename)) %>%
-  dplyr::filter(!job_complete)
+  trained_analysis_combinations <- tidyr::expand_grid(
+    spatial_resolution = c("county", "state", "national", "state_national"),
+    response_var = c("inc_case", "inc_death", "cum_death", "inc_hosp"),
+    forecast_date = as.character(
+      lubridate::ymd(first_forecast_date) +
+        seq(from = 0, length = num_forecast_weeks) * 7),
+    intercept = c("FALSE"),
+    combine_method = c("convex"),
+    quantile_group_str = c("per_quantile", "3_groups", "per_model"),
+    missingness = c("mean_impute"),
+    window_size = c(as.character(3:10), "full_history"),
+    check_missingness_by_target = "TRUE",
+    do_standard_checks = "FALSE",
+    do_baseline_check = "FALSE"
+  ) %>%
+    dplyr::filter(
+      (response_var %in% c("cum_death", "inc_death") &
+        spatial_resolution != "county" &
+        forecast_date >= "2020-06-22") |
+      (response_var == "inc_case" & forecast_date >= "2020-09-14") |
+      (response_var == "inc_hosp" & forecast_date > "2020-11-16" &
+        spatial_resolution != "county"),# |
+  #    (response_var == "inc_hosp" & forecast_week >= "2020-11-16"),
+      spatial_resolution != "county" | window_size %in% c("3", "4")
+    ) %>%
+    dplyr::arrange(window_size, forecast_date)
 
-dim(analysis_combinations)
+  unweighted_analysis_combinations <- tidyr::expand_grid(
+    spatial_resolution = c("county", "state", "national"),
+    response_var = c("inc_case", "inc_death", "cum_death", "inc_hosp"),
+    forecast_date = as.character(
+      lubridate::ymd(first_forecast_date) +
+        seq(from = 0, length = num_forecast_weeks) * 7),
+    intercept = c("FALSE"),
+    combine_method = c("ew", "median"),
+    quantile_group_str = c("per_model"),
+    missingness = c("by_location_group"),
+    window_size = "0",
+    check_missingness_by_target = "FALSE",
+    do_standard_checks = "FALSE",
+    do_baseline_check = "FALSE"
+  ) %>%
+    dplyr::filter(
+      (response_var %in% c("cum_death", "inc_death") &
+        spatial_resolution != "county" &
+        forecast_date >= "2020-06-22") |
+      (response_var == "inc_case" & forecast_date >= "2020-09-14") |
+      (response_var == "inc_hosp" & forecast_date > "2020-11-16" &
+        spatial_resolution != "county")
+    )
 
-#analysis_combinations <- analysis_combinations[1:3, ]
+  analysis_combinations <- dplyr::bind_rows(
+    trained_analysis_combinations,
+    unweighted_analysis_combinations
+  ) %>%
+    filter(forecast_date < "2021-01-18")
 
-# analysis_combinations <- analysis_combinations %>%
-#   dplyr::filter(response_var == "inc_hosp")
+  # filter to keep only cases that have not successfully run previously
+  analysis_combinations <- analysis_combinations %>%
+    dplyr::mutate(
+      case_str = paste0(
+        "intercept_", as.character(intercept),
+        "-combine_method_", combine_method,
+        "-missingness_", ifelse(missingness == "mean_impute", "impute", missingness),
+        "-quantile_groups_", quantile_group_str,
+        "-window_size_", window_size,
+        "-check_missingness_by_target_", check_missingness_by_target,
+        "-do_standard_checks_", do_standard_checks,
+        "-do_baseline_check_", do_baseline_check),
+      spatial_resolution_path = dplyr::case_when(
+        spatial_resolution == "all" ~ "",
+        TRUE ~ spatial_resolution),
+      forecasts_dir = file.path(
+        "code/application/retrospective-qra-comparison/retrospective-forecasts",
+        spatial_resolution_path,
+        case_str),
+      forecast_filename = paste0(
+        forecasts_dir, "/",
+        response_var, "-", forecast_date, "-",
+        case_str, ".csv"),
+      job_complete = file.exists(forecast_filename)) %>%
+    dplyr::filter(!job_complete)
+
+  # dim(analysis_combinations)
+
+  # prev_analysis_combinations <- readr::read_csv("code/application/retrospective-qra-comparison/analysis_combinations.csv")
+  # analysis_combinations <- analysis_combinations %>%
+  #   dplyr::mutate(
+  #     full_case = paste0(case_str, spatial_resolution, response_var, forecast_date)
+  #   )
+  # prev_analysis_combinations <- prev_analysis_combinations %>%
+  #   dplyr::mutate(
+  #     full_case = paste0(case_str, spatial_resolution, response_var, forecast_date)
+  #   )
+
+  # prev_analysis_combinations$failed <- prev_analysis_combinations$full_case %in% analysis_combinations$full_case
+  # prev_analysis_combinations$failed %>% which()
+  # prev_analysis_combinations$failed %>% sum()
 
 
-if (run_setting == "local") {
+  # analysis_combinations %>%
+  # #  filter(forecast_date < "2021-01-18") %>%
+  #   select(spatial_resolution:do_baseline_check) %>%
+  #   as.data.frame()
+
+  # analysis_combinations <- analysis_combinations[1:3, ]
+
+  # analysis_combinations <- analysis_combinations %>%
+  #   dplyr::filter(response_var == "inc_hosp")
+}
+
+if (run_setting %in% c("local", "cluster_single_node")) {
   library(doParallel)
-  registerDoParallel(cores = 16)
+  registerDoParallel(cores = num_cores)
 
   run_status <- foreach(row_ind = seq_len(nrow(analysis_combinations))) %dopar% {
   # foreach(row_ind = seq_len(2)) %dopar% {
@@ -161,11 +209,13 @@ if (run_setting == "local") {
     "#SBATCH --job-name=run_fit_retrospective_model\n",
     "#SBATCH --output=run_fit_retrospective_model_arr_%A_%a.out\n",
     "#SBATCH --error=run_fit_retrospective_model_arr_%A_%a.err\n",
-    "#SBATCH --array=1-", min(1000, nrow(analysis_combinations)), "\n",
-    "#SBATCH --time=72:00:00\n",
-    "#SBATCH --partition=n1-standard-32\n",
+    "#SBATCH --array=1-2\n",
+#    "#SBATCH --array=1-", min(1000, nrow(analysis_combinations)), "\n",
+    "#SBATCH --time=36:00:00\n",
+#    "#SBATCH --partition=n1-standard-32\n",
+    "#SBATCH --partition=n1-ultramem-40\n",
     "#SBATCH --ntasks=1\n",
-    "#SBATCH --mem-per-cpu=3G\n",
+#    "#SBATCH --mem-per-cpu=3G\n",
     "\n",
     "module purge\n",
     "module load gcc/9.1.0\n",
@@ -173,8 +223,8 @@ if (run_setting == "local") {
     "module load r/4.0.3_no-MPI\n",
     "module load gurobi\n",
     "\n",
-    "R CMD BATCH --vanilla \'--args cluster\' ",
-      "code/application/retrospective-qra-comparison/fit_retrospective_model.R ",
+    "R CMD BATCH --vanilla \'--args cluster_single_node\' ",
+      "code/application/retrospective-qra-comparison/run_fit_retrospective_model.R ",
       output_path, "output-$SLURM_ARRAY_TASK_ID.Rout"
   )
 

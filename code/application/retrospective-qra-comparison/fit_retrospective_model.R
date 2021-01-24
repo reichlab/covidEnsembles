@@ -38,7 +38,7 @@ library(yaml)
 args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
 
-if (run_setting == "local") {
+if (run_setting %in% c("local", "cluster_single_node")) {
   # running locally -- run settings passed as command line arguments
   response_var <- args[2]
   forecast_date <- lubridate::ymd(args[3])
@@ -52,7 +52,11 @@ if (run_setting == "local") {
   do_baseline_check <- as.logical(args[11])
   spatial_resolution_arg <- args[12]
 
-  submissions_root <- "~/research/epi/covid/covid19-forecast-hub/data-processed/"
+  if (run_setting == "local") {
+    submissions_root <- "~/research/epi/covid/covid19-forecast-hub/data-processed/"
+  } else {
+    submissions_root <- "~/covid19-forecast-hub/data-processed/"
+  }
 } else {
   # running on cluster -- extract run settings from csv file of analysis
   # combinations, row specified by job run index passed as command line
