@@ -17,7 +17,8 @@ if (is.na(run_setting)) {
 
 output_path <- "code/application/retrospective-qra-comparison/log/"
 
-if (run_setting == "cluster_single_node") {
+# define analysis combinations to run
+if (run_setting == "midas_cluster_single_node") {
   # number of available cores on cluster node
   num_cores <- 39L
 
@@ -39,7 +40,8 @@ if (run_setting == "cluster_single_node") {
   num_cores <- 16L
 
   first_forecast_date <- lubridate::ymd("2020-05-11")
-  last_forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
+  last_forecast_date <- lubridate::ymd("2021-01-11")
+  #last_forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
   num_forecast_weeks <-
     as.numeric(last_forecast_date - first_forecast_date) / 7 + 1
 
@@ -152,13 +154,19 @@ if (run_setting == "cluster_single_node") {
 
   # analysis_combinations <- analysis_combinations %>%
   #   dplyr::filter(response_var == "inc_hosp")
+
+  analysis_combinations <- analysis_combinations %>%
+    dplyr::filter(response_var %in% c("inc_death", "inc_case"))
+
+  dim(analysis_combinations)
 }
 
-if (run_setting %in% c("local", "cluster_single_node")) {
+# create jobs to run all analysis combinations
+if (run_setting %in% c("local", "midas_cluster_single_node")) {
   library(doParallel)
   registerDoParallel(cores = num_cores)
 
-  run_status <- foreach(row_ind = seq_len(nrow(analysis_combinations))) %dopar% {
+  run_status <- foreach(row_ind = seq_len(rev(nrow(analysis_combinations)))) %dopar% {
   # foreach(row_ind = seq_len(2)) %dopar% {
     response_var <- analysis_combinations$response_var[row_ind]
     forecast_date <- analysis_combinations$forecast_date[row_ind]
@@ -196,7 +204,7 @@ if (run_setting %in% c("local", "cluster_single_node")) {
 
     system(run_cmd)
   }
-} else if (run_setting == "cluster") {
+} else if (run_setting == "midas_cluster") {
   # output analysis combinations to csv -- each job will use arguments from one
   # row of this csv to determine run settings
   readr::write_csv(
@@ -223,7 +231,7 @@ if (run_setting %in% c("local", "cluster_single_node")) {
     "module load r/4.0.3_no-MPI\n",
     "module load gurobi\n",
     "\n",
-    "R CMD BATCH --vanilla \'--args cluster_single_node\' ",
+    "R CMD BATCH --vanilla \'--args midas_cluster_single_node\' ",
       "code/application/retrospective-qra-comparison/run_fit_retrospective_model.R ",
       output_path, "output-$SLURM_ARRAY_TASK_ID.Rout"
   )

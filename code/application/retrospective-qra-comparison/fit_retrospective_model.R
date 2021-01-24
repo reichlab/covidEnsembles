@@ -34,6 +34,8 @@ library(yaml)
 #args <- c("inc_hosp", "2020-11-16", "FALSE", "convex", "mean_impute", "per_model", "3", "FALSE", "FALSE", "FALSE", "state")
 #args <- c("inc_death", "2020-11-30", "FALSE", "convex", "mean_impute", "per_quantile", "4", "FALSE", "FALSE", "FALSE", "state")
 #args <- c("inc_death", "2020-05-18", "FALSE", "convex", "mean_impute", "per_model", "10", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("local", "inc_death", "2020-11-23", "FALSE", "convex", "mean_impute", "per_quantile", "full_history", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("local", "inc_hosp", "2021-01-18", "FALSE", "convex", "mean_impute", "per_model", "3", "TRUE", "FALSE", "FALSE", "state")
 
 args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
@@ -58,11 +60,8 @@ if (run_setting %in% c("local", "cluster_single_node")) {
     submissions_root <- "~/covid19-forecast-hub/data-processed/"
   }
 } else {
-  # running on cluster -- extract run settings from csv file of analysis
-  # combinations, row specified by job run index passed as command line
-  # argument
-  print("Args:")
-  print(args)
+  # running on midas cluster -- extract run settings from csv file of analysis
+  # combinations, row specified by job run index in environment variable
   job_ind <- as.integer(Sys.getenv("SLURM_ARRAY_TASK_ID"))
   print(paste0("Job index: ", job_ind))
 
@@ -157,7 +156,7 @@ if (window_size_arg == "full_history") {
 }
 
 
-if(quantile_group_str == "per_model") {
+if (quantile_group_str == "per_model") {
   quantile_groups <- rep(1, length(required_quantiles))
 } else if(quantile_group_str == "3_groups") {
   if (length(required_quantiles) == 23) {
@@ -230,7 +229,7 @@ forecast_filename <- paste0(
 
 
 tic <- Sys.time()
-if(!file.exists(forecast_filename)) {
+if (!file.exists(forecast_filename)) {
   do_q10_check <- do_nondecreasing_quantile_check <- do_standard_checks
 
   results <- build_covid_ensemble_from_local_files(
@@ -255,6 +254,7 @@ if(!file.exists(forecast_filename)) {
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
+    do_sd_check = FALSE,
     baseline_tol = 1.0,
     manual_eligibility_adjust = NULL,
     return_eligibility = TRUE,
