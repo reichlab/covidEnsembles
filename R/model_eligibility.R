@@ -645,10 +645,7 @@ calc_sd_check <- function(
             result[['sd_eligibility']] <- 'eligible'
           }
 
-          if (!is.null(sd_check_table_path) | !is.null(sd_check_plot_path)) {
-            result$mean_ahead <- mean_ahead
-          }
-          
+          result$mean_ahead <- mean_ahead          
           return(result)
         }
       )
