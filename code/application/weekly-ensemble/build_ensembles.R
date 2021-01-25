@@ -19,13 +19,19 @@ save_roots <- c('code/application/weekly-ensemble/forecasts/')
 for (root in save_roots) {
   if (!file.exists(root)) dir.create(root, recursive = TRUE)
   if (!file.exists(paste0(root,"ensemble-metadata/"))) {
-  dir.create(paste0(root,"ensemble-metadata/"), recursive = TRUE)
-}
+    dir.create(paste0(root,"ensemble-metadata/"), recursive = TRUE)
+  }
 }
 
 # Where to save plots
 plots_root <- 'code/application/weekly-ensemble/plots/COVIDhub-ensemble/'
 if (!file.exists(plots_root)) dir.create(plots_root, recursive = TRUE)
+
+# Where to save hospitalization exclusion tables
+sd_check_table_path <- 'code/application/weekly-ensemble/exclusion-outputs/tables/'
+if (!file.exists(sd_check_table_path)) dir.create(sd_check_table_path, recursive = TRUE)
+sd_check_plot_path <- 'code/application/weekly-ensemble/exclusion-outputs/plots/'
+if (!file.exists(sd_check_plot_path)) dir.create(sd_check_plot_path, recursive = TRUE)
 
 # List of candidate models for inclusion in ensemble
 candidate_model_abbreviations_to_include <- get_candidate_models(
@@ -49,6 +55,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 #for (response_var in c("cum_death", "inc_death", "inc_case")) {
   if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
+    do_sd_check <- FALSE
     required_quantiles <-
       c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolution <- c("state", "national")
@@ -101,6 +108,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   } else if (response_var == 'inc_death') {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
+    do_sd_check <- FALSE
     required_quantiles <-
       c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolution <- c("state", "national")
@@ -164,6 +172,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   } else if (response_var == "inc_case") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
+    do_sd_check <- FALSE
     required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
     spatial_resolution <- c('county', 'state', 'national')
     temporal_resolution <- "wk"
@@ -198,6 +207,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   } else if (response_var == "inc_hosp") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
+    do_sd_check <- TRUE 
     required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolution <- c("state", "national")
     temporal_resolution <- "day"
@@ -297,6 +307,9 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = FALSE,
+      do_sd_check = do_sd_check, # implement CDC exclusion requests
+      sd_check_table_path = sd_check_table_path,
+      sd_check_plot_path = sd_check_plot_path,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility = TRUE,
       return_all = TRUE
