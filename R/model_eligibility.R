@@ -561,6 +561,10 @@ calc_sd_check <- function(
   sd_check_plot_path = NULL,
   lookback_inside = 0,
   lookback_outside = 13,
+  lookback_inside_mean = 0,
+  lookback_outside_mean = 13,
+  lookback_inside_sd = 0,
+  lookback_outside_sd = 13,
   lookahead_inside = 1,
   lookahead_outside = 7,
   num_sd = 4,
@@ -568,7 +572,7 @@ calc_sd_check <- function(
 ) {  
   ## get row index df and add end dates from target string 
   ## for subsetting and plotting
-  row_index <- attr(qfm, 'row_index') %>% 
+  row_index <- attr(qfm, 'row_index') <- attr(qfm, 'row_index') %>% 
     dplyr::mutate(target_end_date = calc_target_string_end_date(
       forecast_week_end_date, target
     )
@@ -604,10 +608,17 @@ calc_sd_check <- function(
     lubridate::ymd(day0) - lookback_outside,
     lubridate::ymd(day0) - lookback_inside))
   lookback_stats <- lookback_data %>% dplyr::group_by(location) %>% 
-  dplyr::summarise(past_mean = mean(observed, na.rm = TRUE),
-   sd = sd(observed, na.rm = TRUE),
-   m_sd = past_mean - num_sd*sd,
-   .groups = "drop")
+  dplyr::summarise(
+    past_mean = mean(observed[
+      target_end_date >= day0 - lookback_outside_mean &
+      target_end_date <= day0 - lookback_inside_mean
+      ], na.rm = TRUE),
+    sd = sd(observed[
+      target_end_date >= day0 - lookback_outside_sd &
+      target_end_date <= day0 - lookback_inside_sd
+      ], na.rm = TRUE),
+    m_sd = past_mean - num_sd*sd,
+    .groups = "drop")
   
   eligibility <- purrr::pmap_dfr(
     row_index %>% dplyr::distinct(location, forecast_week_end_date),
