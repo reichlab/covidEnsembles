@@ -530,22 +530,31 @@ calc_baseline_check <- function(
 
 
 
-#' Compute check of whether mean of forecast medians in `lookahead_window`
-#' is more than `num_sd` sample standard deviations below the sample mean of observations
-#' in `lookback_window`. If `sd_check_table_path` is supplied, a table with the 
-#' excluded location-model pairs is saved there, and if `sd_check_plot_path` is supplied,
-#' plots illustration the exclusion criteria are saved there.
+#' Compute check of whether mean of forecast medians in a "lookahead" window
+#' is more than `num_sd` sample standard deviations below the sample mean of 
+#' observations in a "lookback" window.  The standard deviations and means of 
+#' observations may be calculated over different windows. Tables listing the 
+#' included excluded location-model pairs are saved in `sd_check_table_path`, 
+#' and plots illustrating the exclusion criteria are saved in 
+#' `sd_check_plot_path`.
 #'
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
 #' @param observed_by_location_target_end_date data frame of observed values
-#' @param sd_check_table_path 
-#' @param sd_check_plot_path 
-#' @param lookback_inside number of days to be excluded going back from time zero from mean
-#'   calculation.  Intended to be used to adjust for unreliable recent reporting.
-#' @param lookback_outside number of days beyond day zero to look back.  Should be
-#'   1 less than desired window size if day zero is include in window.
-#' @param lookahead_inside 
-#' @param lookahead_outside 
+#' @param sd_check_table_path where to save csv files listing exclusions
+#' @param sd_check_plot_path where to save plots
+#' @param lookback_method if set to "by observations", mean and sd are calculated for 
+#'  specified windows of observations; of set to "by dates", mean and sd are
+#'  calculated for observations within specified date windows
+#' @param lookback_window vector of (not necessarilly consecutive) observation or date 
+#'  indices starting with index 1 for the most recent available observation and counting
+#'  (by observation or calendar date) backwards; 
+#'  should contain the union of indices for mean and sd windows 
+#'  (with an error thrown otherwise) and gives the window of observations that 
+#'  the line plot will cover 
+#' @param lookback_window_for_mean vector of indices giving the the mean window
+#' @param lookback_window_for_sd vector of indices giving the the sd window
+#' @param lookahead_window vector of indices giving the window over which forecast
+#'  means are calculated
 #' @param num_sd number of standard deviations to use for cutoff
 #'
 #' @return data frame with a row for each combination of
@@ -559,14 +568,11 @@ calc_sd_check <- function(
   observed_by_location_target_end_date,
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,
-  lookback_inside = 0,
-  lookback_outside = 13,
-  lookback_inside_mean = 0,
-  lookback_outside_mean = 13,
-  lookback_inside_sd = 0,
-  lookback_outside_sd = 13,
-  lookahead_inside = 1,
-  lookahead_outside = 7,
+  lookback_method = c("by observations", "dy dates"),
+  lookback_window = 1:14,
+  lookback_window_for_mean = 1:7,
+  lookback_window_for_sd = 1:14,
+  lookahead_window = 1:7,
   num_sd = 4,
   show_stats = FALSE
 ) {  
@@ -585,10 +591,7 @@ calc_sd_check <- function(
   }
 
   ## subset to median forecasts over lookahead_window 
-  rows_to_keep <- dplyr::between(
-    row_index$target_end_date, 
-    day0 + lookahead_inside, 
-    day0 + lookahead_outside)
+  rows_to_keep <- which(row_index$target_end_date %in% (day0 + lookahead_window))
   row_index <- row_index[rows_to_keep,]
 
   col_index <- attr(qfm, 'col_index')
@@ -600,25 +603,45 @@ calc_sd_check <- function(
   
   ## get name of model column
   model_id_name <- attr(qfm, 'model_col')
-  
-  # get summary stats for lookback period of observed values
-  lookback_data <- observed_by_location_target_end_date %>% 
-  dplyr::filter(dplyr::between(
-    lubridate::ymd(target_end_date),
-    lubridate::ymd(day0) - lookback_outside,
-    lubridate::ymd(day0) - lookback_inside))
-  lookback_stats <- lookback_data %>% dplyr::group_by(location) %>% 
-  dplyr::summarise(
-    past_mean = mean(observed[
-      target_end_date >= day0 - lookback_outside_mean &
-      target_end_date <= day0 - lookback_inside_mean
-      ], na.rm = TRUE),
-    sd = sd(observed[
-      target_end_date >= day0 - lookback_outside_sd &
-      target_end_date <= day0 - lookback_inside_sd
-      ], na.rm = TRUE),
-    m_sd = past_mean - num_sd*sd,
-    .groups = "drop")
+
+  if (!all(lookback_window_for_mean %in% lookback_window)) {
+    stop("lookback_window_for_mean not contained in lookback_window")
+  }  
+  if (!all(lookback_window_for_sd %in% lookback_window)) {
+    stop("lookback_window_for_sd not contained in lookback_window")
+  }
+  lookback_window_for_mean <- which(lookback_window %in% lookback_window_for_mean)
+  lookback_window_for_sd <- which(lookback_window %in% lookback_window_for_sd)
+
+  lookback_method <- match.arg(lookback_method)
+  if (lookback_method == "by observations") {
+  # get lookback window and stats per CDC counting protocol
+    lookback_data <- observed_by_location_target_end_date %>% 
+    group_by(location) %>% 
+    dplyr::arrange(desc(target_end_date)) %>% 
+    dplyr::slice(lookback_window)
+
+    lookback_stats <- lookback_data %>% dplyr::summarise(
+      past_mean = mean(observed[lookback_window_for_mean], na.rm = TRUE),
+      sd = sd(observed[lookback_window_for_sd], na.rm = TRUE),
+      m_sd = past_mean - num_sd*sd,
+      .groups = "drop")
+  } else {
+  # get lookback window and stats relative to calendar
+    lookback_data <- observed_by_location_target_end_date %>% 
+    dplyr::filter(lubridate::ymd(target_end_date) %in% (lubridate::ymd(day0) + lookback_window - 1))
+
+    lookback_stats <- lookback_data %>% dplyr::group_by(location) %>% 
+    dplyr::summarise(
+      past_mean = mean(observed[
+        lubridate::ymd(target_end_date) %in% (lubridate::ymd(day0) + lookback_window_for_mean - 1)
+        ], na.rm = TRUE),
+      sd = sd(observed[
+        lubridate::ymd(target_end_date) %in% (lubridate::ymd(day0) + lookback_window_for_sd - 1)
+        ], na.rm = TRUE),
+      m_sd = past_mean - num_sd*sd,
+      .groups = "drop")
+  }
   
   eligibility <- purrr::pmap_dfr(
     row_index %>% dplyr::distinct(location, forecast_week_end_date),
@@ -646,11 +669,13 @@ calc_sd_check <- function(
              ' SD below criterion')
           } else if(criterion) {
             result[['sd_eligibility']] <- paste0('mean of next ',
-             lookahead_outside,
+             length(lookahead_window),
              ' forecasted medians more than ',
              num_sd,
-             ' SD below mean of last ',
-             lookback_outside + 1,
+             " times ",
+             length(lookback_window_for_sd),
+             'day SD below mean of last ',
+             length(lookback_window_for_mean),
              ' observations')
           } else {
             result[['sd_eligibility']] <- 'eligible'

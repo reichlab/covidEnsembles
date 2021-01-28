@@ -406,7 +406,7 @@ test_that("calc_sd_check works", {
     arrange(location, model)
 
   # To do: parametrize msg
-  msg <- 'mean of next 7 forecasted medians more than 4 SD below mean of last 14 observations'
+  msg <- 'mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations'
   expected <- within(expected, {
     sd_eligibility[location %in% c('a', 'b') & model == 'm1'] <- msg
     sd_eligibility[location %in% c('c') & model == 'm3'] <- msg
