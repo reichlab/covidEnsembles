@@ -57,7 +57,7 @@ if (run_setting %in% c("local", "cluster_single_node")) {
   if (run_setting == "local") {
     submissions_root <- "~/research/epi/covid/covid19-forecast-hub/data-processed/"
   } else {
-    submissions_root <- "~/covid19-forecast-hub/data-processed/"
+    submissions_root <- "/project/uma_nicholas_reich/covid19-forecast-hub/data-processed/"
   }
 } else {
   # running on midas cluster -- extract run settings from csv file of analysis
@@ -242,6 +242,7 @@ if (!file.exists(forecast_filename)) {
     horizon = horizon,
     timezero_window_size = 6,
     window_size = window_size,
+    data_as_of_date = forecast_date - 1,
     intercept = intercept,
     combine_method = combine_method,
     quantile_groups = quantile_groups,

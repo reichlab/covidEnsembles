@@ -2,21 +2,24 @@
 % Please edit documentation in R/model_eligibility.R
 \name{calc_sd_check}
 \alias{calc_sd_check}
-\title{Compute check of whether mean of forecast medians in \code{lookahead_window}
-is more than \code{num_sd} sample standard deviations below the sample mean of observations
-in \code{lookback_window}. If \code{sd_check_table_path} is supplied, a table with the
-excluded location-model pairs is saved there, and if \code{sd_check_plot_path} is supplied,
-plots illustration the exclusion criteria are saved there.}
+\title{Compute check of whether mean of forecast medians in a "lookahead" window
+is more than \code{num_sd} sample standard deviations below the sample mean of
+observations in a "lookback" window.  The standard deviations and means of
+observations may be calculated over different windows. Tables listing the
+included excluded location-model pairs are saved in \code{sd_check_table_path},
+and plots illustrating the exclusion criteria are saved in
+\code{sd_check_plot_path}.}
 \usage{
 calc_sd_check(
   qfm,
   observed_by_location_target_end_date,
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,
-  lookback_inside = 0,
-  lookback_outside = 13,
-  lookahead_inside = 1,
-  lookahead_outside = 7,
+  lookback_method = c("by observations", "dy dates"),
+  lookback_window = 1:14,
+  lookback_window_for_mean = 1:7,
+  lookback_window_for_sd = 1:14,
+  lookahead_window = 1:7,
   num_sd = 4,
   show_stats = FALSE
 )
@@ -26,19 +29,27 @@ calc_sd_check(
 
 \item{observed_by_location_target_end_date}{data frame of observed values}
 
-\item{sd_check_table_path}{}
+\item{sd_check_table_path}{where to save csv files listing exclusions}
 
-\item{sd_check_plot_path}{}
+\item{sd_check_plot_path}{where to save plots}
 
-\item{lookback_inside}{number of days to be excluded going back from time zero from mean
-calculation.  Intended to be used to adjust for unreliable recent reporting.}
+\item{lookback_method}{if set to "by observations", mean and sd are calculated for
+specified windows of observations; of set to "by dates", mean and sd are
+calculated for observations within specified date windows}
 
-\item{lookback_outside}{number of days beyond day zero to look back.  Should be
-1 less than desired window size if day zero is include in window.}
+\item{lookback_window}{vector of (not necessarilly consecutive) observation or date
+indices starting with index 1 for the most recent available observation and counting
+(by observation or calendar date) backwards;
+should contain the union of indices for mean and sd windows
+(with an error thrown otherwise) and gives the window of observations that
+the line plot will cover}
 
-\item{lookahead_inside}{}
+\item{lookback_window_for_mean}{vector of indices giving the the mean window}
 
-\item{lookahead_outside}{}
+\item{lookback_window_for_sd}{vector of indices giving the the sd window}
+
+\item{lookahead_window}{vector of indices giving the window over which forecast
+means are calculated}
 
 \item{num_sd}{number of standard deviations to use for cutoff}
 }
@@ -49,9 +60,11 @@ location and model and a logical column called
 hospitalization point forecasts" if check fails
 }
 \description{
-Compute check of whether mean of forecast medians in \code{lookahead_window}
-is more than \code{num_sd} sample standard deviations below the sample mean of observations
-in \code{lookback_window}. If \code{sd_check_table_path} is supplied, a table with the
-excluded location-model pairs is saved there, and if \code{sd_check_plot_path} is supplied,
-plots illustration the exclusion criteria are saved there.
+Compute check of whether mean of forecast medians in a "lookahead" window
+is more than \code{num_sd} sample standard deviations below the sample mean of
+observations in a "lookback" window.  The standard deviations and means of
+observations may be calculated over different windows. Tables listing the
+included excluded location-model pairs are saved in \code{sd_check_table_path},
+and plots illustrating the exclusion criteria are saved in
+\code{sd_check_plot_path}.
 }

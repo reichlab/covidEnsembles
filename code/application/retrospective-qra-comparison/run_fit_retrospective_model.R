@@ -9,7 +9,8 @@ args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
 
 if (is.na(run_setting)) {
-  stop("no run setting")
+  run_setting <- "mghpcc_cluster"
+#  stop("no run setting")
 #  run_setting <- "cluster"
   #run_setting <- "local"
   #num_local_cores <- 16L
@@ -72,6 +73,33 @@ if (run_setting == "midas_cluster_single_node") {
     ) %>%
     dplyr::arrange(window_size, forecast_date)
 
+  trained_analysis_combinations <- tidyr::expand_grid(
+    spatial_resolution = "national",
+    response_var = "inc_death",
+    forecast_date = as.character(
+      lubridate::ymd(first_forecast_date) +
+        seq(from = 0, length = num_forecast_weeks) * 7),
+    intercept = c("FALSE"),
+    combine_method = c("convex"),
+    quantile_group_str = c("per_quantile"),
+    missingness = "mean_impute",
+    window_size = as.character(3),
+    check_missingness_by_target = "TRUE",
+    do_standard_checks = "FALSE",
+    do_baseline_check = "FALSE"
+  ) %>%
+    dplyr::filter(
+      (response_var %in% c("cum_death", "inc_death") &
+        spatial_resolution != "county" &
+        forecast_date >= "2020-06-22") |
+      (response_var == "inc_case" & forecast_date >= "2020-09-14") |
+      (response_var == "inc_hosp" & forecast_date > "2020-11-16" &
+        spatial_resolution != "county"),# |
+  #    (response_var == "inc_hosp" & forecast_week >= "2020-11-16"),
+      spatial_resolution != "county" | window_size %in% c("3", "4")
+    ) %>%
+    dplyr::arrange(window_size, forecast_date)
+
   unweighted_analysis_combinations <- tidyr::expand_grid(
     spatial_resolution = c("county", "state", "national"),
     response_var = c("inc_case", "inc_death", "cum_death", "inc_hosp"),
@@ -97,8 +125,8 @@ if (run_setting == "midas_cluster_single_node") {
     )
 
   analysis_combinations <- dplyr::bind_rows(
-    trained_analysis_combinations,
-    unweighted_analysis_combinations
+    trained_analysis_combinations#,
+#    unweighted_analysis_combinations
   ) %>%
     filter(forecast_date < "2021-01-18")
 
@@ -241,4 +269,83 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
   cat(shell_script_cmds, file = submit_slurm_script)
 
   system(paste0("sbatch ", submit_slurm_script))
+} else if (run_setting == "mghpcc_cluster") {
+  for(row_ind in seq_len(2)) {
+    response_var <- analysis_combinations$response_var[row_ind]
+    forecast_date <- analysis_combinations$forecast_date[row_ind]
+    intercept <- analysis_combinations$intercept[row_ind]
+    combine_method <- analysis_combinations$combine_method[row_ind]
+    quantile_group_str <- analysis_combinations$quantile_group_str[row_ind]
+    missingness <- analysis_combinations$missingness[row_ind]
+    window_size <- analysis_combinations$window_size[row_ind]
+    check_missingness_by_target <-
+      analysis_combinations$check_missingness_by_target[row_ind]
+    do_standard_checks <- analysis_combinations$do_standard_checks[row_ind]
+    do_baseline_check <- analysis_combinations$do_baseline_check[row_ind]
+    spatial_resolution <- analysis_combinations$spatial_resolution[row_ind]
+
+    model_case <- paste0(
+      response_var,
+      "-", forecast_date,
+      "-", as.character(intercept),
+      "-", combine_method,
+      "-", ifelse(missingness == "mean_impute", "impute", missingness),
+      "-", quantile_group_str,
+      "-", window_size,
+      "-", check_missingness_by_target,
+      "-", do_standard_checks,
+      "-", do_baseline_check,
+      "-", spatial_resolution)
+#      "response_var_", response_var,
+#      "-forecast_date_", forecast_date,
+#      "-intercept_", as.character(intercept),
+#      "-combine_method_", combine_method,
+#      "-missingness_", ifelse(missingness == "mean_impute", "impute", missingness),
+#      "-quantile_groups_", quantile_group_str,
+#      "-window_size_", window_size,
+#      "-check_missingness_by_target_", check_missingness_by_target,
+#      "-do_standard_checks_", do_standard_checks,
+#      "-do_baseline_check_", do_baseline_check,
+#      "-spatial_resolution_", spatial_resolution)
+    
+    filename <- paste0(
+      "code/application/retrospective-qra-comparison/submit_fit_retrospective_model_",
+      model_case, ".sh")
+    
+    requestCmds <- "#!/bin/bash\n"
+    requestCmds <- paste0(requestCmds, "#BSUB -n 1 # how many cores we want for our job\n",
+                "#BSUB -R span[hosts=1] # ask for all the cores on a single machine\n",
+                "#BSUB -R rusage[mem=10000] # ask for memory\n",
+                "#BSUB -o covidEnsembles.out # log LSF output to a file\n",
+                "#BSUB -W 4:00 # run time\n",
+                "#BSUB -q short # which queue we want to run in\n")
+    
+    cat(requestCmds, file = filename)
+    cat("module load gcc/8.1.0\n", file = filename, append = TRUE)
+    cat("module load R/4.0.0_gcc\n", file = filename, append = TRUE)
+    cat("module load gurobi/900\n", file = filename, append = TRUE)
+    cat(paste0("R CMD BATCH --vanilla \'--args ",
+        "cluster_single_node ",
+        response_var, " ",
+        forecast_date, " ",
+        intercept, " ",
+        combine_method, " ",
+        missingness, " ",
+        quantile_group_str, " ",
+        window_size, " ",
+        check_missingness_by_target, " ",
+        do_standard_checks, " ",
+        do_baseline_check, " ",
+        spatial_resolution,
+        "\' code/application/retrospective-qra-comparison/fit_retrospective_model.R ",
+        output_path, "output-", response_var, "-", forecast_date, "-",
+        intercept, "-", combine_method, "-", missingness, "-", quantile_group_str,
+        "-", window_size, "-", check_missingness_by_target, "-",
+        do_standard_checks, "-", do_baseline_check, "-", spatial_resolution,
+        ".Rout"),
+      file = filename, append = TRUE)
+    
+    bsubCmd <- paste0("bsub < ", filename)
+    system(bsubCmd)
+  }
 }

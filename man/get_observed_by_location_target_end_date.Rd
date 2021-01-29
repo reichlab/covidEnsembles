@@ -4,15 +4,11 @@
 \alias{get_observed_by_location_target_end_date}
 \title{get observed cases and/or deaths}
 \usage{
-get_observed_by_location_target_end_date(
-  issue_date,
-  targets,
-  spatial_resolution
-)
+get_observed_by_location_target_end_date(as_of, targets, spatial_resolution)
 }
 \arguments{
-\item{issue_date}{character issue date (i.e. report date) to use for
-constructing truths in format 'yyyy-mm-dd'}
+\item{as_of}{character date with format 'yyyy-mm-dd';
+indicates date for which retrieved truth data should be current}
 
 \item{targets}{character vector of targets to retrieve, for example
 c('1 wk ahead cum death', '2 wk ahead cum death')}
