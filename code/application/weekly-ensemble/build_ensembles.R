@@ -207,7 +207,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   } else if (response_var == "inc_hosp") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-    do_sd_check <- TRUE 
+    do_sd_check <- FALSE 
     required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolution <- c("state", "national")
     temporal_resolution <- "day"
@@ -277,6 +277,17 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
           location_name =
             ifelse(location_name == "National", "US", location_name),
           message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+        ) %>%
+        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
+        dplyr::select(model, location, message)        
+    } else if (forecast_date == "2021-01-25") {
+      manual_eligibility_adjust <- readr::read_csv(
+        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-26.csv"
+      ) %>%
+        dplyr::mutate(
+          location_name =
+            ifelse(location_name == "National", "US", location_name),
+          message = "Mean daily median forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
         ) %>%
         dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
         dplyr::select(model, location, message)        
