@@ -41,7 +41,8 @@ if (run_setting == "midas_cluster_single_node") {
   num_cores <- 16L
 
   first_forecast_date <- lubridate::ymd("2020-05-11")
-  last_forecast_date <- lubridate::ymd("2021-01-11")
+  last_forecast_date <- lubridate::ymd("2021-01-25")
+
   #last_forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
   num_forecast_weeks <-
     as.numeric(last_forecast_date - first_forecast_date) / 7 + 1
