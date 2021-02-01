@@ -40,10 +40,10 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
   include_COVIDhub_ensemble = FALSE,
   include_COVIDhub_baseline = TRUE)
 
-# Drop hospitalizations ensemble from JHU APL
+# Drop hospitalizations ensemble from JHU APL and ensemble from FDANIHASU
 candidate_model_abbreviations_to_include <-
   candidate_model_abbreviations_to_include[
-    !(candidate_model_abbreviations_to_include == "JHUAPL-SLPHospEns")
+    !(candidate_model_abbreviations_to_include %in% c("JHUAPL-SLPHospEns", "FDANIHASU-Sweight"))
   ]
 
 
