@@ -1,0 +1,43 @@
+location,location_name,model,mean ahead,past mean,SD,cutoff,reason excluded
+01,Alabama,UCLA-SuEIR,59,262,47.2,72.8,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+04,Arizona,Google_Harvard-CPF,129,435,63.3,181.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+05,Arkansas,Google_Harvard-CPF,27,125,22.3,35.6,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+05,Arkansas,UCLA-SuEIR,35,125,22.3,35.6,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+06,California,Google_Harvard-CPF,187,1492,210.1,651,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+09,Connecticut,UCLA-SuEIR,46,129,19.2,52.2,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+12,Florida,Google_Harvard-CPF,195,931,93,559,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+12,Florida,IHME-CurveFit,468,931,93,559,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+13,Georgia,Google_Harvard-CPF,147,595,91.3,229.8,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+16,Idaho,UCLA-SuEIR,7,28,4.3,10.4,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+17,Illinois,Google_Harvard-CPF,79,288,39.8,128.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+21,Kentucky,Google_Harvard-CPF,113,357,35.3,215.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+21,Kentucky,IHME-CurveFit,84,357,35.3,215.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+21,Kentucky,JHUAPL-Bucky,142,357,35.3,215.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+21,Kentucky,UCLA-SuEIR,135,357,35.3,215.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+22,Louisiana,Google_Harvard-CPF,45,168,27.7,56.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+22,Louisiana,UCLA-SuEIR,53,168,27.7,56.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+24,Maryland,IHME-CurveFit,95,192,21.5,105.6,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+25,Massachusetts,Google_Harvard-CPF,93,209,27.6,98.5,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+25,Massachusetts,IHME-CurveFit,96,209,27.6,98.5,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+29,Missouri,Google_Harvard-CPF,35,165,27.4,55.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+29,Missouri,IHME-CurveFit,49,165,27.4,55.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+29,Missouri,UCLA-SuEIR,53,165,27.4,55.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+32,Nevada,Google_Harvard-CPF,31,121,17.5,50.8,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+35,New Mexico,UCLA-SuEIR,21,84,13.3,30.2,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+36,New York,Google_Harvard-CPF,248,845,103.7,430.1,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+37,North Carolina,Google_Harvard-CPF,77,332,51.6,125.2,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+37,North Carolina,UCLA-SuEIR,114,332,51.6,125.2,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+38,North Dakota,Google_Harvard-CPF,1,10,1.9,2.1,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+38,North Dakota,UCLA-SuEIR,1,10,1.9,2.1,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+39,Ohio,Google_Harvard-CPF,56,366,71.3,81.3,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+40,Oklahoma,Google_Harvard-CPF,26,252,28.9,136,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+40,Oklahoma,IHME-CurveFit,101,252,28.9,136,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+40,Oklahoma,JHUAPL-Bucky,126,252,28.9,136,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+41,Oregon,Google_Harvard-CPF,15,43,5.6,20.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+42,Pennsylvania,Google_Harvard-CPF,99,421,50.1,220.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+42,Pennsylvania,UCLA-SuEIR,129,421,50.1,220.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+48,Texas,Google_Harvard-CPF,167,1395,155.9,771.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+48,Texas,UCLA-SuEIR,517,1395,155.9,771.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+49,Utah,Google_Harvard-CPF,14,71,10.8,27.2,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+55,Wisconsin,Google_Harvard-CPF,31,159,21.1,74.8,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+55,Wisconsin,UCLA-SuEIR,57,159,21.1,74.8,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations

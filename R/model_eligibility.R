@@ -573,6 +573,8 @@ calc_sd_check <- function(
   lookback_window_for_mean = 1:7,
   lookback_window_for_sd = 1:14,
   lookahead_window = 1:7,
+  exclude_below = TRUE,
+  exclude_above = FALSE,
   num_sd = 4,
   show_stats = FALSE
 ) {  
@@ -625,6 +627,7 @@ calc_sd_check <- function(
       past_mean = mean(observed[lookback_window_for_mean], na.rm = TRUE),
       sd = sd(observed[lookback_window_for_sd], na.rm = TRUE),
       m_sd = past_mean - num_sd*sd,
+      p_sd = past_mean + num_sd*sd,
       .groups = "drop")
   } else {
   # get lookback window and stats relative to calendar
@@ -640,6 +643,7 @@ calc_sd_check <- function(
         lubridate::ymd(target_end_date) %in% (lubridate::ymd(day0) + lookback_window_for_sd - 1)
         ], na.rm = TRUE),
       m_sd = past_mean - num_sd*sd,
+      p_sd = past_mean + num_sd*sd,
       .groups = "drop")
   }
   
@@ -657,8 +661,10 @@ calc_sd_check <- function(
         function(model_id) {
           col_ind <- which(col_index[[model_id_name]] == model_id)
           mean_ahead <- mean(qfm[row_inds, col_ind], na.rm = TRUE)
-          cutoff <- lookback_stats %>% dplyr::filter(location == !!location) %>% pull(m_sd)
-          criterion <- mean_ahead < cutoff
+          cutoff_below <- lookback_stats %>% dplyr::filter(location == !!location) %>% pull(m_sd)
+          cutoff_above <- lookback_stats %>% dplyr::filter(location == !!location) %>% pull(p_sd)
+          criterion_below <- (mean_ahead < cutoff_below) & exclude_below
+          criterion_above <- (mean_ahead > cutoff_above) & exclude_above
           
           result <- row_index[row_inds[1], ] %>% dplyr::select(-target, -target_end_date)
           result[[model_id_name]] <- model_id
@@ -667,7 +673,7 @@ calc_sd_check <- function(
             result[['sd_eligibility']] <- paste0('missing forecasts; cannot evaluate less than ',
              num_sd,
              ' SD below criterion')
-          } else if(criterion) {
+          } else if(criterion_below) {
             result[['sd_eligibility']] <- paste0('mean of next ',
              length(lookahead_window),
              ' forecasted medians more than ',
@@ -675,6 +681,16 @@ calc_sd_check <- function(
              " times ",
              length(lookback_window_for_sd),
              'day SD below mean of last ',
+             length(lookback_window_for_mean),
+             ' observations')
+          } else if(criterion_above) {
+            result[['sd_eligibility']] <- paste0('mean of next ',
+             length(lookahead_window),
+             ' forecasted medians more than ',
+             num_sd,
+             " times ",
+             length(lookback_window_for_sd),
+             'day SD above mean of last ',
              length(lookback_window_for_mean),
              ' observations')
           } else {
@@ -752,14 +768,17 @@ calc_sd_check <- function(
       target_end_date = as.Date(target_end_date), 
       value = observed) %>% 
     dplyr::bind_rows(as.data.frame(qfm)) %>% 
-    dplyr::left_join(fips_codes)
+    dplyr::left_join(fips_codes) %>% 
+    dplyr::left_join(eligibility)
     dat$location_name <- factor(dat$location_name,
       levels = c("US", sort(unique(dat$location_name[dat$location_name!="US"]))))
     p_line <- ggplot() +
     geom_line(data = dat %>% dplyr::filter(model == "Reported"), 
       aes(x = target_end_date, y = value, linetype = "Reported")) +
-    geom_line(data = dat %>% dplyr::filter(model != "Reported"), 
+    geom_line(data = dat %>% dplyr::filter(model != "Reported" & grepl("eligible", sd_eligibility)), 
       aes(x = target_end_date, y = value, color = model)) +
+    geom_line(data = dat %>% dplyr::filter(model != "Reported" & grepl("mean", sd_eligibility)), 
+      aes(x = target_end_date, y = value, color = model), size = 1.5) +
     geom_hline(data = el_detail, aes(yintercept = past_mean, linetype = "Mean"), alpha = .4) +
     geom_hline(data = el_detail, aes(yintercept = past_mean - num_sd*sd, linetype = "4 SD up and down")) +
     geom_hline(data = el_detail, aes(yintercept = past_mean + num_sd*sd, linetype = "4 SD up and down")) +
