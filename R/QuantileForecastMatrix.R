@@ -276,3 +276,28 @@ str.QuantileForecastMatrix <- function(qfm) {
   return(new_qfm)
 }
 
+
+#' Sort method for QuantileForecastMatrix class which
+#' currently leaves any NA's encountered where they were
+#' found, sorting model-wise around them
+#' 
+#' @param qfm wide matrix representation of forecasts
+#' 
+#' @return a QFM with always increasing quantiles within given 
+#'  model, target, and location
+#' @export
+sort.QuantileForecastMatrix <- function(qfm) {
+  col_index <- attr(qfm, "col_index")
+  model_col <- attr(qfm, "model_col")
+  models <- unique(col_index[[model_col]])
+  # Now use `[.QuantileForecastMatrix` to overwrite matrix
+  qfm[1:nrow(qfm), 1:ncol(qfm)] <- purrr::map(models, function(model) {
+    col_inds <- which(col_index[[model_col]] == model)
+      t(apply(qfm[,col_inds], 1, function(row) {
+        row[!is.na(row)] <- sort(row[!is.na(row)])
+        row
+      })) %>% `dim<-`(c(nrow(qfm), length(col_inds)))
+  }) %>% purrr::reduce(cbind)
+  return(qfm)
+}
+
