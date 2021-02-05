@@ -14,6 +14,9 @@
 #'   model, and quantile probability level
 #' @param do_baseline_check logical; if TRUE, check condition that WIS for model
 #'   is within specified tolerance of WIS for baseline
+#' @param do_sd_check logical; if TRUE, check condition that mean of next (7) predicted
+#'   medians is not more than (4) sample standard deviations below the mean of the last
+#'   (14) observations
 #' @param window_size non-negative integer number of historic weeks that
 #'   are examined for forecast missingness; 0 is appropriate for equal weight
 #'   ensembles where no historical data is required.  If two past weeks of
@@ -38,6 +41,9 @@ calc_model_eligibility_for_ensemble <- function(
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
   do_baseline_check = FALSE,
+  do_sd_check = FALSE,
+  sd_check_table_path = NULL,
+  sd_check_plot_path = NULL,
   window_size = 0,
   decrease_tol = 1.0,
   baseline_tol = 1.2
@@ -102,13 +108,30 @@ calc_model_eligibility_for_ensemble <- function(
                        by = c("location", model_id_name))
   } else {
     eligibility$baseline_eligibility <- 'NA'
+  } 
+
+  if(do_sd_check) {
+    sd_check <- calc_sd_check(
+      qfm,
+      observed_by_location_target_end_date,
+      sd_check_table_path = sd_check_table_path,
+      sd_check_plot_path = sd_check_plot_path
+    )
+
+    # combine eligibility check results
+    eligibility <- eligibility %>%
+      dplyr::left_join(sd_check,
+                       by = c("location", model_id_name))
+  } else {
+    eligibility$sd_eligibility <- 'NA'
   }
 
   eligibility$overall_eligibility <- ifelse(
     eligibility$missingness_eligibility == 'eligible' &
       eligibility$q10_eligibility %in% c('eligible', 'NA') &
       eligibility$nondecreasing_quantiles_eligibility %in% c('eligible', 'NA') &
-      eligibility$baseline_eligibility %in% c('eligible', 'NA'),
+      eligibility$baseline_eligibility %in% c('eligible', 'NA') &
+      eligibility$sd_eligibility %in% c('eligible', 'NA'),
     'eligible',
     'ineligible'
   )
@@ -504,3 +527,280 @@ calc_baseline_check <- function(
 
   return(eligibility)
 }
+
+
+
+#' Compute check of whether mean of forecast medians in a "lookahead" window
+#' is more than `num_sd` sample standard deviations below the sample mean of 
+#' observations in a "lookback" window.  The standard deviations and means of 
+#' observations may be calculated over different windows. Tables listing the 
+#' included excluded location-model pairs are saved in `sd_check_table_path`, 
+#' and plots illustrating the exclusion criteria are saved in 
+#' `sd_check_plot_path`.
+#'
+#' @param qfm matrix of model forecasts of class QuantileForecastMatrix
+#' @param observed_by_location_target_end_date data frame of observed values
+#' @param sd_check_table_path where to save csv files listing exclusions
+#' @param sd_check_plot_path where to save plots
+#' @param lookback_method if set to "by observations", mean and sd are calculated for 
+#'  specified windows of observations; of set to "by dates", mean and sd are
+#'  calculated for observations within specified date windows
+#' @param lookback_window vector of (not necessarilly consecutive) observation or date 
+#'  indices starting with index 1 for the most recent available observation and counting
+#'  (by observation or calendar date) backwards; 
+#'  should contain the union of indices for mean and sd windows 
+#'  (with an error thrown otherwise) and gives the window of observations that 
+#'  the line plot will cover 
+#' @param lookback_window_for_mean vector of indices giving the the mean window
+#' @param lookback_window_for_sd vector of indices giving the the sd window
+#' @param lookahead_window vector of indices giving the window over which forecast
+#'  means are calculated
+#' @param num_sd number of standard deviations to use for cutoff
+#'
+#' @return data frame with a row for each combination of
+#'   location and model and a logical column called
+#'   'eligibility' with entry "more than four SDs below 2-week mean of 
+#'   hospitalization point forecasts" if check fails
+#'
+#' @export
+calc_sd_check <- function(
+  qfm,
+  observed_by_location_target_end_date,
+  sd_check_table_path = NULL,
+  sd_check_plot_path = NULL,
+  lookback_method = c("by observations", "dy dates"),
+  lookback_window = 1:14,
+  lookback_window_for_mean = 1:7,
+  lookback_window_for_sd = 1:14,
+  lookahead_window = 1:7,
+  num_sd = 4,
+  show_stats = FALSE
+) {  
+  ## get row index df and add end dates from target string 
+  ## for subsetting and plotting
+  row_index <- attr(qfm, 'row_index') <- attr(qfm, 'row_index') %>% 
+    dplyr::mutate(target_end_date = calc_target_string_end_date(
+      forecast_week_end_date, target
+    )
+  )
+
+  ## get a time zero
+  day0 <- unique(row_index$forecast_week_end_date)
+  if (length(day0) > 1) {
+    stop("SD exclusion only implemented for single time zero")
+  }
+
+  ## subset to median forecasts over lookahead_window 
+  rows_to_keep <- which(row_index$target_end_date %in% (day0 + lookahead_window))
+  row_index <- row_index[rows_to_keep,]
+
+  col_index <- attr(qfm, 'col_index')
+  quantile_name_col <- attr(qfm, 'quantile_name_col')
+  cols_to_keep <- which(col_index[[quantile_name_col]] == "0.5")
+  col_index <- col_index[cols_to_keep, ]
+  
+  qfm <- qfm[rows_to_keep, cols_to_keep]
+  
+  ## get name of model column
+  model_id_name <- attr(qfm, 'model_col')
+
+  if (!all(lookback_window_for_mean %in% lookback_window)) {
+    stop("lookback_window_for_mean not contained in lookback_window")
+  }  
+  if (!all(lookback_window_for_sd %in% lookback_window)) {
+    stop("lookback_window_for_sd not contained in lookback_window")
+  }
+  lookback_window_for_mean <- which(lookback_window %in% lookback_window_for_mean)
+  lookback_window_for_sd <- which(lookback_window %in% lookback_window_for_sd)
+
+  lookback_method <- match.arg(lookback_method)
+  if (lookback_method == "by observations") {
+  # get lookback window and stats per CDC counting protocol
+    lookback_data <- observed_by_location_target_end_date %>% 
+    group_by(location) %>% 
+    dplyr::arrange(desc(target_end_date)) %>% 
+    dplyr::slice(lookback_window)
+
+    lookback_stats <- lookback_data %>% dplyr::summarise(
+      past_mean = mean(observed[lookback_window_for_mean], na.rm = TRUE),
+      sd = sd(observed[lookback_window_for_sd], na.rm = TRUE),
+      m_sd = past_mean - num_sd*sd,
+      .groups = "drop")
+  } else {
+  # get lookback window and stats relative to calendar
+    lookback_data <- observed_by_location_target_end_date %>% 
+    dplyr::filter(lubridate::ymd(target_end_date) %in% (lubridate::ymd(day0) + lookback_window - 1))
+
+    lookback_stats <- lookback_data %>% dplyr::group_by(location) %>% 
+    dplyr::summarise(
+      past_mean = mean(observed[
+        lubridate::ymd(target_end_date) %in% (lubridate::ymd(day0) + lookback_window_for_mean - 1)
+        ], na.rm = TRUE),
+      sd = sd(observed[
+        lubridate::ymd(target_end_date) %in% (lubridate::ymd(day0) + lookback_window_for_sd - 1)
+        ], na.rm = TRUE),
+      m_sd = past_mean - num_sd*sd,
+      .groups = "drop")
+  }
+  
+  eligibility <- purrr::pmap_dfr(
+    row_index %>% dplyr::distinct(location, forecast_week_end_date),
+    function(location, forecast_week_end_date) {
+      row_inds <- which(row_index$location == location &
+        row_index$forecast_week_end_date == forecast_week_end_date)
+      row_inds <- row_inds[
+      sort(row_index$target[row_inds], index.return=TRUE)$ix
+      ]
+      
+      purrr::map_dfr(
+        unique(col_index[[model_id_name]]),
+        function(model_id) {
+          col_ind <- which(col_index[[model_id_name]] == model_id)
+          mean_ahead <- mean(qfm[row_inds, col_ind], na.rm = TRUE)
+          cutoff <- lookback_stats %>% dplyr::filter(location == !!location) %>% pull(m_sd)
+          criterion <- mean_ahead < cutoff
+          
+          result <- row_index[row_inds[1], ] %>% dplyr::select(-target, -target_end_date)
+          result[[model_id_name]] <- model_id
+          
+          if(is.nan(mean_ahead)) {
+            result[['sd_eligibility']] <- paste0('missing forecasts; cannot evaluate less than ',
+             num_sd,
+             ' SD below criterion')
+          } else if(criterion) {
+            result[['sd_eligibility']] <- paste0('mean of next ',
+             length(lookahead_window),
+             ' forecasted medians more than ',
+             num_sd,
+             " times ",
+             length(lookback_window_for_sd),
+             'day SD below mean of last ',
+             length(lookback_window_for_mean),
+             ' observations')
+          } else {
+            result[['sd_eligibility']] <- 'eligible'
+          }
+
+          result$mean_ahead <- mean_ahead          
+          return(result)
+        }
+      )
+    }
+  )
+
+  eligibility <- eligibility %>% as_tibble()
+
+  if (!is.null(sd_check_table_path) | !is.null(sd_check_plot_path) | show_stats) {
+    el_detail <- eligibility %>% 
+    dplyr::left_join(lookback_stats, by = "location") %>% 
+    dplyr::left_join(fips_codes)
+  }
+
+  if (!is.null(sd_check_table_path)) {
+    tab <- el_detail %>% 
+    transmute(location, location_name, model,
+      `mean ahead` = round(mean_ahead),
+      `past mean` = round(past_mean),
+      SD = round(sd, 1),
+      cutoff = round(past_mean - num_sd*sd,1),
+      `reason excluded` = sd_eligibility)
+    fnames <- paste0(sd_check_table_path,
+     c("sd_eligible_", "sd_ineligible_", "sd_missing_"),
+     el_detail$forecast_week_end_date[1],
+     ".csv")
+    write_csv(tab %>% dplyr::filter(str_starts(`reason excluded`, "eligible")), file = fnames[1])
+    write_csv(tab %>% dplyr::filter(str_starts(`reason excluded`, "mean")), file = fnames[2])
+    write_csv(tab %>% dplyr::filter(str_starts(`reason excluded`, "missing")), file = fnames[3])
+  }
+
+  if (!is.null(sd_check_plot_path)) { 
+
+    el_detail$location_name <- factor(el_detail$location_name,
+      levels = c("US", sort(unique(el_detail$location_name[el_detail$location_name!="US"]))))
+
+    p_point <- ggplot(el_detail, aes(x = model, y = mean_ahead, color = model)) +
+    geom_point(size = 3) +
+    geom_hline(aes(yintercept = past_mean, linetype = "Mean"), alpha = .4) +
+    geom_hline(aes(yintercept = past_mean - num_sd*sd, linetype = "4 SD up and down")) +
+    geom_hline(aes(yintercept = past_mean + num_sd*sd, linetype = "4 SD up and down")) +
+    facet_wrap(~location_name, scales = "free_y") +
+    scale_linetype_manual(name = "Reported values", 
+      breaks = c("Mean", "4 SD up and down"),
+      values = c(1, 2)) +
+    guides(
+      linetype = guide_legend(ncol = 1,
+        title.position = "top",
+        override.aes = list(alpha = c(.4,1))), 
+      color = guide_legend(title = "Means of forecast medians", title.position = "top")) +
+    theme_bw() +
+    theme(axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      legend.position = "bottom")
+    ggsave(paste0(sd_check_plot_path, 
+      "exclusions_point_", 
+      el_detail$forecast_week_end_date[1], 
+      ".pdf"), 
+    plot = p_point,
+    width = 24, 
+    height = 14)
+
+    dat <- lookback_data %>% 
+    dplyr::mutate(
+      model = "Reported", 
+      target_end_date = as.Date(target_end_date), 
+      value = observed) %>% 
+    dplyr::bind_rows(as.data.frame(qfm)) %>% 
+    dplyr::left_join(fips_codes)
+    dat$location_name <- factor(dat$location_name,
+      levels = c("US", sort(unique(dat$location_name[dat$location_name!="US"]))))
+    p_line <- ggplot() +
+    geom_line(data = dat %>% dplyr::filter(model == "Reported"), 
+      aes(x = target_end_date, y = value, linetype = "Reported")) +
+    geom_line(data = dat %>% dplyr::filter(model != "Reported"), 
+      aes(x = target_end_date, y = value, color = model)) +
+    geom_hline(data = el_detail, aes(yintercept = past_mean, linetype = "Mean"), alpha = .4) +
+    geom_hline(data = el_detail, aes(yintercept = past_mean - num_sd*sd, linetype = "4 SD up and down")) +
+    geom_hline(data = el_detail, aes(yintercept = past_mean + num_sd*sd, linetype = "4 SD up and down")) +
+    facet_wrap(~location_name, scales = "free_y") +
+    scale_linetype_manual(name = "Reported values", 
+      breaks = c("Reported", "Mean", "4 SD up and down"),
+       values = c(1, 1, 2)) +
+    guides(
+      linetype = guide_legend(ncol = 1,
+       title.position = "top",
+       override.aes = list(alpha = c(1,.4,1))), 
+      color = guide_legend(title = "Forecast medians", title.position = "top")) +
+    theme_bw() +
+    theme(axis.title.x = element_blank(),
+      axis.title.y = element_blank(),
+      axis.text.x = element_blank(),
+      axis.ticks.x = element_blank(),
+      legend.position = "bottom")
+    ggsave(paste0(sd_check_plot_path, 
+      "exclusions_line_", 
+      el_detail$forecast_week_end_date[1], 
+      ".pdf"), 
+    plot = p_line,
+    width = 24, 
+    height = 14)  
+  }
+
+  if (show_stats) {
+    return(el_detail %>% dplyr::select(
+      location,
+      location_name, 
+      model, 
+      mean_ahead, 
+      past_mean, 
+      sd, 
+      m_sd, 
+      sd_eligibility))
+  }
+
+  ## Note: With multiple time-zero functionality as in calc_q10_check e.g.,
+  ## we wouldn't need to remove forecast_week_end_date
+  return(eligibility %>% dplyr::select(-mean_ahead, -forecast_week_end_date))
+}
+

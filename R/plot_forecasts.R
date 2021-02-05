@@ -53,14 +53,14 @@ plot_forecasts_single_model <- function(
         if(measure == "deaths") {
           data <- dplyr::bind_rows(
             covidData::load_jhu_data(
-              issue_date = as.character(forecast_date - 1),
+              as_of = as.character(forecast_date - 1),
               spatial_resolution = c("state", "national"),
               temporal_resolution = "weekly",
               measure = measure) %>%
               dplyr::left_join(covidData::fips_codes, by = "location") %>%
               dplyr::mutate(issue_date = as.character(forecast_date - 1)),
             covidData::load_jhu_data(
-              issue_date = as.character(tail(covidData::jhu_deaths_data$issue_date, 1)),
+              as_of = as.character(tail(covidData::jhu_deaths_data$issue_date, 1)),
               spatial_resolution = c("state", "national"),
               temporal_resolution = "weekly",
               measure = measure) %>%
@@ -82,14 +82,14 @@ plot_forecasts_single_model <- function(
         } else if (measure == "cases") {
           data <- dplyr::bind_rows(
             covidData::load_jhu_data(
-              issue_date = as.character(forecast_date - 1),
+              as_of = as.character(forecast_date - 1),
               spatial_resolution = c("county", "state", "national"),
               temporal_resolution = "weekly",
               measure = measure) %>%
               dplyr::left_join(fips_codes, by = "location") %>%
               dplyr::mutate(issue_date = as.character(forecast_date - 1)),
             covidData::load_jhu_data(
-              issue_date = as.character(tail(covidData::jhu_cases_data$issue_date, 1)),
+              as_of = as.character(tail(covidData::jhu_cases_data$issue_date, 1)),
               spatial_resolution = c("county", "state", "national"),
               temporal_resolution = "weekly",
               measure = measure) %>%
@@ -112,14 +112,14 @@ plot_forecasts_single_model <- function(
         } else if (measure == "hospitalizations") {
           data <- dplyr::bind_rows(
             covidData::load_healthdata_data(
-              issue_date = as.character(forecast_week_end_date + 1),
+              as_of = as.character(forecast_date - 1),
               spatial_resolution = c("county", "state", "national"),
               temporal_resolution = "daily",
               measure = measure) %>%
               dplyr::left_join(fips_codes, by = "location") %>%
               dplyr::mutate(issue_date = as.character(forecast_date - 1)),
             covidData::load_healthdata_data(
-              issue_date = as.character(tail(covidData::healthdata_hosp_data$issue_date, 1)),
+              as_of = as.character(tail(covidData::healthdata_hosp_data$issue_date, 1)),
               spatial_resolution = c("county", "state", "national"),
               temporal_resolution = "daily",
               measure = measure) %>%

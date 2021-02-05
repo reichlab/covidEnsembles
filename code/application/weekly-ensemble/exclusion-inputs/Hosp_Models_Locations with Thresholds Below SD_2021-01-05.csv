@@ -1,0 +1,59 @@
+"","model","location_name","exclude"
+"1","Covid19Sim-Simulator","Kentucky",1
+"2","CU-select","Iowa",1
+"3","CU-select","Minnesota",1
+"4","CU-select","North Dakota",1
+"5","CU-select","Virginia",1
+"6","CU-select","West Virginia",1
+"7","Google_Harvard-CPF","Alabama",1
+"8","Google_Harvard-CPF","Arizona",1
+"9","Google_Harvard-CPF","Arkansas",1
+"10","Google_Harvard-CPF","California",1
+"11","Google_Harvard-CPF","Connecticut",1
+"12","Google_Harvard-CPF","Delaware",1
+"13","Google_Harvard-CPF","Florida",1
+"14","Google_Harvard-CPF","Georgia",1
+"15","Google_Harvard-CPF","Illinois",1
+"16","Google_Harvard-CPF","Indiana",1
+"17","Google_Harvard-CPF","Iowa",1
+"18","Google_Harvard-CPF","Kentucky",1
+"19","Google_Harvard-CPF","Louisiana",1
+"20","Google_Harvard-CPF","Maryland",1
+"21","Google_Harvard-CPF","Massachusetts",1
+"22","Google_Harvard-CPF","Minnesota",1
+"23","Google_Harvard-CPF","Mississippi",1
+"24","Google_Harvard-CPF","Missouri",1
+"25","Google_Harvard-CPF","Nevada",1
+"26","Google_Harvard-CPF","New Jersey",1
+"27","Google_Harvard-CPF","New Mexico",1
+"28","Google_Harvard-CPF","New York",1
+"29","Google_Harvard-CPF","North Carolina",1
+"30","Google_Harvard-CPF","North Dakota",1
+"31","Google_Harvard-CPF","Ohio",1
+"32","Google_Harvard-CPF","Oklahoma",1
+"33","Google_Harvard-CPF","Pennsylvania",1
+"34","Google_Harvard-CPF","South Carolina",1
+"35","Google_Harvard-CPF","Tennessee",1
+"36","Google_Harvard-CPF","Texas",1
+"37","Google_Harvard-CPF","Utah",1
+"38","Google_Harvard-CPF","Virginia",1
+"39","Google_Harvard-CPF","Washington",1
+"40","Google_Harvard-CPF","West Virginia",1
+"41","Google_Harvard-CPF","Wisconsin",1
+"42","JHU_IDD-CovidSP","Alabama",1
+"43","JHU_IDD-CovidSP","California",1
+"44","JHU_IDD-CovidSP","Kentucky",1
+"45","JHU_IDD-CovidSP","National",1
+"46","JHU_IDD-CovidSP","New Mexico",1
+"47","JHU_IDD-CovidSP","Oklahoma",1
+"48","JHU_IDD-CovidSP","Texas",1
+"49","JHUAPL-Bucky","Kentucky",1
+"50","JHUAPL-Bucky","Oklahoma",1
+"51","LANL-GrowthRate","Kansas",1
+"52","UCLA-SuEIR","Alabama",1
+"53","UCLA-SuEIR","Connecticut",1
+"54","UCLA-SuEIR","Kentucky",1
+"55","UCLA-SuEIR","New Mexico",1
+"56","UCLA-SuEIR","North Dakota",1
+"57","UCLA-SuEIR","Pennsylvania",1
+"58","UCLA-SuEIR","Texas",1

@@ -1,0 +1,52 @@
+"","model","location_name","exclude"
+"1","Google_Harvard-CPF","Arizona",1
+"2","Google_Harvard-CPF","Arkansas",1
+"3","Google_Harvard-CPF","California",1
+"4","Google_Harvard-CPF","Connecticut",1
+"5","Google_Harvard-CPF","Delaware",1
+"6","Google_Harvard-CPF","Florida",1
+"7","Google_Harvard-CPF","Georgia",1
+"8","Google_Harvard-CPF","Hawaii",1
+"9","Google_Harvard-CPF","Illinois",1
+"10","Google_Harvard-CPF","Kentucky",1
+"11","Google_Harvard-CPF","Louisiana",1
+"12","Google_Harvard-CPF","Maryland",1
+"13","Google_Harvard-CPF","Nevada",1
+"14","Google_Harvard-CPF","New Jersey",1
+"15","Google_Harvard-CPF","New York",1
+"16","Google_Harvard-CPF","North Carolina",1
+"17","Google_Harvard-CPF","Ohio",1
+"18","Google_Harvard-CPF","Oklahoma",1
+"19","Google_Harvard-CPF","Pennsylvania",1
+"20","Google_Harvard-CPF","South Carolina",1
+"21","Google_Harvard-CPF","Texas",1
+"22","Google_Harvard-CPF","Virginia",1
+"23","Google_Harvard-CPF","Washington",1
+"24","Google_Harvard-CPF","West Virginia",1
+"25","Google_Harvard-CPF","Wisconsin",1
+"26","IHME-CurveFit","Colorado",1
+"27","IHME-CurveFit","Connecticut",1
+"28","IHME-CurveFit","Delaware",1
+"29","IHME-CurveFit","Florida",1
+"30","IHME-CurveFit","Kentucky",1
+"31","IHME-CurveFit","Maryland",1
+"32","IHME-CurveFit","Ohio",1
+"33","IHME-CurveFit","Oklahoma",1
+"34","IHME-CurveFit","Virginia",1
+"35","JHU_IDD-CovidSP","Arizona",1
+"36","JHU_IDD-CovidSP","Georgia",1
+"37","JHU_IDD-CovidSP","Kentucky",1
+"38","JHU_IDD-CovidSP","Maryland",1
+"39","JHU_IDD-CovidSP","Nevada",1
+"40","JHU_IDD-CovidSP","Oklahoma",1
+"41","JHU_IDD-CovidSP","Texas",1
+"42","JHUAPL-Bucky","Kentucky",1
+"43","LANL-GrowthRate","Arizona",1
+"44","LANL-GrowthRate","California",1
+"45","LANL-GrowthRate","Maryland",1
+"46","UCLA-SuEIR","Arkansas",1
+"47","UCLA-SuEIR","Colorado",1
+"48","UCLA-SuEIR","Connecticut",1
+"49","UCLA-SuEIR","Kentucky",1
+"50","UCLA-SuEIR","Pennsylvania",1
+"51","UCLA-SuEIR","Texas",1

@@ -1,3 +1,4 @@
+
 #' Check if object is of class QuantileForecastMatrix
 #'
 #' @param qfm an object that may be a QuantileForecastMatrix
@@ -170,8 +171,8 @@ new_QuantileForecastMatrix_from_df <- function(
       names_from = UQ(quantile_name_col),
       values_from = UQ(quantile_value_col))
 
-  # assemble matrix of results; dfc combines by stacking horizontally in columns
-  forecast_matrix <- purrr::map_dfc(
+  # assemble matrix of results; map models to list of matrices and then reduce with cbind to single matrix
+  forecast_matrix <- purrr::map(
     models,
     function(model) {
       # augment id grid with model
@@ -189,13 +190,16 @@ new_QuantileForecastMatrix_from_df <- function(
       if(nrow(result) != nrow(id_grid)) {
         stop(paste0('Error: forecast_df may contain multiple forecasts for the same combination of id_cols from model ', model))
       }
+      
+      # convert to matrix 
+      result <- as.matrix(result)
+      # remove column names (so as to avoid conflict in cbind)
+      dimnames(result) <- NULL
 
       # return
       return(result)
     }
-  ) %>%
-    as.matrix() %>%
-    `dimnames<-`(NULL)
+  ) %>% purrr::reduce(cbind)
 
   # create result as QuantileForecastMatrix object and return
   qfm <- new_QuantileForecastMatrix(
@@ -219,29 +223,29 @@ new_QuantileForecastMatrix_from_df <- function(
 #'
 #' @export
 as.data.frame.QuantileForecastMatrix <- function(qfm) {
-  purrr::map_dfr(seq_len(nrow(qfm)),
-    function(i) {
-      purrr::map_dfr(seq_len(ncol(qfm)),
-        function(j) {
-          if(is.na(qfm[i,j])) {
-            return(NULL)
-          }
-          result <- bind_cols(
-              attr(qfm, 'row_index')[i, ],
-              attr(qfm, 'col_index')[j, ]
-            )
+  dplyr::full_join(attr(qfm, "col_index"), attr(qfm, "row_index"), by = character()) %>% 
+  dplyr::mutate(
+    !!attr(qfm, "quantile_value_col") := qfm %>% `attributes<-`(NULL),
+    !!attr(qfm, "quantile_name_col") := as.numeric(!!sym(attr(qfm, "quantile_name_col")))
+  ) %>% 
+  dplyr::relocate(
+    attr(qfm, "model_col"),
+    attr(qfm, "quantile_name_col"),
+    attr(qfm, "quantile_value_col")
+  ) %>% 
+  dplyr::filter(!is.na(!!sym(attr(qfm, "quantile_value_col"))))
+}
 
-          result[[attr(qfm, 'quantile_value_col')]] <-
-            unclass(qfm)[i, j]
-
-          result[[attr(qfm, 'quantile_name_col')]] <-
-            as.numeric(result[[attr(qfm, 'quantile_name_col')]])
-
-          return(result)
-        }
-      )
-    }
-  )
+#' Convenience `str` method for QuantileForecastMatrix class which
+#' avoids `seq_len(ncol(qfm))` errors and warnings
+#' 
+#' @param qfm wide matrix representation of forecasts
+#' 
+#' @return none
+#' 
+#' @export
+str.QuantileForecastMatrix <- function(qfm) {
+  str(unclass(qfm))
 }
 
 

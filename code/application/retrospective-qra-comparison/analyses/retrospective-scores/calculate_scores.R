@@ -1,9 +1,13 @@
 # load packages
 library(covidData)
+library(covidHubUtils)
 library(covidEnsembles)
 library(tidyverse)
 library(gridExtra)
 library(knitr)
+library(here)
+
+setwd(here())
 
 knitr::opts_chunk$set(echo = FALSE, cache.lazy = FALSE)
 options(width = 200)
@@ -60,7 +64,7 @@ observed_hosps <-
     issue_date = healthdata_issue_date,
     spatial_resolution = c("state", "national"),
     temporal_resolution = "daily",
-    measure ="hospitalizations") %>%
+    measure = "hospitalizations") %>%
   tidyr::pivot_longer(
     cols = c("inc", "cum"),
     names_to = "base_target",
@@ -68,7 +72,7 @@ observed_hosps <-
   ) %>%
   dplyr::transmute(
     location = location,
-    base_target = paste0("day ahead ahead ", base_target, " hosp"),
+    base_target = paste0("day ahead ", base_target, " hosp"),
     target_end_date = as.character(date),
     observed = observed
   )
@@ -110,59 +114,12 @@ all_targets <- c(
   paste0(1:28, " day ahead inc hosp")
 )
 
-# function to extract model identifiers from abbreviation
-parse_model_case <- function(model_abbr) {
-  case_parts <- strsplit(model_abbr, split = "-")[[1]]
-  purrr::map_dfc(
-    case_parts,
-    function(case_part) {
-      nc <- nchar(case_part)
-      if(substr(case_part, 1, min(nc, 9)) == "intercept") {
-        return(data.frame(
-          intercept = as.logical(substr(case_part, 11, nc))
-        ))
-      } else if(substr(case_part, 1, min(nc, 14)) == "combine_method") {
-        return(data.frame(
-          combine_method = substr(case_part, 16, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 11)) == "missingness") {
-        return(data.frame(
-          missingness = substr(case_part, 13, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 15)) == "quantile_groups") {
-        return(data.frame(
-          quantile_groups = substr(case_part, 17, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 11)) == "window_size") {
-        return(data.frame(
-          window_size = substr(case_part, 13, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 27)) ==
-          "check_missingness_by_target") {
-        return(data.frame(
-          check_missingness_by_target = substr(case_part, 29, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 18)) == "do_standard_checks") {
-        return(data.frame(
-          do_standard_checks = substr(case_part, 20, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 17)) == "do_baseline_check") {
-        return(data.frame(
-          do_baseline_check = substr(case_part, 19, nc)
-        ))
-      } else {
-        message("Unsupported case part")
-      }
-    }
-  )
-}
-
 all_forecasts <- purrr::map_dfr(
   c("national", "state", "state_national", "county"),
   function(spatial_scale) {
     # Path to forecasts to evaluate
     submissions_root <- paste0(
-      "code/application/retrospective-qra-comparison/retrospective-forecasts-",
+      "code/application/retrospective-qra-comparison/retrospective-forecasts/",
       spatial_scale, "/"
     )
 
@@ -180,7 +137,7 @@ all_forecasts <- purrr::map_dfr(
     }
 
     if (spatial_scale %in% c("national", "state_national")) {
-      response_vars <- c("cum_death", "inc_death", "inc_case")
+      response_vars <- c("cum_death", "inc_death", "inc_case", "inc_hosp")
     } else if (spatial_scale == "state") {
       response_vars <- c("cum_death", "inc_death", "inc_case", "inc_hosp")
     } else if (spatial_scale == "county") {
@@ -237,151 +194,60 @@ all_forecasts <- purrr::map_dfr(
 )
 
 all_forecasts <- all_forecasts %>%
-  dplyr::mutate(
-    base_target = substr(target, regexpr(" ", target) + 1, nchar(target)),
-    model_and_scale = paste0(model, "-estimation_scale_", spatial_scale)
+  dplyr::transmute(
+    model = paste0(model, "-estimation_scale_", spatial_scale),
+    forecast_date = timezero,
+    location = location,
+    location_name = location_name,
+    geo_type = "state",
+    horizon = as.integer(horizon),
+    temporal_resolution = ifelse(grepl("wk", target), "wk", "day"),
+    target_variable = substr(target, regexpr("ahead", target) + 6, nchar(target)),
+    target_end_date = target_end_date,
+    type = "quantile",
+    quantile = as.numeric(quantile),
+    value = value
+  )
+all_forecasts <- dplyr::bind_rows(
+  all_forecasts,
+  all_forecasts %>%
+    dplyr::filter(quantile == 0.5) %>%
+    dplyr::mutate(
+      type = "point",
+      quantile = NA
+    )
+)
+
+truth <- observed %>%
+  dplyr::left_join(
+    covidData::fips_codes, by = "location"
+  ) %>%
+  dplyr::transmute(
+    model = "Observed Data (JHU)",
+    target_variable = substr(
+      base_target,
+      pmax(regexpr("inc", base_target), regexpr("cum", base_target)),
+      nchar(base_target)
+    ),
+    target_end_date = lubridate::ymd(target_end_date),
+    location = location,
+    value = observed,
+    geo_type = "state",
+    location_name = location_name,
+    abbreviation = abbreviation
   )
 
-# calculate scores
-get_scores <- function(
-  qfm,
-  observed_by_location_target_end_date) {
-  row_index <- attr(qfm, 'row_index')
-  col_index <- attr(qfm, 'col_index')
-
-  y_test <- row_index %>%
-    dplyr::mutate(
-      base_target = substr(target, regexpr(" ", target) + 1, nchar(target)),
-      target_end_date = as.character(lubridate::ymd(forecast_week_end_date) +
-                                       as.numeric(substr(target, 1, regexpr(" ", target) - 1)) * 7)
-    ) %>%
-    dplyr::left_join(
-      observed_by_location_target_end_date,
-      by = c('location', 'target_end_date', 'base_target')
-    ) %>%
-    pull(observed)
-
-  row_index$pit <- NA_real_
-  for(i in seq_len(nrow(qfm))) {
-    if(!is.na(y_test[i])) {
-      qfm_row <- unclass(qfm)[i, ]
-      if(y_test[i] < qfm_row[1]) {
-        row_index$pit[i] <- as.numeric(col_index$quantile[1])
-      } else if(y_test[i] > tail(qfm_row, 1)) {
-        row_index$pit[i] <- 1.0
-      } else if(any(qfm_row == y_test[i])) {
-        row_index$pit[i] <- col_index$quantile[qfm_row == y_test[i]] %>%
-          as.numeric() %>%
-          median()
-      } else {
-        start_ind <- max(which(unclass(qfm)[i, ] < y_test[i]))
-        row_index$pit[i] <- approx(
-          x = qfm_row[start_ind:(start_ind+1)],
-          y = as.numeric(col_index$quantile[start_ind:(start_ind+1)]),
-          xout = y_test[i],
-          method = "linear"
-        )$y
-      }
-    }
-  }
-
-  for (i in seq_len((nrow(col_index) - 1) / 2)) {
-    coverage_name <- paste0(
-      "coverage_",
-      format(1 - as.numeric(col_index$quantile[i]) * 2, nsmall = 2, digits = 2))
-    wis_name <- paste0(
-      "wis_",
-      format(as.numeric(col_index$quantile[i]) * 2, nsmall = 2, digits = 2))
-    wiw_name <- paste0(
-      "wiw_",
-      format(as.numeric(col_index$quantile[i]) * 2, nsmall = 2, digits = 2))
-    wip_name <- paste0(
-      "wip_",
-      format(as.numeric(col_index$quantile[i]) * 2, nsmall = 2, digits = 2))
-
-    pred_quantiles <- qfm[, c(i, nrow(col_index) + 1 - i)]
-    row_index[[coverage_name]] <- (unclass(pred_quantiles)[, 1] <= y_test) &
-      (unclass(pred_quantiles)[, 2] >= y_test)
-    row_index[[wis_name]] <- covidEnsembles::wis(y_test, pred_quantiles)
-    row_index[[wiw_name]] <- covidEnsembles::wiw(y_test, pred_quantiles)
-    row_index[[wip_name]] <- covidEnsembles::wip(y_test, pred_quantiles)
-  }
-
-  i <- i + 1
-  row_index[["wis_1"]] <- abs(y_test - unclass(qfm[, i]))
-  row_index[["wiw_1"]] <- 0.0
-  row_index[["wip_1"]] <- abs(y_test - unclass(qfm[, i]))
-
-  row_index[["wis"]] <- covidEnsembles::wis(y_test, qfm)
-
-  for (i in seq_len(nrow(col_index))) {
-    coverage_name <- paste0("one_sided_coverage_", col_index$quantile[i])
-
-    pred_quantiles <- qfm[, i]
-    row_index[[coverage_name]] <- (y_test <= unclass(pred_quantiles)[, 1])
-  }
-
-  row_index$observed_inc <- row_index %>%
-    dplyr::mutate(
-      base_target = "wk ahead inc death",
-      target_end_date = as.character(
-        lubridate::ymd(forecast_week_end_date) +
-                       as.numeric(substr(target, 1, regexpr(" ", target) - 1)) * 7)
-    ) %>%
-    dplyr::left_join(
-      observed_by_location_target_end_date,
-      by = c("location", "target_end_date", "base_target")
-    ) %>%
-    dplyr::pull(observed)
-
-  row_index$observed <- y_test
-
-  return(row_index[!is.na(y_test), ])
-}
-
-# scores for forecasts available for all models
 all_scores <- purrr::map_dfr(
-  unique(all_forecasts$model_and_scale),
-  function(model_and_scale) {
-    # extract model case
-    model_case <- suppressMessages(parse_model_case(model_and_scale)) %>%
-      dplyr::mutate(model_and_scale = model_and_scale, join_field = "temp")
-
-    if(nrow(model_case) == 0) {
-      model_case <- data.frame(
-        model_and_scale = model_and_scale,
-        join_field = "temp",
-        stringsAsFactors = FALSE
-      )
-    }
-
-    model_forecasts <- all_forecasts %>%
-        dplyr::filter(model_and_scale == UQ(model_and_scale))
-
-    purrr::map_dfr(
-      unique(model_forecasts$target),
-      function(target) {
-        model_qfm <- covidEnsembles::new_QuantileForecastMatrix_from_df(
-          forecast_df = model_forecasts %>%
-            dplyr::filter(
-              target == UQ(target)
-            ),
-          model_col = 'model_and_scale',
-          id_cols = c('location', 'forecast_week_end_date', 'target'),
-          quantile_name_col = 'quantile',
-          quantile_value_col = 'value',
-          drop_missing_id_levels = TRUE
-        )
-
-        get_scores(
-          qfm = model_qfm,
-          observed_by_location_target_end_date = observed) %>%
-          dplyr::mutate(join_field = "temp") %>%
-          dplyr::left_join(model_case, by = "join_field") %>%
-          dplyr::select(-join_field)
-      }) %>%
-      dplyr::mutate(model_and_scale = model_and_scale)
-  })
+  unique(all_forecasts$target_variable),
+  function(tv) {
+    covidHubUtils::score_forecasts(
+      forecasts = all_forecasts %>%
+        dplyr::filter(target_variable == tv),
+      return_format = "wide",
+      truth = truth
+    )
+  }
+)
 
 saveRDS(
   all_scores,

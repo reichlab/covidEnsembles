@@ -1,5 +1,6 @@
 library(tidyverse)
 library(zeallot)
+library(covidHubUtils)
 library(covidEnsembles)
 library(covidData)
 library(googledrive)
@@ -17,11 +18,20 @@ submissions_root <- '../covid19-forecast-hub/data-processed/'
 save_roots <- c('code/application/weekly-ensemble/forecasts/')
 for (root in save_roots) {
   if (!file.exists(root)) dir.create(root, recursive = TRUE)
+  if (!file.exists(paste0(root,"ensemble-metadata/"))) {
+    dir.create(paste0(root,"ensemble-metadata/"), recursive = TRUE)
+  }
 }
 
 # Where to save plots
 plots_root <- 'code/application/weekly-ensemble/plots/COVIDhub-ensemble/'
 if (!file.exists(plots_root)) dir.create(plots_root, recursive = TRUE)
+
+# Where to save hospitalization exclusion tables
+sd_check_table_path <- 'code/application/weekly-ensemble/exclusion-outputs/tables/'
+if (!file.exists(sd_check_table_path)) dir.create(sd_check_table_path, recursive = TRUE)
+sd_check_plot_path <- 'code/application/weekly-ensemble/exclusion-outputs/plots/'
+if (!file.exists(sd_check_plot_path)) dir.create(sd_check_plot_path, recursive = TRUE)
 
 # List of candidate models for inclusion in ensemble
 candidate_model_abbreviations_to_include <- get_candidate_models(
@@ -30,10 +40,10 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
   include_COVIDhub_ensemble = FALSE,
   include_COVIDhub_baseline = TRUE)
 
-# Drop hospitalizations ensemble from JHU APL
+# Drop hospitalizations ensemble from JHU APL and ensemble from FDANIHASU
 candidate_model_abbreviations_to_include <-
   candidate_model_abbreviations_to_include[
-    !(candidate_model_abbreviations_to_include == "JHUAPL-SLPHospEns")
+    !(candidate_model_abbreviations_to_include %in% c("JHUAPL-SLPHospEns", "FDANIHASU-Sweight"))
   ]
 
 
@@ -45,6 +55,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 #for (response_var in c("cum_death", "inc_death", "inc_case")) {
   if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
+    do_sd_check <- FALSE
     required_quantiles <-
       c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolution <- c("state", "national")
@@ -52,6 +63,9 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     horizon <- 4L
     targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date - 2
+
+    # date for which retrieved deaths truth data should be current
+    data_as_of_date <- covidData::jhu_deaths_data$issue_date %>% max()
 
     # adjustments based on plots
     if (forecast_date == "2020-06-08") {
@@ -94,6 +108,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   } else if (response_var == 'inc_death') {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
+    do_sd_check <- FALSE
     required_quantiles <-
       c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolution <- c("state", "national")
@@ -101,6 +116,10 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     horizon <- 4L
     targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date - 2
+
+    # date for which retrieved deaths truth data should be current
+    # repeated from cum_death block for clarity
+    data_as_of_date <- covidData::jhu_deaths_data$issue_date %>% max()
 
     # adjustments based on plots
     if (forecast_date == "2020-06-08") {
@@ -153,12 +172,16 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   } else if (response_var == "inc_case") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
+    do_sd_check <- FALSE
     required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
     spatial_resolution <- c('county', 'state', 'national')
     temporal_resolution <- "wk"
     horizon <- 4L
     targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date - 2
+
+    # date for which retrieved cases truth data should be current
+    data_as_of_date <- covidData::jhu_cases_data$issue_date %>% max()
 
     if (forecast_date == "2020-07-13") {
       manual_eligibility_adjust <- tidyr::expand_grid(
@@ -184,12 +207,16 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   } else if (response_var == "inc_hosp") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
+    do_sd_check <- FALSE 
     required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolution <- c("state", "national")
     temporal_resolution <- "day"
     horizon <- 28L
     targets <- paste0(1:(horizon + 6), " day ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date
+
+    # date for which retrieved hospitalization truth data should be current
+    data_as_of_date <- covidData::healthdata_hosp_data$issue_date %>% max()
 
     if (forecast_date == "2020-12-07") {
       manual_eligibility_adjust <- tidyr::expand_grid(
@@ -203,6 +230,67 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         location = covidData::fips_codes$location,
         message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
       )
+    } else if (forecast_date == "2020-12-21") {
+      manual_eligibility_adjust <- tidyr::expand_grid(
+        model = c("Google_Harvard-CPF", "IHME-CurveFit", "UCLA-SuEIR"),
+        location = covidData::fips_codes$location,
+        message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+      )
+    } else if (forecast_date == "2020-12-28") {
+      manual_eligibility_adjust <- readr::read_csv(
+        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_2020-12-29.csv"
+      ) %>%
+        dplyr::mutate(
+          location_name =
+            ifelse(location_name == "National", "US", location_name),
+          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+        ) %>%
+        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
+        dplyr::select(model, location, message)
+    } else if (forecast_date == "2021-01-04") {
+      manual_eligibility_adjust <- readr::read_csv(
+        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_2021-01-05.csv"
+      ) %>%
+        dplyr::mutate(
+          location_name =
+            ifelse(location_name == "National", "US", location_name),
+          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+        ) %>%
+        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
+        dplyr::select(model, location, message)
+    } else if (forecast_date == "2021-01-11") {
+      manual_eligibility_adjust <- readr::read_csv(
+        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-12.csv"
+      ) %>%
+        dplyr::mutate(
+          location_name =
+            ifelse(location_name == "National", "US", location_name),
+          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+        ) %>%
+        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
+        dplyr::select(model, location, message)
+    } else if (forecast_date == "2021-01-18") {
+      manual_eligibility_adjust <- readr::read_csv(
+        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-19.csv"
+      ) %>%
+        dplyr::mutate(
+          location_name =
+            ifelse(location_name == "National", "US", location_name),
+          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+        ) %>%
+        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
+        dplyr::select(model, location, message)        
+    } else if (forecast_date == "2021-01-25") {
+      manual_eligibility_adjust <- readr::read_csv(
+        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-26.csv"
+      ) %>%
+        dplyr::mutate(
+          location_name =
+            ifelse(location_name == "National", "US", location_name),
+          message = "Mean daily median forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
+        ) %>%
+        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
+        dplyr::select(model, location, message)        
     } else {
       manual_eligibility_adjust <- NULL
     }
@@ -219,6 +307,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       horizon = horizon,
       timezero_window_size = 6,
       window_size = 0,
+      data_as_of_date = data_as_of_date,
       intercept = FALSE,
       combine_method = 'median',
       quantile_groups = rep(1, 23),
@@ -229,6 +318,9 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = FALSE,
+      do_sd_check = do_sd_check, # implement CDC exclusion requests
+      sd_check_table_path = sd_check_table_path,
+      sd_check_plot_path = sd_check_plot_path,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility = TRUE,
       return_all = TRUE
@@ -375,15 +467,15 @@ for (response_var in c("inc_death", "cum_death", "inc_case", "inc_hosp")) {
   locations <- unique(eligibility$location)
 
   val_result <- identical(
-      sort(paste0(eligibility$location, eligibility$model)),
-      tidyr::expand_grid(
-        model = all_models,
-        location = locations
-      ) %>%
-        dplyr::mutate(lm = paste0(location, model)) %>%
-        dplyr::pull(lm) %>%
-        sort()
-    )
+    sort(paste0(eligibility$location, eligibility$model)),
+    tidyr::expand_grid(
+      model = all_models,
+      location = locations
+    ) %>%
+    dplyr::mutate(lm = paste0(location, model)) %>%
+    dplyr::pull(lm) %>%
+    sort()
+  )
   message(paste0("CHECK THAT ALL MODELS ARE IN ELIGIBILITY FILE: ", response_var))
   message(val_result)
 }

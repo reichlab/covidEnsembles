@@ -102,6 +102,31 @@ calc_target_week_end_date <- function(timezero, horizon) {
   return(result)
 }
 
+#' Calculate the target end date by parsing a target specification string and
+#' adding appropriate integer to `start_date`.
+#' 
+#' @param start_date a Date object 
+#' @param target string specification of forecast target
+#' 
+#' @return target end date
+#' 
+#' @export
+calc_target_string_end_date <- function(start_date, target) {
+  if (!lubridate::is.Date(start_date)) {
+    stop("start_date must be a Date object")
+  }
+  mult <- as.numeric(stringr::word(target, 1))
+  if (any(is.na(mult))) {
+    stop(paste0("number in row ", which(is.na(mult)), " failed to parse" ))
+  }
+  scale <- stringr::word(target, 2)
+  if (!all(scale %in% c("day", "wk"))) {
+    stop(paste0("scale in row ", which(!(scale %in% c("day", "wk"))), " failed to parse" ))
+  }
+  num_days <- ifelse(scale == "day", 1L, 7L)
+  return(start_date + mult*num_days)
+}
+
 #' Calculate the effective horizon of a forecast relative to the
 #' `forecast_week_end_date`
 #' 

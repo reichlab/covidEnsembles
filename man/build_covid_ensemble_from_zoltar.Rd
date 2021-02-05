@@ -11,6 +11,7 @@ build_covid_ensemble_from_zoltar(
   forecast_week_end_date,
   timezero_window_size = 1,
   window_size,
+  data_as_of_date,
   intercept = FALSE,
   combine_method,
   quantile_groups,

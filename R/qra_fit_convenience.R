@@ -278,11 +278,11 @@ load_covid_forecasts_relative_horizon <- function(
       # date relative to which the horizons and targets are defined for the
       # purpose of building the ensemble.
       forecast_week_end_date =
-        calc_forecast_week_end_date(timezero, target, return_type = "date"),
+        covidEnsembles::calc_forecast_week_end_date(timezero, target, return_type = "date"),
       horizon =
-        calc_relative_horizon(forecast_week_end_date, target_end_date, target),
+        covidEnsembles::calc_relative_horizon(forecast_week_end_date, target_end_date, target),
       target =
-        calc_relative_target(forecast_week_end_date, target_end_date, target)
+        covidEnsembles::calc_relative_target(forecast_week_end_date, target_end_date, target)
     ) %>%
     # keep only forecasts targeting dates after the forecast_week_end_date
     # and less than the specified horizon relative to the forecast week end date
@@ -311,7 +311,7 @@ load_covid_forecasts_relative_horizon <- function(
       purrr::map_dfr(
         tail(monday_dates, 1),
         load_covid_forecasts,
-        model_abbrs = candidate_model_abbreviations_to_include,
+        model_abbrs = model_abbrs,
         timezero_window_size = timezero_window_size,
         types = "point",
         targets = targets,
@@ -325,11 +325,11 @@ load_covid_forecasts_relative_horizon <- function(
         # date relative to which the horizons and targets are defined for the
         # purpose of building the ensemble.
         forecast_week_end_date =
-          calc_forecast_week_end_date(timezero, target, return_type = "date"),
+          covidEnsembles::calc_forecast_week_end_date(timezero, target, return_type = "date"),
         horizon =
-          calc_relative_horizon(forecast_week_end_date, target_end_date, target),
+          covidEnsembles::calc_relative_horizon(forecast_week_end_date, target_end_date, target),
         target =
-          calc_relative_target(forecast_week_end_date, target_end_date, target)
+          covidEnsembles::calc_relative_target(forecast_week_end_date, target_end_date, target)
       ) %>%
       # keep only forecasts targeting dates after the forecast_week_end_date
       # and less than the specified horizon relative to the forecast week end date
@@ -367,6 +367,7 @@ load_covid_forecasts_relative_horizon <- function(
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
+#' @param data_as_of_date
 #' @param intercept logical specifying whether an intercept is included
 #' @param combine_method character specifying the approach to model
 #' combination: "equal", "convex", "positive", "unconstrained", or "median".
@@ -408,6 +409,7 @@ build_covid_ensemble_from_local_files <- function(
   horizon,
   timezero_window_size = 1,
   window_size,
+  data_as_of_date,
   intercept=FALSE,
   combine_method,
   quantile_groups,
@@ -420,6 +422,9 @@ build_covid_ensemble_from_local_files <- function(
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
+  do_sd_check,
+  sd_check_table_path = NULL,
+  sd_check_plot_path = NULL,
   baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
@@ -428,7 +433,7 @@ build_covid_ensemble_from_local_files <- function(
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
     get_observed_by_location_target_end_date(
-      issue_date = as.character(lubridate::ymd(forecast_date) - 1),
+      as_of = as.character(data_as_of_date),
       targets = targets,
       spatial_resolution = spatial_resolution
     )
@@ -466,6 +471,9 @@ build_covid_ensemble_from_local_files <- function(
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
+    do_sd_check = do_sd_check,
+    sd_check_table_path = sd_check_table_path,
+    sd_check_plot_path = sd_check_plot_path,    
     baseline_tol = baseline_tol,
     manual_eligibility_adjust = manual_eligibility_adjust,
     return_eligibility = return_eligibility,
@@ -530,6 +538,7 @@ build_covid_ensemble_from_zoltar <- function(
   forecast_week_end_date,
   timezero_window_size = 1,
   window_size,
+  data_as_of_date,
   intercept=FALSE,
   combine_method,
   quantile_groups,
@@ -556,7 +565,7 @@ build_covid_ensemble_from_zoltar <- function(
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
     get_observed_by_location_target_end_date(
-      issue_date = as.character(lubridate::ymd(forecast_date) + 1),
+      as_of = as.character(data_as_of_date),
       targets = targets,
       spatial_resolution = c('national', 'state')
     )
@@ -693,6 +702,9 @@ get_ensemble_fit_and_predictions <- function(
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
+  do_sd_check,
+  sd_check_table_path = NULL,
+  sd_check_plot_path = NULL,  
   baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
@@ -722,6 +734,9 @@ get_ensemble_fit_and_predictions <- function(
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = do_baseline_check,
+      do_sd_check = do_sd_check,
+      sd_check_table_path = sd_check_table_path,
+      sd_check_plot_path = sd_check_plot_path,       
       baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility = return_eligibility,
@@ -742,6 +757,9 @@ get_ensemble_fit_and_predictions <- function(
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = do_baseline_check,
+      do_sd_check = do_sd_check,
+      sd_check_table_path = sd_check_table_path,
+      sd_check_plot_path = sd_check_plot_path, 
       baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility = return_eligibility,
@@ -756,6 +774,9 @@ get_ensemble_fit_and_predictions <- function(
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = do_baseline_check,
+      do_sd_check = do_sd_check,
+      sd_check_table_path = sd_check_table_path,
+      sd_check_plot_path = sd_check_plot_path,       
       baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility = return_eligibility,
@@ -798,6 +819,8 @@ get_ensemble_fit_and_predictions <- function(
 #' @param return_eligibility if TRUE, return model eligibility
 #'
 #' @return tibble or data frame with ensemble fits and results
+#' 
+#' @export
 get_by_location_group_ensemble_fits_and_predictions <- function(
   forecasts,
   observed_by_location_target_end_date,
@@ -810,6 +833,9 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
+  do_sd_check,
+  sd_check_table_path = NULL,
+  sd_check_plot_path = NULL,   
   baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_all=FALSE,
@@ -849,6 +875,9 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
+    do_sd_check = do_sd_check,
+    sd_check_table_path = sd_check_table_path,
+    sd_check_plot_path = sd_check_plot_path,  
     baseline_tol = baseline_tol,
     window_size = window_size,
     decrease_tol = 0.0
@@ -1147,6 +1176,9 @@ get_imputed_ensemble_fits_and_predictions <- function(
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check,
+  do_sd_check,
+  sd_check_table_path = NULL,
+  sd_check_plot_path = NULL,
   baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_all=FALSE,
@@ -1187,6 +1219,9 @@ get_imputed_ensemble_fits_and_predictions <- function(
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
+    do_sd_check = do_sd_check,  
+    sd_check_table_path = sd_check_table_path,
+    sd_check_plot_path = sd_check_plot_path,   
     baseline_tol = baseline_tol,
     window_size = window_size,
     decrease_tol = 0.0
@@ -1357,10 +1392,10 @@ get_imputed_ensemble_fits_and_predictions <- function(
   # impute missing values
   c(imputed_qfm_train, weight_transfer) %<-% impute_missing_per_quantile(
     qfm=qfm_train,
-    impute_method = 'mean')
+    impute_method = impute_method)
   c(imputed_qfm_test, test_weight_transfer) %<-% impute_missing_per_quantile(
     qfm=qfm_test,
-    impute_method = 'mean')
+    impute_method = impute_method)
 
   # observed responses to date
   y_train <- attr(qfm_train, 'row_index') %>%
@@ -1386,6 +1421,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   # fit ensembles and obtain predictions per group
   if(combine_method == 'ew') {
     qra_fit <- estimate_qra(imputed_qfm_train, combine_method = 'ew')
+    orig_qra_fit <- qra_fit    
   } else {
     qra_fit <- estimate_qra(
       qfm_train = imputed_qfm_train,
@@ -1397,6 +1433,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
       backend = backend)
 
     # do weight transfer among models
+    # save original weights for retrospective exploration
+    orig_qra_fit <- qra_fit
     if(nrow(qra_fit$coefficients) == nrow(weight_transfer)) {
       # single weight per model
       qra_fit$coefficients$beta <-
@@ -1427,6 +1465,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
         y_train = list(y_train),
         imputed_qfm_train = list(imputed_qfm_train),
         imputed_qfm_test = list(imputed_qfm_test),
+        orig_qra_fit = list(orig_qra_fit),
         qra_fit = list(qra_fit),
         qra_forecast = list(qra_forecast)
       )),
@@ -1459,6 +1498,9 @@ get_rescaled_ensemble_fits_and_predictions <- function(
   do_q10_check,
   do_nondecreasing_quantile_check,
   do_baseline_check = do_baseline_check,
+  do_sd_check, 
+  sd_check_table_path = NULL,
+  sd_check_plot_path = NULL, 
   baseline_tol = 1.2,
   manual_eligibility_adjust,
   return_all=FALSE,
@@ -1492,6 +1534,9 @@ get_rescaled_ensemble_fits_and_predictions <- function(
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
+    do_sd_check = do_sd_check,
+    sd_check_table_path = sd_check_table_path,
+    sd_check_plot_path = sd_check_plot_path,     
     baseline_tol = baseline_tol,
     window_size = 0,
     decrease_tol = 0.0
@@ -1534,6 +1579,9 @@ get_rescaled_ensemble_fits_and_predictions <- function(
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = do_baseline_check,
+      do_sd_check = do_sd_check,
+      sd_check_table_path = sd_check_table_path,
+      sd_check_plot_path = sd_check_plot_path,             
       baseline_tol = baseline_tol,
       window_size = 0,
       decrease_tol = 0.0

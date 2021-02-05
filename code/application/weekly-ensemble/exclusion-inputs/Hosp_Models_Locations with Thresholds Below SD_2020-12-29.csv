@@ -1,0 +1,68 @@
+"","model","location_name","exclude"
+"1","CU-select","Iowa",1
+"2","CU-select","Kentucky",1
+"3","CU-select","Minnesota",1
+"4","CU-select","Mississippi",1
+"5","CU-select","North Dakota",1
+"6","CU-select","Oklahoma",1
+"7","CU-select","South Carolina",1
+"8","CU-select","Texas",1
+"9","CU-select","Virginia",1
+"10","CU-select","West Virginia",1
+"11","Google_Harvard-CPF","Alabama",1
+"12","Google_Harvard-CPF","Arizona",1
+"13","Google_Harvard-CPF","Arkansas",1
+"14","Google_Harvard-CPF","California",1
+"15","Google_Harvard-CPF","Connecticut",1
+"16","Google_Harvard-CPF","Florida",1
+"17","Google_Harvard-CPF","Georgia",1
+"18","Google_Harvard-CPF","Illinois",1
+"19","Google_Harvard-CPF","Indiana",1
+"20","Google_Harvard-CPF","Kentucky",1
+"21","Google_Harvard-CPF","Louisiana",1
+"22","Google_Harvard-CPF","Maryland",1
+"23","Google_Harvard-CPF","Massachusetts",1
+"24","Google_Harvard-CPF","Minnesota",1
+"25","Google_Harvard-CPF","Missouri",1
+"26","Google_Harvard-CPF","New Mexico",1
+"27","Google_Harvard-CPF","New York",1
+"28","Google_Harvard-CPF","North Carolina",1
+"29","Google_Harvard-CPF","North Dakota",1
+"30","Google_Harvard-CPF","Ohio",1
+"31","Google_Harvard-CPF","Oklahoma",1
+"32","Google_Harvard-CPF","Pennsylvania",1
+"33","Google_Harvard-CPF","Texas",1
+"34","Google_Harvard-CPF","Utah",1
+"35","IHME-CurveFit","Alabama",1
+"36","IHME-CurveFit","Arizona",1
+"37","IHME-CurveFit","California",1
+"38","IHME-CurveFit","Delaware",1
+"39","IHME-CurveFit","Florida",1
+"40","IHME-CurveFit","Kentucky",1
+"41","IHME-CurveFit","National",1
+"42","IHME-CurveFit","New York",1
+"43","IHME-CurveFit","North Carolina",1
+"44","IHME-CurveFit","Ohio",1
+"45","IHME-CurveFit","Oklahoma",1
+"46","IHME-CurveFit","South Carolina",1
+"47","IHME-CurveFit","Virginia",1
+"48","JHU_IDD-CovidSP","Alabama",1
+"49","JHU_IDD-CovidSP","California",1
+"50","JHU_IDD-CovidSP","Georgia",1
+"51","JHU_IDD-CovidSP","Kentucky",1
+"52","JHU_IDD-CovidSP","Oklahoma",1
+"53","JHU_IDD-CovidSP","Texas",1
+"54","JHUAPL-Bucky","Florida",1
+"55","JHUAPL-Bucky","Kentucky",1
+"56","JHUAPL-Bucky","Oklahoma",1
+"57","LANL-GrowthRate","North Dakota",1
+"58","MOBS-GLEAM_COVID","Florida",1
+"59","UCLA-SuEIR","Alabama",1
+"60","UCLA-SuEIR","Arkansas",1
+"61","UCLA-SuEIR","Connecticut",1
+"62","UCLA-SuEIR","Kentucky",1
+"63","UCLA-SuEIR","New Mexico",1
+"64","UCLA-SuEIR","North Carolina",1
+"65","UCLA-SuEIR","North Dakota",1
+"66","UCLA-SuEIR","Pennsylvania",1
+"67","UCLA-SuEIR","Texas",1

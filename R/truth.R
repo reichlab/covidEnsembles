@@ -1,7 +1,7 @@
 #' get observed cases and/or deaths
 #'
-#' @param issue_date character issue date (i.e. report date) to use for
-#' constructing truths in format 'yyyy-mm-dd'
+#' @param as_of character date with format 'yyyy-mm-dd'; 
+#' indicates date for which retrieved truth data should be current
 #' @param targets character vector of targets to retrieve, for example
 #' c('1 wk ahead cum death', '2 wk ahead cum death')
 #' @param spatial_resolution character vector specifying spatial unit types to
@@ -12,7 +12,7 @@
 #'
 #' @export
 get_observed_by_location_target_end_date <- function(
-  issue_date,
+  as_of,
   targets,
   spatial_resolution
 ) {
@@ -44,15 +44,13 @@ get_observed_by_location_target_end_date <- function(
           dplyr::pull(type)
 
         if (measure %in% c("case", "death")) {
-          load_data <- covidData::load_jhu_data
           temporal_resolution <- "weekly"
         } else if (measure == "hosp") {
-          load_data <- covidData::load_healthdata_data
           temporal_resolution <- "daily"
         }
 
-        load_data(
-          issue_date = issue_date,
+        covidData::load_data(
+          as_of = as_of,
           spatial_resolution = effective_spatial_resolution,
           temporal_resolution = temporal_resolution,
           measure = measure
