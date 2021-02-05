@@ -223,3 +223,84 @@ test_that("[.QuantileForecastMatrix works", {
   expect_identical(actual, expected)
 })
 
+test_that("sort.QuantileForecastMatrix works", {
+
+  q_val_unsorted_1 <- c(
+        50, 20, 50, NA, 90,
+        2,   4, NA,  1,  0,
+        NA, 70, 65, 50, 50,
+        15:12, NA
+      )
+  q_val_sorted_1 <- c(
+        20, 50, 50, NA, 90,
+          0, 1, NA,  2,  4,
+        NA, 50, 50, 65, 70,
+        12:15, NA
+      )
+  q_val_2 <- c(30, 40)
+  q_val_unsorted_3 <- c(
+        10,  5, 12,
+        20, 20, 10 
+      )
+  q_val_sorted_3 <- c(
+         5, 10, 12,
+        10, 20, 20 
+      )
+
+  forecast_df_unsorted <- data.frame(
+    id1 = c(
+      rep('a',5), rep('b',10), rep('c',5), 
+      c('a', 'a'), 
+      rep('a', 3), rep('d', 3)
+    ),
+    id2 = c(
+      rep('p',5), rep('p',5), rep('q',5), rep('p',5),
+      c('p', 'q'),
+      rep('q', 6)
+    ),
+    model = c(
+      rep('m1', 20),
+      rep('m2', 2),
+      rep('m3', 6)
+    ),
+    q_prob = c(
+      rep(c(.1,.25,.5,.75,.9), 4),
+      rep(.5, 2),
+      rep(c(.1,.5,.9), 2)
+    ),
+    q_val = c(
+      q_val_unsorted_1,
+      q_val_2,
+      q_val_unsorted_3
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  forecast_df_sorted <- forecast_df_unsorted
+  forecast_df_sorted[['q_val']] <- c(
+    q_val_sorted_1,
+    q_val_2,
+    q_val_sorted_3
+  )
+
+  forecast_matrix_unsorted <- new_QuantileForecastMatrix_from_df(
+    forecast_df_unsorted,
+    model_col = 'model',
+    id_cols = c('id1', 'id2'),
+    quantile_name_col = 'q_prob',
+    quantile_value_col = 'q_val'
+  ) 
+
+  actual <- sort(forecast_matrix_unsorted)
+
+  expected <- new_QuantileForecastMatrix_from_df(
+    forecast_df_sorted,
+    model_col = 'model',
+    id_cols = c('id1', 'id2'),
+    quantile_name_col = 'q_prob',
+    quantile_value_col = 'q_val'
+  ) 
+
+  expect_identical(actual, expected)
+})
+
