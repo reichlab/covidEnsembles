@@ -32,14 +32,24 @@ library(tidyverse)
 library(plotly)
 theme_set(theme_bw())
 
-weights <- get_weights(root_dir = "/Volumes/GoogleDrive/My Drive/COVID19-forecast-hub/COVIDhub-ensemble/retrospective-weights/",
+## weights for inc_death
+death_weights <- get_weights(root_dir = "/Volumes/GoogleDrive/My Drive/COVID19-forecast-hub/COVIDhub-ensemble/retrospective-weights/",
                        estimation_level = "state",
                        quantile_groups = "3_groups",
                        window_size = "full_history",
                        target_variable = "inc_death", 
                        check_missingness_by_target = TRUE)
 
-weights_filtered <- weights %>%
+death_weights %>%
+  filter(quantile %in% c(.1, .5, .9), location == "01") %>%
+  mutate(model = reorder(model, X=weight, na.rm=TRUE)) %>% 
+  ggplot(aes(x=forecast_date, y=model, fill=weight, label=round(weight,2)))+
+  geom_tile() +
+  facet_grid(.~quantile) +
+  ggtitle("estimated weights for inc death") +
+  scale_fill_gradient(trans = 'reverse')
+
+weights_filtered <- death_weights %>%
   filter(quantile %in% c(.1, .5, .9), location == "01") %>%
   mutate(model = reorder(model, X=weight), forecast_date = as.Date(forecast_date))
 
@@ -58,7 +68,7 @@ weights_filtered %>% filter(weight>0) %>% group_by(forecast_date, quantile) %>% 
 weights_filtered %>% filter(weight>0) %>% group_by(model, quantile) %>% summarize(nmodels=n()) %>% print(n=Inf)
 
 ## looking at weights in recent weeks
-weights %>%
+death_weights %>%
   filter(forecast_date > as.Date("2021-01-01")) %>%
   filter(quantile %in% c(.1, .5, .9), location == "01") %>%
   mutate(EW = MMWRweek::MMWRweek(forecast_date)$MMWRweek,
@@ -73,3 +83,32 @@ weights %>%
   print(n=Inf)
   
     
+## analysis of case weights
+case_weights <- get_weights(root_dir = "/Volumes/GoogleDrive/My Drive/COVID19-forecast-hub/COVIDhub-ensemble/retrospective-weights/",
+                       estimation_level = "state",
+                       quantile_groups = "3_groups",
+                       window_size = "full_history",
+                       target_variable = "inc_case", 
+                       check_missingness_by_target = TRUE)
+
+case_weights %>%
+  filter(forecast_date > as.Date("2021-01-01")) %>%
+  filter(quantile %in% c(.1, .5, .9), location == "01") %>%
+  mutate(EW = MMWRweek::MMWRweek(forecast_date)$MMWRweek,
+         weight = round(weight,3)) %>%
+  select(-location, -forecast_date) %>%
+  pivot_wider(names_from = c(quantile, EW), 
+              values_from=weight, 
+              names_prefix="q", 
+              names_sep="_EW", 
+              names_sort=TRUE) %>% 
+  arrange(desc(q0.5_EW3)) %>%
+  print(n=Inf)
+
+case_weights %>%
+  filter(quantile %in% c(.1, .5, .9), location == "01") %>%
+  mutate(model = reorder(model, X=weight, na.rm=TRUE)) %>% 
+  ggplot(aes(x=forecast_date, y=model, fill=weight, label=round(weight,2)))+
+  geom_tile() +
+  facet_grid(.~quantile) +
+  scale_fill_gradient(trans = 'reverse')
