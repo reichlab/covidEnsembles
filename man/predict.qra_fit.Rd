@@ -4,12 +4,16 @@
 \alias{predict.qra_fit}
 \title{Predict based on a quantile regression averaging fit}
 \usage{
-\method{predict}{qra_fit}(qra_fit, qfm)
+\method{predict}{qra_fit}(qra_fit, qfm, sort_quantiles)
 }
 \arguments{
 \item{qra_fit}{object of class qra_fit}
 
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
+
+\item{sort_quantiles}{logical; if TRUE, the predictive quantiles are sorted
+in order of the quantile level.  Otherwise, the raw predictive quantiles are
+returned.}
 }
 \value{
 object of class QuantileForecastMatrix with quantile forecasts

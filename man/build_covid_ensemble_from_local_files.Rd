@@ -17,6 +17,7 @@ build_covid_ensemble_from_local_files(
   intercept = FALSE,
   combine_method,
   quantile_groups,
+  noncross = "constrain",
   missingness,
   impute_method,
   backend,
@@ -68,6 +69,12 @@ Default is rep(1,length(quantiles)), which means that a common set of
 ensemble weights should be used across all levels.  This is the argument
 \code{tau_groups} for \code{quantmod::quantile_ensemble}, and may only be supplied if
 \verb{backend = 'quantmod}}
+
+\item{noncross}{string specifying approach to handling quantile noncrossing:
+one of "constrain" or "sort". "constrain" means estimation is done subject
+to constraints ruling out quantile crossing.  "sort" means no such
+constraints are imposed during estimation, but the resulting forecasts are
+sorted.}
 
 \item{missingness}{character specifying approach to handling missing
 forecasts: 'by_location_group', 'rescale', or 'impute'}

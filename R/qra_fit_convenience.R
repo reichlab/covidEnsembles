@@ -381,6 +381,11 @@ load_covid_forecasts_relative_horizon <- function(
 #' ensemble weights should be used across all levels.  This is the argument
 #' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
 #' `backend = 'quantmod`
+#' @param noncross string specifying approach to handling quantile noncrossing:
+#' one of "constrain" or "sort". "constrain" means estimation is done subject
+#' to constraints ruling out quantile crossing.  "sort" means no such
+#' constraints are imposed during estimation, but the resulting forecasts are
+#' sorted.
 #' @param missingness character specifying approach to handling missing
 #' forecasts: 'by_location_group', 'rescale', or 'impute'
 #' @param impute_method character string specifying method for imputing missing
@@ -413,6 +418,7 @@ build_covid_ensemble_from_local_files <- function(
   intercept=FALSE,
   combine_method,
   quantile_groups,
+  noncross = "constrain",
   missingness,
   impute_method,
   backend,
@@ -464,6 +470,7 @@ build_covid_ensemble_from_local_files <- function(
     intercept=intercept,
     combine_method=combine_method,
     quantile_groups=quantile_groups,
+    noncross = noncross,
     missingness=missingness,
     impute_method=impute_method,
     backend=backend,
@@ -669,6 +676,11 @@ build_covid_ensemble_from_zoltar <- function(
 #' ensemble weights should be used across all levels.  This is the argument
 #' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
 #' `backend = 'quantmod`
+#' @param noncross string specifying approach to handling quantile noncrossing:
+#' one of "constrain" or "sort". "constrain" means estimation is done subject
+#' to constraints ruling out quantile crossing.  "sort" means no such
+#' constraints are imposed during estimation, but the resulting forecasts are
+#' sorted.
 #' @param missingness character specifying approach to handling missing
 #' forecasts: 'by_location_group', 'rescale', and 'impute'
 #' @param impute_method character string specifying method for imputing missing
@@ -695,6 +707,7 @@ get_ensemble_fit_and_predictions <- function(
   intercept = FALSE,
   combine_method = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
   quantile_groups = NULL,
+  noncross = "constrain",
   missingness = c('by_location_group', 'rescale', 'mean_impute'),
   impute_method = 'mean',
   backend = 'quantmod',
@@ -730,13 +743,14 @@ get_ensemble_fit_and_predictions <- function(
       intercept = intercept,
       combine_method = combine_method,
       quantile_groups = quantile_groups,
+      noncross = noncross,
       backend = backend,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
       do_baseline_check = do_baseline_check,
       do_sd_check = do_sd_check,
       sd_check_table_path = sd_check_table_path,
-      sd_check_plot_path = sd_check_plot_path,       
+      sd_check_plot_path = sd_check_plot_path,
       baseline_tol = baseline_tol,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility = return_eligibility,
@@ -751,6 +765,7 @@ get_ensemble_fit_and_predictions <- function(
       intercept = intercept,
       combine_method = combine_method,
       quantile_groups = quantile_groups,
+      noncross = noncross,
       impute_method = impute_method,
       backend = backend,
       check_missingness_by_target = check_missingness_by_target,
@@ -811,6 +826,11 @@ get_ensemble_fit_and_predictions <- function(
 #' ensemble weights should be used across all levels.  This is the argument
 #' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
 #' `backend = 'quantmod`
+#' @param noncross string specifying approach to handling quantile noncrossing:
+#' one of "constrain" or "sort". "constrain" means estimation is done subject
+#' to constraints ruling out quantile crossing.  "sort" means no such
+#' constraints are imposed during estimation, but the resulting forecasts are
+#' sorted.
 #' @param backend back end used for optimization.
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
@@ -829,6 +849,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   intercept = FALSE,
   combine_method = c("ew", "convex", "positive", "unconstrained", "median"),
   quantile_groups = NULL,
+  noncross = "constrain",
   backend = "quantmod",
   do_q10_check,
   do_nondecreasing_quantile_check,
@@ -877,7 +898,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
     do_baseline_check = do_baseline_check,
     do_sd_check = do_sd_check,
     sd_check_table_path = sd_check_table_path,
-    sd_check_plot_path = sd_check_plot_path,  
+    sd_check_plot_path = sd_check_plot_path,
     baseline_tol = baseline_tol,
     window_size = window_size,
     decrease_tol = 0.0
@@ -1019,6 +1040,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
           intercept = intercept,
           combine_method = combine_method,
           quantile_groups = quantile_groups,
+          noncross = noncross,
           backend = backend)
       })
   }
@@ -1027,7 +1049,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   location_groups[['qra_forecast']] <- purrr::pmap(
     location_groups %>% dplyr::select(qra_fit, qfm_test),
     function(qra_fit, qfm_test) {
-      predict(qra_fit, qfm_test) %>%
+      predict(qra_fit, qfm_test, sort_quantiles = (noncross == "sort")) %>%
         as.data.frame()
     }
   )
@@ -1147,6 +1169,11 @@ impute_missing_per_quantile <- function(qfm, impute_method = 'mean') {
 #' ensemble weights should be used across all levels.  This is the argument
 #' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
 #' `backend = 'quantmod`
+#' @param noncross string specifying approach to handling quantile noncrossing:
+#' one of "constrain" or "sort". "constrain" means estimation is done subject
+#' to constraints ruling out quantile crossing.  "sort" means no such
+#' constraints are imposed during estimation, but the resulting forecasts are
+#' sorted.
 #' @param impute_method character string specifying method for imputing missing
 #' forecasts; currently only 'mean' is supported.
 #' @param backend back end used for optimization.
@@ -1170,6 +1197,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   intercept = FALSE,
   combine_method = c('ew', 'convex', 'positive', 'unconstrained'),
   quantile_groups = NULL,
+  noncross = "constrain",
   impute_method = 'mean',
   backend = 'quantmod',
   check_missingness_by_target = FALSE,
@@ -1241,7 +1269,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   # keep only models that are eligible for inclusion in at least one location,
   # or one combination of location, forecast week, and target if
   # check_missingness_by_target is TRUE
-  if(check_missingness_by_target) {
+  if (check_missingness_by_target) {
     # convert model eligibility to wide format logical with human readable names
     wide_model_eligibility <- model_eligibility %>%
       dplyr::transmute(
@@ -1430,6 +1458,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
       intercept = intercept,
       combine_method = combine_method,
       quantile_groups = quantile_groups,
+      noncross = noncross,
       backend = backend)
 
     # do weight transfer among models
@@ -1451,7 +1480,11 @@ get_imputed_ensemble_fits_and_predictions <- function(
   }
 
   # obtain predictions
-  qra_forecast <- predict(qra_fit, imputed_qfm_test) %>% as.data.frame()
+  qra_forecast <- predict(
+    qra_fit,
+    imputed_qfm_test,
+    sort_quantiles = (noncross == "sort")) %>%
+      as.data.frame()
 
   # return
   if(return_all) {

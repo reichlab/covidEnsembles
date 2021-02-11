@@ -4,12 +4,15 @@
 \alias{predict.median_qra_fit}
 \title{Predict based on a quantile regression averaging fit}
 \usage{
-\method{predict}{median_qra_fit}(qra_fit, qfm)
+\method{predict}{median_qra_fit}(qra_fit, qfm, ...)
 }
 \arguments{
 \item{qra_fit}{object of class median_qra_fit}
 
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
+
+\item{...}{ignored additional arguments (in particular, absorbs the
+sort_quantiles argument used by \code{predict.qra_fit})}
 }
 \value{
 object of class QuantileForecastMatrix with quantile forecasts

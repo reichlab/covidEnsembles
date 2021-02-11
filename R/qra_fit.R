@@ -151,11 +151,14 @@ new_median_qra_fit <- function(...) {
 #'
 #' @param qra_fit object of class qra_fit
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
+#' @param sort_quantiles logical; if TRUE, the predictive quantiles are sorted
+#' in order of the quantile level.  Otherwise, the raw predictive quantiles are
+#' returned.
 #'
 #' @return object of class QuantileForecastMatrix with quantile forecasts
 #'
 #' @export
-predict.qra_fit <- function(qra_fit, qfm) {
+predict.qra_fit <- function(qra_fit, qfm, sort_quantiles) {
   # construct sparse matrix representing model weights across quantiles
   ## pull out parameter values
   row_index <- attr(qfm, 'row_index')
@@ -204,7 +207,7 @@ predict.qra_fit <- function(qra_fit, qfm) {
     result_matrix <- sweep(result_matrix, 2, intercept, FUN='+')
   }
 
-  # Create QuantileForecastMatrix with result and return
+  # Create QuantileForecastMatrix with result
   model_col <- attr(qfm, 'model_col')
   new_col_index <- col_index[
     col_index[[model_col]] == col_index[[model_col]][1], ]
@@ -219,6 +222,11 @@ predict.qra_fit <- function(qra_fit, qfm) {
     quantile_value_col=attr(qfm, 'quantile_value_col')
   )
 
+  # sort predictive quantiles if requested
+  if (sort_quantiles) {
+    result_qfm <- sort(result_qfm)
+  }
+
   return(result_qfm)
 }
 
@@ -227,11 +235,13 @@ predict.qra_fit <- function(qra_fit, qfm) {
 #'
 #' @param qra_fit_rescalable object of class qra_fit_rescalable
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
+#' @param ... ignored additional arguments (in particular, absorbs the
+#' sort_quantiles argument used by \code{predict.qra_fit})
 #'
 #' @return object of class QuantileForecastMatrix with quantile forecasts
 #'
 #' @export
-predict.rescaled_qra_fit <- function(qra_fit, qfm) {
+predict.rescaled_qra_fit <- function(qra_fit, qfm, ...) {
   # construct sparse matrix representing model weights across quantiles
   ## pull out parameter values
   col_index <- attr(qfm, 'col_index')
@@ -329,11 +339,13 @@ predict.rescaled_qra_fit <- function(qra_fit, qfm) {
 #'
 #' @param qra_fit object of class median_qra_fit
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
+#' @param ... ignored additional arguments (in particular, absorbs the
+#' sort_quantiles argument used by \code{predict.qra_fit})
 #'
 #' @return object of class QuantileForecastMatrix with quantile forecasts
 #'
 #' @export
-predict.median_qra_fit <- function(qra_fit, qfm) {
+predict.median_qra_fit <- function(qra_fit, qfm, ...) {
   # construct sparse matrix representing model weights across quantiles
   ## pull out parameter values
   row_index <- attr(qfm, 'row_index')
@@ -396,6 +408,11 @@ predict.median_qra_fit <- function(qra_fit, qfm) {
 #' ensemble weights should be used across all levels.  This is the argument
 #' `tau_groups` for `quantgen::quantile_ensemble`, and may only be supplied if
 #' `backend = 'quantgen`
+#' @param noncross string specifying approach to handling quantile noncrossing:
+#' one of "constrain" or "sort". "constrain" means estimation is done subject
+#' to constraints ruling out quantile crossing.  "sort" means no such
+#' constraints are imposed during estimation, but the resulting forecasts are
+#' sorted.
 #' @param backend implementation used for estimation; currently either
 #'    'optim', using L-BFGS-B as provided by the optim function in R;
 #'    'NlcOptim', using NlcOptim::solnl; or 'quantgen', using
@@ -411,6 +428,7 @@ estimate_qra <- function(
   intercept = FALSE,
   combine_method = c("ew", "convex", "positive", "unconstrained", "median"),
   quantile_groups = NULL,
+  noncross = "constrain",
   backend = 'optim',
   ...
 ) {
@@ -431,7 +449,8 @@ estimate_qra <- function(
       qfm_test = qfm_test,
       intercept = intercept,
       constraint = combine_method,
-      quantile_groups = quantile_groups)
+      quantile_groups = quantile_groups,
+      noncross = noncross)
     col_index <- attr(qfm_train, "col_index")
   } else if(backend == "qra") {
     stop("backend = 'qra' is not yet supported")
@@ -733,9 +752,21 @@ model_constructor_unconstrained_per_model <- function(par, qfm_train) {
 #' Default is rep(1,length(quantiles)), which means that a common set of
 #' ensemble weights should be used across all levels.  This is the argument
 #' `tau_groups` for `quantgen::quantile_ensemble`
+#' @param noncross string specifying approach to handling quantile noncrossing:
+#' one of "constrain" or "sort". "constrain" means estimation is done subject
+#' to constraints ruling out quantile crossing.  "sort" means no such
+#' constraints are imposed during estimation, but the resulting forecasts are
+#' sorted.
 #'
 #' @return object of class qra_fit
-estimate_qra_quantgen <- function(qfm_train, y_train, qfm_test, intercept, constraint, quantile_groups) {
+estimate_qra_quantgen <- function(
+    qfm_train,
+    y_train,
+    qfm_test,
+    intercept,
+    constraint,
+    quantile_groups,
+    noncross = "constrain") {
   # unpack and process arguments
   col_index <- attr(qfm_train, 'col_index')
   model_col <- attr(qfm_train, 'model_col')
@@ -760,6 +791,8 @@ estimate_qra_quantgen <- function(qfm_train, y_train, qfm_test, intercept, const
     quantgen_unit_sum = FALSE
   }
 
+  noncross <- match.arg(noncross, choices = c("constrain", "sort"))
+
   # reformat training set predictive quantiles from component models as 3d
   # array in format required for quantgen package
   qarr_train <- unclass(qfm_train)
@@ -776,9 +809,13 @@ estimate_qra_quantgen <- function(qfm_train, y_train, qfm_test, intercept, const
     n_train <- dim(qarr_train)[1]
     n_test <- dim(qarr_test)[1]
 
-    q0 <- array(dim = c(n_train + n_test, num_models, num_quantiles))
-    q0[seq_len(n_train), , ] <- qarr_train
-    q0[n_train + seq_len(n_test), , ] <- qarr_test
+    if (noncross == "constrain") {
+      q0 <- array(dim = c(n_train + n_test, num_models, num_quantiles))
+      q0[seq_len(n_train), , ] <- qarr_train
+      q0[n_train + seq_len(n_test), , ] <- qarr_test
+    } else {
+      q0 <- NULL
+    }
   }
 
   # estimate ensemble parameters
@@ -790,7 +827,7 @@ estimate_qra_quantgen <- function(qfm_train, y_train, qfm_test, intercept, const
     intercept = quantgen_intercept,
     nonneg = quantgen_nonneg,
     unit_sum = quantgen_unit_sum,
-    noncross = TRUE,
+    noncross = (noncross == "constrain"),
     q0 = q0,
     verbose = FALSE,
     lp_solver = "gurobi"

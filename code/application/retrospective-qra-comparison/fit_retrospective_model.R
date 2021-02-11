@@ -36,6 +36,8 @@ library(yaml)
 #args <- c("inc_death", "2020-05-18", "FALSE", "convex", "mean_impute", "per_model", "10", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_death", "2020-11-23", "FALSE", "convex", "mean_impute", "per_quantile", "full_history", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_hosp", "2021-01-18", "FALSE", "convex", "mean_impute", "per_model", "3", "TRUE", "FALSE", "FALSE", "state")
+#args <- c("local", "inc_death", "2021-01-25", "FALSE", "convex", "mean_impute", "per_quantile", "constrain", "full_history", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("local", "inc_death", "2021-02-08", "FALSE", "convex", "mean_impute", "per_quantile", "constrain", "6", "TRUE", "FALSE", "FALSE", "state_national")
 
 args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
@@ -48,11 +50,12 @@ if (run_setting %in% c("local", "cluster_single_node")) {
   combine_method <- args[5]
   missingness <- args[6]
   quantile_group_str <- args[7]
-  window_size_arg <- args[8]
-  check_missingness_by_target <- as.logical(args[9])
-  do_standard_checks <- as.logical(args[10])
-  do_baseline_check <- as.logical(args[11])
-  spatial_resolution_arg <- args[12]
+  noncross <- args[8]
+  window_size_arg <- args[9]
+  check_missingness_by_target <- as.logical(args[10])
+  do_standard_checks <- as.logical(args[11])
+  do_baseline_check <- as.logical(args[12])
+  spatial_resolution_arg <- args[13]
 
   if (run_setting == "local") {
     submissions_root <- "~/research/epi/covid/covid19-forecast-hub/data-processed/"
@@ -94,7 +97,7 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
 # Drop hospitalizations ensemble from JHU APL and ensemble from FDANIHASU
 candidate_model_abbreviations_to_include <-
   candidate_model_abbreviations_to_include[
-    !(candidate_model_abbreviations_to_include %in% c("JHUAPL-SLPHospEns", "FDANIHASU-Sweight"))
+    !(candidate_model_abbreviations_to_include %in% c("JHUAPL-SLPHospEns", "FDANIHASU-Sweight", "COVIDhub-trained_ensemble"))
   ]
 
 
@@ -183,6 +186,7 @@ case_str <- paste0(
   "-combine_method_", combine_method,
   "-missingness_", missingness,
   "-quantile_groups_", quantile_group_str,
+  "-noncross_", noncross,
   "-window_size_", window_size_arg,
   "-check_missingness_by_target_", check_missingness_by_target,
   "-do_standard_checks_", do_standard_checks,
@@ -232,6 +236,7 @@ tic <- Sys.time()
 if (!file.exists(forecast_filename)) {
   do_q10_check <- do_nondecreasing_quantile_check <- do_standard_checks
 
+tic <- Sys.time()
   results <- build_covid_ensemble_from_local_files(
     candidate_model_abbreviations_to_include =
       candidate_model_abbreviations_to_include,
@@ -246,6 +251,7 @@ if (!file.exists(forecast_filename)) {
     intercept = intercept,
     combine_method = combine_method,
     quantile_groups = quantile_groups,
+    noncross = noncross,
     missingness = missingness,
     impute_method = impute_method,
     backend = "quantgen",
@@ -261,6 +267,8 @@ if (!file.exists(forecast_filename)) {
     return_eligibility = TRUE,
     return_all = TRUE
   )
+toc <- Sys.time()
+toc - tic
 
   # save full results including estimated weights, training data, etc.
   # only if running locally; cluster has limited space

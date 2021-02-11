@@ -12,6 +12,7 @@ get_ensemble_fit_and_predictions(
   intercept = FALSE,
   combine_method = c("ew", "convex", "positive", "unconstrained", "median"),
   quantile_groups = NULL,
+  noncross = "constrain",
   missingness = c("by_location_group", "rescale", "mean_impute"),
   impute_method = "mean",
   backend = "quantmod",
@@ -55,6 +56,12 @@ Default is rep(1,length(quantiles)), which means that a common set of
 ensemble weights should be used across all levels.  This is the argument
 \code{tau_groups} for \code{quantmod::quantile_ensemble}, and may only be supplied if
 \verb{backend = 'quantmod}}
+
+\item{noncross}{string specifying approach to handling quantile noncrossing:
+one of "constrain" or "sort". "constrain" means estimation is done subject
+to constraints ruling out quantile crossing.  "sort" means no such
+constraints are imposed during estimation, but the resulting forecasts are
+sorted.}
 
 \item{missingness}{character specifying approach to handling missing
 forecasts: 'by_location_group', 'rescale', and 'impute'}

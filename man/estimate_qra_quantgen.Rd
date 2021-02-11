@@ -10,7 +10,8 @@ estimate_qra_quantgen(
   qfm_test,
   intercept,
   constraint,
-  quantile_groups
+  quantile_groups,
+  noncross = "constrain"
 )
 }
 \arguments{
@@ -31,6 +32,12 @@ weights for the corresponding quantile levels should be tied together.
 Default is rep(1,length(quantiles)), which means that a common set of
 ensemble weights should be used across all levels.  This is the argument
 \code{tau_groups} for \code{quantgen::quantile_ensemble}}
+
+\item{noncross}{string specifying approach to handling quantile noncrossing:
+one of "constrain" or "sort". "constrain" means estimation is done subject
+to constraints ruling out quantile crossing.  "sort" means no such
+constraints are imposed during estimation, but the resulting forecasts are
+sorted.}
 }
 \value{
 object of class qra_fit

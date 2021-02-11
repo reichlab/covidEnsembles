@@ -38,10 +38,10 @@ if (run_setting == "midas_cluster_single_node") {
   }
 } else {
   # number of cores to use for local runs
-  num_cores <- 16L
+  num_cores <- 18L
 
   first_forecast_date <- lubridate::ymd("2020-05-11")
-  last_forecast_date <- lubridate::ymd("2021-01-25")
+  last_forecast_date <- lubridate::ymd("2021-02-01")
 
   #last_forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
   num_forecast_weeks <-
@@ -57,7 +57,7 @@ if (run_setting == "midas_cluster_single_node") {
     combine_method = c("convex"),
     quantile_group_str = c("per_quantile", "3_groups", "per_model"),
     missingness = c("mean_impute"),
-    window_size = c(as.character(3:10)), #"full_history"),
+    window_size = as.character(3:10), #"full_history", #c(as.character(3:10)), #"full_history"),
     check_missingness_by_target = "TRUE",
     do_standard_checks = "FALSE",
     do_baseline_check = "FALSE"
@@ -70,7 +70,7 @@ if (run_setting == "midas_cluster_single_node") {
       (response_var == "inc_hosp" & forecast_date > "2020-11-16" &
         spatial_resolution != "county"),# |
   #    (response_var == "inc_hosp" & forecast_week >= "2020-11-16"),
-      spatial_resolution != "county" | window_size %in% c("3", "4")
+      (spatial_resolution != "county" & window_size %in% c("8", "9", "10") ) | window_size %in% c("3")
     ) %>%
     dplyr::arrange(window_size, forecast_date)
 
@@ -158,7 +158,7 @@ if (run_setting == "midas_cluster_single_node") {
   #   dplyr::filter(response_var == "inc_hosp")
 
   #analysis_combinations <- analysis_combinations %>%
-  #  dplyr::filter(response_var %in% c("inc_death", "inc_case"))
+  #  dplyr::filter(response_var %in% c("inc_death", "inc_case"), window_size == "full_history")
 
   dim(analysis_combinations)
 }

@@ -4,10 +4,13 @@
 \alias{predict.rescaled_qra_fit}
 \title{Predict based on a quantile regression averaging fit}
 \usage{
-\method{predict}{rescaled_qra_fit}(qra_fit, qfm)
+\method{predict}{rescaled_qra_fit}(qra_fit, qfm, ...)
 }
 \arguments{
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
+
+\item{...}{ignored additional arguments (in particular, absorbs the
+sort_quantiles argument used by \code{predict.qra_fit})}
 
 \item{qra_fit_rescalable}{object of class qra_fit_rescalable}
 }
