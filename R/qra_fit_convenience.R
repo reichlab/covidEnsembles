@@ -253,6 +253,7 @@ load_covid_forecasts_relative_horizon <- function(
   # and the filter to last submission from each model for each week
   forecasts <-
     # get forecasts from local files
+    # passing monday_dates as last_time_zero argument for load_covid_forecasts
     purrr::map_dfr(
       monday_dates,
       load_covid_forecasts,
