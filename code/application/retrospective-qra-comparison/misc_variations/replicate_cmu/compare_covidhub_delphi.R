@@ -21,6 +21,36 @@ debug_qf = debug_weights_filenames %>>%
     info[["extra_info"]][["qf"]]
   })
 
+imputed_qarr_train_delphi = debug_weights_filenames %>>%
+  setNames(paste0(dirname(.),"/",basename(.))) %>>%
+  lapply(function(filename) {
+    readRDS(file.path(debug_weights_aheads_folder, filename))
+  }) %>>%
+  lapply(function(info) {
+    info[["qarr_arg"]]
+  }) %>%
+  `[[`(1)
+imputed_forecasts_train_delphi <- purrr::map_dfr(
+  dimnames(qarr_train_delphi)[[1]],
+  function(dateloc) {
+    dim1_ind <- which(dimnames(qarr_train_delphi)[[1]] == dateloc)
+    qarr_train_delphi[dim1_ind, , ] %>%
+      as.data.frame() %>%
+      dplyr::mutate(
+        model = rownames(.),
+        dateloc = dateloc
+      ) %>%
+      tidyr::pivot_longer(
+        cols = colnames(qarr_train_delphi[dim1_ind, , ]),
+        names_to = "quantile",
+        values_to = "value")
+  }) %>%
+  tidyr::separate(
+    col = "dateloc",
+    into = c("date", "location"),
+    sep = ";"
+  )
+
 qarr_train_delphi <- debug_qf[[1]]$forecasts
 forecasts_train_delphi <- purrr::map_dfr(
   dimnames(qarr_train_delphi)[[1]],
@@ -76,8 +106,8 @@ forecasts_train_covidhub <- model_fit$location_groups$qfm_train[[1]] %>%
 ### copied the following code from https://github.com/reichlab/covidEnsembles/blob/382f275fe5178ffae539bbb056e8fefddbd0f4f2/R/qra_fit.R#L738
 ### it converts the qfm_train object stored as part of the model fit to the 3d array used as input to quantgen::quantile_ensemble
   constraint <- "convex"
-  qfm_train <- model_fit$location_groups$qfm_train[[1]]
-  qfm_test <- model_fit$location_groups$qfm_test[[1]]
+  qfm_train <- model_fit$location_groups$imputed_qfm_train[[1]]
+  qfm_test <- model_fit$location_groups$imputed_qfm_test[[1]]
 
   # unpack and process arguments
   col_index <- attr(qfm_train, 'col_index')
@@ -152,11 +182,30 @@ apply(qarr_train_covidhub, 2, function(x) sum(is.na(x)))
 delphi_reorder_inds <- names(debug_qf[[1]]$actual) %>% order()
 for (m in seq_len(num_models)) {
   for (l in seq_len(num_quantiles)) {
-    print(all.equal(unname(qarr_train_delphi[delphi_reorder_inds, m, l]), qarr_train_covidhub[, m, l]))
+    print(all.equal(unname(imputed_qarr_train_delphi[delphi_reorder_inds, m, l]), qarr_train_covidhub[, m, l]))
   }
 }
 
 # compare estimated weights
+orig_weights_delphi = debug_weights_filenames %>>%
+  setNames(paste0(dirname(.),"/",basename(.))) %>>%
+  lapply(function(filename) {
+    readRDS(file.path(debug_weights_aheads_folder, filename))
+  }) %>>%
+  lapply(function(info) {
+    info[["orig_weights"]]
+  }) %>%
+  `[[`(1) %>%
+  as.data.frame() %>%
+  dplyr::mutate(
+    model = dimnames(qarr_train_delphi)$Forecaster
+  ) %>%
+  tidyr::pivot_longer(
+    cols = colnames(.)[colnames(.) != "model"],
+    names_to = "quantile",
+    values_to = "weight"
+  )
+
 debug_weights_extract =
   debug_weights_filenames %>>%
   setNames(paste0(dirname(.),"/",basename(.))) %>>%
@@ -177,6 +226,12 @@ debug_weights_extract =
     [, quantile := as.character(Quantile)]
     [] # (removes internal data.table invisible flag)
   )}
+
+
+orig_weights_covidhub <- model_fit$location_groups$orig_qra_fit[[1]]$coefficients %>%
+  dplyr::transmute(
+    quantile, model, weight = beta
+  )
 
 weights_covidhub <- "https://github.com/reichlab/covidEnsembles/blob/master/code/application/retrospective-qra-comparison/misc_variations/replicate_cmu/retrospective_weight_estimates.rds?raw=true" %>%
   url("rb") %>%
@@ -205,6 +260,63 @@ weights <- weights_delphi %>%
   )
 
 weights %>%
+  dplyr::filter(quantile %in% c("0.01", "0.5", "0.99")) %>%
+  tidyr::pivot_longer(
+    cols = c("weight_delphi", "weight_covidhub"), # starts_with("weight_"),
+    names_to = "group",
+    names_prefix = "weight_",
+    values_to = "weight"
+  ) %>%
+  ggplot(aes(x = model, y = weight, color = group, group = group)) +
+    geom_line() +
+    geom_point() +
+    facet_wrap( ~ quantile, ncol = 1) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90))
+
+
+
+
+
+combined_weights_delphi <- weights_delphi %>%
+  dplyr::transmute(model, quantile, weight_delphi = weight) %>%
+  dplyr::left_join(
+    orig_weights_delphi %>%
+  dplyr::transmute(model, quantile, weight_delphi_orig = weight),
+    by = c("model", "quantile")
+  )
+
+combined_weights_delphi %>%
+  dplyr::filter(quantile %in% c("0.01", "0.5", "0.99")) %>%
+  tidyr::pivot_longer(
+    cols = c("weight_delphi", "weight_delphi_orig"), # starts_with("weight_"),
+    names_to = "group",
+    names_prefix = "weight_",
+    values_to = "weight"
+  ) %>%
+  ggplot(aes(x = model, y = weight, color = group, group = group)) +
+    geom_line() +
+    geom_point() +
+    facet_wrap( ~ quantile, ncol = 1) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90))
+
+
+
+
+
+orig_weights <- orig_weights_delphi %>%
+  dplyr::transmute(model, quantile, weight_delphi = weight) %>%
+  dplyr::left_join(
+    orig_weights_covidhub %>%
+      dplyr::transmute(model, quantile, weight_covidhub = weight),
+    by = c("model", "quantile")
+  ) %>%
+  dplyr::mutate(
+    weight_covidhub = ifelse(is.na(weight_covidhub), 0, weight_covidhub)
+  )
+
+orig_weights %>%
   dplyr::filter(quantile %in% c("0.01", "0.5", "0.99")) %>%
   tidyr::pivot_longer(
     cols = c("weight_delphi", "weight_covidhub"), # starts_with("weight_"),

@@ -48,8 +48,8 @@ theme_set(theme_bw())
 all_scores <- readRDS("../retrospective-scores/retrospective_scores.rds") %>%
   dplyr::filter(
     !grepl("ensemble_switching", model),
-    !grepl("combine_method_positive", model),
-    !grepl("check_missingness_by_target_TRUE", model)
+    !grepl("combine_method_positive", model)#,
+#    !grepl("check_missingness_by_target_TRUE", model)
   ) %>%
   dplyr::mutate(
     spatial_scale = ifelse(
@@ -62,57 +62,6 @@ all_scores <- readRDS("../retrospective-scores/retrospective_scores.rds") %>%
       )
     )
   )
-
-# function to extract model identifiers from abbreviation
-parse_model_case <- function(model_abbr) {
-  case_parts <- strsplit(model_abbr, split = "-")[[1]]
-  purrr::map_dfc(
-    case_parts,
-    function(case_part) {
-      nc <- nchar(case_part)
-      if (substr(case_part, 1, min(nc, 9)) == "intercept") {
-        return(data.frame(
-          intercept = as.logical(substr(case_part, 11, nc))
-        ))
-      } else if (substr(case_part, 1, min(nc, 14)) == "combine_method") {
-        return(data.frame(
-          combine_method = substr(case_part, 16, nc)
-        ))
-      } else if (substr(case_part, 1, min(nc, 11)) == "missingness") {
-        return(data.frame(
-          missingness = substr(case_part, 13, nc)
-        ))
-      } else if (substr(case_part, 1, min(nc, 15)) == "quantile_groups") {
-        return(data.frame(
-          quantile_groups = substr(case_part, 17, nc)
-        ))
-      } else if (substr(case_part, 1, min(nc, 11)) == "window_size") {
-        return(data.frame(
-          window_size = substr(case_part, 13, nc)
-        ))
-      } else if (substr(case_part, 1, min(nc, 27)) ==
-          "check_missingness_by_target") {
-        return(data.frame(
-          check_missingness_by_target = substr(case_part, 29, nc)
-        ))
-      } else if (substr(case_part, 1, min(nc, 18)) == "do_standard_checks") {
-        return(data.frame(
-          do_standard_checks = substr(case_part, 20, nc)
-        ))
-      } else if (substr(case_part, 1, min(nc, 17)) == "do_baseline_check") {
-        return(data.frame(
-          do_baseline_check = substr(case_part, 19, nc)
-        ))
-      } else if (substr(case_part, 1, min(nc, 16)) == "estimation_scale") {
-        return(data.frame(
-          estimation_grouping = substr(case_part, 18, nc)
-        ))
-      } else {
-        message(paste0("Unsupported case part: ", case_part))
-      }
-    }
-  )
-}
 
 all_model_cases <- purrr::map_dfr(
   unique(all_scores$model),
@@ -134,6 +83,7 @@ all_scores <- all_scores %>%
       sep = "_"
     )
   ) %>%
+#  dplyr::filter(window_size != "full_history") %>%
   dplyr::arrange(
     combine_method,
     as.integer(window_size),
@@ -682,109 +632,6 @@ ggplot(data = reduced_scores_by_week) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
 ```
 
-# Exploration of ensemble weights {.tabset .tabset-fade}
-
-The following interactive figures provide some insight into which models would have received weight in some of the different ensemble specifications. Each plot shows weights over time faceted by target variable in columns (inc case and inc death) and geographic level (state and national level) in rows. The versions of the ensemble shown here provide the same model weights for each state.
-
-## Window size 7
-```{r}
-weights <- readRDS("../retrospective-weight-estimates/retrospective_weight_estimates.rds")
-# weights %>%
-#     group_by(intercept, combine_method, missingness, quantile_groups, window_size, check_missingness_by_target, do_standard_checks, do_baseline_check, spatial_resolution) %>%
-#     summarize(n())
-weights_tmp <- weights %>%
-    #filter(forecast_date != "2020-11-30") %>%
-    filter(location %in% c("01", "US")) %>% #, forecast_date %in% c(as.Date("2020-05-25"))) %>% #, as.Date("2020-05-18"))) %>%
-    mutate(model = reorder(model, -weight, FUN = sum)) %>%
-    left_join(covidHubUtils::hub_locations, by = c("location" = "fips"))
-# p <- weights_tmp %>%
-#     filter(window_size==4) %>%
-#     ggplot(aes(x=forecast_date, y=weight, fill=model)) +
-#     geom_bar(stat = "identity") +
-#     facet_grid(spatial_resolution ~ target_variable) +
-#     ggtitle(paste("window size =", 4))
-# ggplotly(p, width=1000, height=800)
-p <- weights_tmp %>%
-    filter(window_size == 7) %>%
-    ggplot(aes(x = forecast_date, y = weight, fill = model)) +
-    geom_bar(stat = "identity") +
-    facet_grid(spatial_resolution ~ target_variable) +
-    ggtitle(paste("window size =", 7))
-ggplotly(p, width=1000, height=800)
-```
-
-## Window size 9
-
-```{r}
-p <- weights_tmp %>%
-    filter(window_size==9) %>%
-    ggplot(aes(x=forecast_date, y=weight, fill=model)) +
-    geom_bar(stat = "identity") +
-    facet_grid(spatial_resolution ~ target_variable) +
-    ggtitle(paste("window size =", 9))
-ggplotly(p, width=1000, height=800)
-```
-
-## Forecast plots Nov 23
-
-These plots show the forecasts of the "top weighted models" (i.e. models with more than 1% weight) in a given week. 
-
-```{r plot_top_weighted_models}
-plot_top_weighted_models <- function(weight_dat, fcast_date, win_size, target_var, loc) {
-  
-  top_models_deaths <- weight_dat %>%
-    filter(forecast_date == fcast_date, 
-      window_size==win_size, 
-      target_variable==gsub(" ", "_", target_var),
-      location==loc, 
-      weight>0.01)
-  
-  death_forecast_plot_data <- load_latest_forecasts(
-    models = as.character(top_models_deaths$model),
-    last_forecast_date = fcast_date, 
-    forecast_date_window_size = 7,
-    locations = loc, 
-    targets = paste(1:4, "wk ahead", target_var), 
-    source = "local_hub_repo",
-    hub_repo_path = "../../../../../../covid19-forecast-hub"
-  )
-  
-  p <- plot_forecast(death_forecast_plot_data,
-    facet=.~model, 
-    target_variable = target_var,
-    truth_source = "JHU",
-    fill_by_model = TRUE, 
-    show_caption = FALSE,
-    plot=FALSE) 
-  p +
-    scale_x_date(name=NULL, date_breaks = "1 months", date_labels = "%b") +
-    theme(axis.ticks.length.x = unit(0.5, "cm"),
-      axis.text.x = element_text(vjust = 7, hjust = -0.2)) +
-    geom_text(data=top_models_deaths, aes(x=as.Date("2020-07-15"), y=max(death_forecast_plot_data$value)*.8, label=paste("weight =",round(weight, 3))))
-}
-
-```
-
-
-
-```{r, message=FALSE}
-plot_top_weighted_models(weight_dat = weights_tmp,
-  fcast_date = "2020-11-23",
-  win_size = 9,
-  target_var = "inc death",
-  loc = "US")
-```
-
-
-
-# Future directions
-
-Other short term investigations/refinements to explore:
-
- * This evaluation is not "honest" in the sense that it shows performance of the best estimated ensemble based on performance across all weeks. We should consider evaluating performance of a strategy that picks the best ensemble in the table at each week, which is closer to an honest real-time ensemble selection policy.
- * A larger window size for the county level is not computationally feasible if parameters are estimated for all counties together; an alternative could be to estimate for 4 or 5 groups of counties, perhaps grouped by population size.
- * I'd like to consider tracking missing forecast imputation and weight redistribution at the level of each location, rather than across all locations.  Currently, if a very good model submits forecasts for only a small number of locations, it would be assigned low weight because of the weight redistribution process.  This can be fixed by redistributing weight away from a model according to its missingness level within each location rather than its missingness level across all locations.
- * State-level results
 
 # Forecast Score Availablity
 
@@ -792,12 +639,7 @@ This section displays heat maps showing score availability by date, target_varia
 In each cell, we expect to see a number of scores equal to the number of locations for the given spatial scale times
 the number of horizons for the given target.
 
-
 ##All forecasts {.tabset .tabset-fade}
-
-
-There are some unexpected differences in forecast availability at the state level across different models showing up here -- I need to
-investigate this more.
 
 ###County
 ```{r fig.width=10, fig.height=2}

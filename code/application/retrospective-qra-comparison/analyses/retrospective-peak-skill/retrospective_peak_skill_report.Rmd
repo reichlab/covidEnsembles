@@ -40,12 +40,12 @@ observed_deaths <-
     measure = "deaths") %>%
   tidyr::pivot_longer(
     cols = c("inc", "cum"),
-    names_to = "base_target",
+    names_to = "target_variable",
     values_to = "observed"
   ) %>%
   dplyr::transmute(
     location = location,
-    base_target = paste0("wk ahead ", base_target, " death"),
+    target_variable = paste0("wk ahead ", target_variable, " death"),
     target_end_date = as.character(date),
     observed = observed
   )
@@ -60,12 +60,12 @@ observed_cases <-
     measure = "cases") %>%
   tidyr::pivot_longer(
     cols = c("inc", "cum"),
-    names_to = "base_target",
+    names_to = "target_variable",
     values_to = "observed"
   ) %>%
   dplyr::transmute(
     location = location,
-    base_target = paste0("wk ahead ", base_target, " case"),
+    target_variable = paste0("wk ahead ", target_variable, " case"),
     target_end_date = as.character(date),
     observed = observed
   )
@@ -80,12 +80,12 @@ observed_hosps <-
     measure ="hospitalizations") %>%
   tidyr::pivot_longer(
     cols = c("inc", "cum"),
-    names_to = "base_target",
+    names_to = "target_variable",
     values_to = "observed"
   ) %>%
   dplyr::transmute(
     location = location,
-    base_target = paste0("day ahead ahead ", base_target, " hosp"),
+    target_variable = paste0("day ahead ahead ", target_variable, " hosp"),
     target_end_date = as.character(date),
     observed = observed
   )
@@ -95,30 +95,74 @@ observed_hosps <- observed_hosps[!duplicated(observed_hosps), ]
 observed <- dplyr::bind_rows(observed_deaths, observed_cases, observed_hosps)
 ```
 
+```{r}
+# function to extract model identifiers from abbreviation
+parse_model_case <- function(model_abbr) {
+  case_parts <- strsplit(model_abbr, split = "-")[[1]]
+  purrr::map_dfc(
+    case_parts,
+    function(case_part) {
+      nc <- nchar(case_part)
+      if(substr(case_part, 1, min(nc, 9)) == "intercept") {
+        return(data.frame(
+          intercept = as.logical(substr(case_part, 11, nc))
+        ))
+      } else if(substr(case_part, 1, min(nc, 14)) == "combine_method") {
+        return(data.frame(
+          combine_method = substr(case_part, 16, nc)
+        ))
+      } else if(substr(case_part, 1, min(nc, 11)) == "missingness") {
+        return(data.frame(
+          missingness = substr(case_part, 13, nc)
+        ))
+      } else if(substr(case_part, 1, min(nc, 15)) == "quantile_groups") {
+        return(data.frame(
+          quantile_groups = substr(case_part, 17, nc)
+        ))
+      } else if(substr(case_part, 1, min(nc, 11)) == "window_size") {
+        return(data.frame(
+          window_size = substr(case_part, 13, nc)
+        ))
+      } else if(substr(case_part, 1, min(nc, 27)) ==
+          "check_missingness_by_target") {
+        return(data.frame(
+          check_missingness_by_target = substr(case_part, 29, nc)
+        ))
+      } else if(substr(case_part, 1, min(nc, 18)) == "do_standard_checks") {
+        return(data.frame(
+          do_standard_checks = substr(case_part, 20, nc)
+        ))
+      } else if(substr(case_part, 1, min(nc, 17)) == "do_baseline_check") {
+        return(data.frame(
+          do_baseline_check = substr(case_part, 19, nc)
+        ))
+      } else if(substr(case_part, 1, min(nc, 16)) == "estimation_scale") {
+        return(data.frame(
+          estimation_grouping = substr(case_part, 18, nc)
+        ))
+      } else {
+        message("Unsupported case part")
+      }
+    }
+  )
+}
+```
+
 ```{r include = FALSE, cache = TRUE}
 # load scores
-all_scores <- readRDS("../retrospective-scores/retrospective_scores.rds") %>%
-  dplyr::filter(
-    !grepl("ensemble_switching", model_and_scale),
-    combine_method != "positive"
-  ) %>%
+all_scores <- readRDS("../retrospective-scores/retrospective_scores.rds")
+
+model_cases <- suppressMessages(purrr::map_dfr(
+    unique(all_scores$model),
+    parse_model_case
+  )) %>%
   dplyr::mutate(
-    base_target = substr(target, regexpr(" ", target) + 1, nchar(target)),
-    spatial_scale = ifelse(
-      location == "US",
-      "National",
-      ifelse(
-        nchar(location) == 2,
-        "State",
-        "County"
-      )
-    ),
-    estimation_grouping = substr(
-      model_and_scale,
-      regexpr("estimation_scale_", model_and_scale, fixed = TRUE) +
-        nchar("estimation_scale_"),
-      nchar(model_and_scale)
-    ),
+    model = unique(all_scores$model)
+  )
+
+all_scores <- all_scores %>%
+  dplyr::left_join(model_cases, by = "model") %>%
+  dplyr::mutate(
     model_brief = paste(
       combine_method,
       "window",
@@ -128,6 +172,20 @@ all_scores <- readRDS("../retrospective-scores/retrospective_scores.rds") %>%
       sep = "_"
     )
   ) %>%
+  dplyr::filter(
+    !grepl("ensemble_switching", model),
+    combine_method != "positive"
+  ) %>%
+  dplyr::mutate(
+    spatial_scale = ifelse(
+      location == "US",
+      "National",
+      ifelse(
+        nchar(location) == 2,
+        "State",
+        "County"
+      )
+    )  ) %>%
   dplyr::arrange(
     combine_method,
     as.integer(window_size),
@@ -147,30 +205,30 @@ all_scores$model_brief <- factor(all_scores$model_brief, levels = all_models)
 # subset scores to those that are comparable for all models within each
 # combination of spatial scale and base target
 # only among those models with any forecasts for that combination
-all_scores_common_by_base_target_spatial_scale <-
+all_scores_common_by_target_variable_spatial_scale <-
   purrr::pmap_dfr(
     all_scores %>%
-      distinct(base_target, spatial_scale),
-    function(base_target, spatial_scale) {
+      distinct(target_variable, spatial_scale),
+    function(target_variable, spatial_scale) {
 #      browser()
       reduced_scores <- all_scores %>%
         dplyr::filter(
-          base_target == UQ(base_target),
+          target_variable == UQ(target_variable),
           spatial_scale == UQ(spatial_scale)
         )
 
       # subset to same forecasts made for each ensemble method
       scores_to_keep <- reduced_scores %>%
-        dplyr::select(model_and_scale, forecast_week_end_date, location, target, wis_1) %>%
+        dplyr::select(model, forecast_date, location, horizon, target_variable, abs_error) %>%
         tidyr::pivot_wider(
-          names_from = "model_and_scale", values_from = "wis_1"
+          names_from = "model", values_from = "abs_error"
         )
-      all_models <- unique(reduced_scores$model_and_scale)
+      all_models <- unique(reduced_scores$model)
       scores_to_keep$keep <-
         apply(scores_to_keep[all_models], 1, function(x) all(!is.na(x)))
 
       # message(paste0(
-      #   "at ", spatial_scale, " for ", base_target,
+      #   "at ", spatial_scale, " for ", target_variable,
       #   ", missing forecasts for models: ",
       #   paste0(
       #     all_models[apply(scores_to_keep[all_models], 2, function(x) any(is.na(x)))]
@@ -178,12 +236,12 @@ all_scores_common_by_base_target_spatial_scale <-
       # ))
 
       scores_to_keep <- scores_to_keep %>%
-        dplyr::select(forecast_week_end_date, location, target, keep)
+        dplyr::select(forecast_date, location, horizon, target_variable, keep)
 
       dplyr::left_join(
         reduced_scores,
         scores_to_keep,
-        by = c("forecast_week_end_date", "location", "target")
+        by = c("forecast_date", "location", "horizon", "target_variable")
       ) %>%
         dplyr::filter(keep) %>%
         dplyr::select(-keep)
@@ -227,52 +285,6 @@ all_targets <- c(
   paste0(1:28, " day ahead inc hosp")
 )
 
-# function to extract model identifiers from abbreviation
-parse_model_case <- function(model_abbr) {
-  case_parts <- strsplit(model_abbr, split = "-")[[1]]
-  purrr::map_dfc(
-    case_parts,
-    function(case_part) {
-      nc <- nchar(case_part)
-      if(substr(case_part, 1, min(nc, 9)) == "intercept") {
-        return(data.frame(
-          intercept = as.logical(substr(case_part, 11, nc))
-        ))
-      } else if(substr(case_part, 1, min(nc, 14)) == "combine_method") {
-        return(data.frame(
-          combine_method = substr(case_part, 16, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 11)) == "missingness") {
-        return(data.frame(
-          missingness = substr(case_part, 13, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 15)) == "quantile_groups") {
-        return(data.frame(
-          quantile_groups = substr(case_part, 17, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 11)) == "window_size") {
-        return(data.frame(
-          window_size = substr(case_part, 13, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 27)) ==
-          "check_missingness_by_target") {
-        return(data.frame(
-          check_missingness_by_target = substr(case_part, 29, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 18)) == "do_standard_checks") {
-        return(data.frame(
-          do_standard_checks = substr(case_part, 20, nc)
-        ))
-      } else if(substr(case_part, 1, min(nc, 17)) == "do_baseline_check") {
-        return(data.frame(
-          do_baseline_check = substr(case_part, 19, nc)
-        ))
-      } else {
-        message("Unsupported case part")
-      }
-    }
-  )
-}
 
 all_forecasts <- purrr::map_dfr(
 #  c("national", "state", "state_national", "county"),
@@ -280,7 +292,7 @@ all_forecasts <- purrr::map_dfr(
   function(spatial_scale) {
     # Path to forecasts to evaluate
     submissions_root <- paste0(
-      "../../retrospective-forecasts-",
+      "../../retrospective-forecasts/",
       spatial_scale, "/"
     )
 
@@ -361,27 +373,13 @@ all_forecasts <- purrr::map_dfr(
 
 all_forecasts <- all_forecasts %>%
   dplyr::mutate(
-    base_target = substr(target, regexpr(" ", target) + 1, nchar(target)),
-    model_and_scale = paste0(model, "-estimation_scale_", spatial_scale)
-  )
-
-model_cases <- suppressMessages(purrr::map_dfr(
-  unique(all_forecasts$model_and_scale),
-  parse_model_case
-)) %>%
-  dplyr::mutate(
-    model_and_scale = unique(all_forecasts$model_and_scale)
+    target_variable = substr(target, regexpr(" ", target) + 1, nchar(target)),
+    model = paste0(model, "-estimation_scale_", spatial_scale)
   )
 
 all_forecasts <- all_forecasts %>%
-  dplyr::left_join(model_cases, by = "model_and_scale") %>%
+  dplyr::left_join(model_cases, by = "model") %>%
   dplyr::mutate(
-    estimation_grouping = substr(
-      model_and_scale,
-      regexpr("estimation_scale_", model_and_scale, fixed = TRUE) +
-        nchar("estimation_scale_"),
-      nchar(model_and_scale)
-    ),
     model_brief = paste(
       combine_method,
       "window",
@@ -411,7 +409,7 @@ locations_to_keep <- c(
 observed_to_examine <- observed_cases %>%
   dplyr::filter(
     location %in% locations_to_keep,
-    base_target == "wk ahead inc case"
+    target_variable == "wk ahead inc case"
   ) %>%
   dplyr::left_join(covidData::fips_codes, by = "location")
 
@@ -473,11 +471,11 @@ for(location in locations_to_keep) {
   peak_week <- observed$target_end_date[which.max(observed$value)]
 
   location_scores_per_week <- suppressMessages(
-    all_scores_common_by_base_target_spatial_scale %>%
+    all_scores_common_by_target_variable_spatial_scale %>%
       dplyr::filter(
         model_brief %in% unique(all_forecasts$model_brief),
         location == UQ(location),
-        base_target == "wk ahead inc case"
+        target_variable == "wk ahead inc case"
       ) %>%
       dplyr::mutate(
         forecast_date = forecast_week_end_date + 2
@@ -487,11 +485,11 @@ for(location in locations_to_keep) {
   )
   
   location_scores_overall <- suppressMessages(
-    all_scores_common_by_base_target_spatial_scale %>%
+    all_scores_common_by_target_variable_spatial_scale %>%
       dplyr::filter(
         model_brief %in% unique(all_forecasts$model_brief),
         location == UQ(location),
-        base_target == "wk ahead inc case"
+        target_variable == "wk ahead inc case"
       ) %>%
       dplyr::group_by(model_brief) %>%
       dplyr::summarise(wis = mean(wis))
@@ -571,11 +569,11 @@ for(location in locations_to_keep) {
       )
   )
     #,
-    #   grepl("combine_method_median", model_and_scale) |
-    #   (combine_method == "convex", model_and_scale) &
-    #     grepl("estimation_grouping_state", model_and_scale) &
-    #     grepl("quantile_groups_per_model", model_and_scale) &
-    #     grepl("window_size_8", model_and_scale))
+    #   grepl("combine_method_median", model) |
+    #   (combine_method == "convex", model) &
+    #     grepl("estimation_grouping_state", model) &
+    #     grepl("quantile_groups_per_model", model) &
+    #     grepl("window_size_8", model))
     # )
 
   covidHubUtils::plot_forecast(
