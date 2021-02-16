@@ -1,0 +1,30 @@
+location,location_name,model,mean ahead,past mean,SD,cutoff,reason excluded
+05,Arkansas,Google_Harvard-CPF,20,93,13.3,40.2,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+06,California,Covid19Sim-Simulator,1915,911,174.6,212.4,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+06,California,Google_Harvard-CPF,36,911,174.6,212.4,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+12,Florida,Google_Harvard-CPF,70,719,81.1,394.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+13,Georgia,Google_Harvard-CPF,77,418,52,210.2,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+15,Hawaii,JHU_IDD-CovidSP,10,4,1.3,-1.5,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+15,Hawaii,JHUAPL-Bucky,17,4,1.3,-1.5,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+17,Illinois,Covid19Sim-Simulator,310,187,29.9,67.9,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+17,Illinois,Google_Harvard-CPF,29,187,29.9,67.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+21,Kentucky,Google_Harvard-CPF,95,260,40.6,97.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+21,Kentucky,IHME-CurveFit,63,260,40.6,97.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+23,Maine,JHU_IDD-CovidSP,31,11,3.7,-3.7,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+27,Minnesota,Google_Harvard-CPF,10,50,7.6,19.5,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+27,Minnesota,IHME-CurveFit,17,50,7.6,19.5,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+28,Mississippi,Covid19Sim-Simulator,113,58,13.6,3.4,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+29,Missouri,Covid19Sim-Simulator,231,110,22.6,19.3,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+31,Nebraska,Covid19Sim-Simulator,47,18,6.9,-9.9,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+36,New York,Google_Harvard-CPF,154,717,97.1,328.7,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+37,North Carolina,Covid19Sim-Simulator,385,216,41,51.6,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+39,Ohio,Google_Harvard-CPF,119,268,35.3,127.1,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+39,Ohio,IHME-CurveFit,61,268,35.3,127.1,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+40,Oklahoma,Google_Harvard-CPF,28,173,32.5,42.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+42,Pennsylvania,Google_Harvard-CPF,58,286,40.7,123.2,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+47,Tennessee,Covid19Sim-Simulator,232,128,21.6,41.5,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+47,Tennessee,Google_Harvard-CPF,38,128,21.6,41.5,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+48,Texas,Google_Harvard-CPF,156,1020,129.1,503.9,mean of next 7 forecasted medians more than 4 times 14day SD below mean of last 7 observations
+48,Texas,JHUAPL-Bucky,1960,1020,129.1,503.9,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+51,Virginia,Covid19Sim-Simulator,354,194,37,46.4,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
+53,Washington,Covid19Sim-Simulator,108,59,10.6,16.3,mean of next 7 forecasted medians more than 4 times 14day SD above mean of last 7 observations
