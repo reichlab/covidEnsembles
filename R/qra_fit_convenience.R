@@ -1470,8 +1470,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
         weight_transfer %*% matrix(qra_fit$coefficients$beta)
     } else {
       # weight per quantile; adjust by iterating through quantile levels
-      qs <- qra_fit[[attr(qfm_train, 'quantile_name_col')]]
-      for(q in unique(qs)) {
+      qs <- qra_fit$coefficients[[attr(qfm_train, 'quantile_name_col')]]
+      for (q in unique(qs)) {
         row_inds <- which(qs == q)
         qra_fit$coefficients$beta[row_inds] <-
           weight_transfer %*% matrix(qra_fit$coefficients$beta[row_inds])
