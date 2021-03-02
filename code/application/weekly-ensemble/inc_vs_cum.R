@@ -128,7 +128,7 @@ implied_and_actual %>%
     diff
   ) %>%
   readr::write_csv(
-    path = file.path(
+    file = file.path(
       inc_vs_cum_path,
       paste0("inc_vs_cum_", forecast_date, ".csv")
     )
