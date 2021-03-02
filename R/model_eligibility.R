@@ -737,8 +737,8 @@ calc_sd_check <- function(
     p_point <- ggplot(el_detail, aes(x = model, y = mean_ahead, color = model)) +
     geom_point(size = 3) +
     geom_hline(aes(yintercept = past_mean, linetype = "Mean"), alpha = .4) +
-    geom_hline(aes(yintercept = past_mean - max(1,num_sd*sd), linetype = "4 SD up and down")) +
-    geom_hline(aes(yintercept = past_mean + max(1,num_sd*sd), linetype = "4 SD up and down")) +
+    geom_hline(aes(yintercept = past_mean - pmax(1,num_sd*sd), linetype = "4 SD up and down")) +
+    geom_hline(aes(yintercept = past_mean + pmax(1,num_sd*sd), linetype = "4 SD up and down")) +
     facet_wrap(~location_name, scales = "free_y") +
     scale_linetype_manual(name = "Reported values", 
       breaks = c("Mean", "4 SD up and down"),
@@ -780,8 +780,8 @@ calc_sd_check <- function(
     geom_line(data = dat %>% dplyr::filter(model != "Reported" & grepl("mean", sd_eligibility)), 
       aes(x = target_end_date, y = value, color = model), size = 1.5) +
     geom_hline(data = el_detail, aes(yintercept = past_mean, linetype = "Mean"), alpha = .4) +
-    geom_hline(data = el_detail, aes(yintercept = past_mean - max(1,num_sd*sd), linetype = "4 SD up and down")) +
-    geom_hline(data = el_detail, aes(yintercept = past_mean + max(1,num_sd*sd), linetype = "4 SD up and down")) +
+    geom_hline(data = el_detail, aes(yintercept = past_mean - pmax(1,num_sd*sd), linetype = "4 SD up and down")) +
+    geom_hline(data = el_detail, aes(yintercept = past_mean + pmax(1,num_sd*sd), linetype = "4 SD up and down")) +
     facet_wrap(~location_name, scales = "free_y") +
     scale_linetype_manual(name = "Reported values", 
       breaks = c("Reported", "Mean", "4 SD up and down"),
