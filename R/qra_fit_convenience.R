@@ -1085,16 +1085,28 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
 #' @param qfm a QuantileForecastMatrix
 #' @param impute_method character string specifying method for imputing;
 #' currently only 'mean' is supported
+#' @param per_group logical indicating whether to compute weight transfer matrices
+#' for every group defined by `group_factors'
+#' @param group_factors string vector of these factors with only "locations" as default
 #'
-#' @return list of two items:
+#' @return if `per_group` is FALSE, list of two items:
 #' 1. 'qfm_imputed' the input QuantileForecastMatrix object with missing values
 #' imputed
 #' 2. 'weight_transfer' a square matrix of dimension equal to the number of
 #' unique models in qfm.  Entry [i, j] is the proportion of imputed observations
 #' for model j that are attributable to model i.
+#' 
+#' if `per_group` is TRUE, the above list together with a data frame having a column for 
+#' each factor and a list-column of the corresponding weight transfer matrices whose entries
+#' give within group proportions.
 #'
 #' @export
-impute_missing_per_quantile <- function(qfm, impute_method = 'mean') {
+impute_missing_per_quantile <- function(
+  qfm, 
+  impute_method = 'mean',
+  per_group = FALSE,
+  group_factors = 'location') {
+
   col_index <- attr(qfm, 'col_index')
   model_col <- attr(qfm, 'model_col')
   quantile_name_col <- attr(qfm, 'quantile_name_col')
@@ -1104,33 +1116,46 @@ impute_missing_per_quantile <- function(qfm, impute_method = 'mean') {
 
   X_na <- is.na(qfm)
 
-  missingness_groups <- X_na %>%
+  missingness_patterns <- X_na %>%
     as.data.frame() %>%
     mutate(row_num = dplyr::row_number()) %>%
-    dplyr::group_by_at(seq_len(ncol(.) - 1)) %>%
-    dplyr::summarise(row_inds = list(row_num))
+    dplyr::group_by(across(seq_len(ncol(.) - 1))) %>%
+    dplyr::summarise(row_inds = list(row_num), .groups = "drop")
 
   qfm_imputed <- qfm
   qfm_imputed[is.na(qfm_imputed)] <- 0.0
 
   weight_transfer <- matrix(0, nrow = num_models, ncol = num_models)
 
-  for(i in seq_len(nrow(missingness_groups))) {
-    row_inds <- missingness_groups$row_inds[[i]]
+  if (per_group) {
+    row_groups <- attr(qfm, 'row_index') %>% 
+      mutate(row_num = dplyr::row_number()) %>%
+      dplyr::group_by(!!!syms(group_factors)) %>% 
+      dplyr::summarise(row_inds_per_proup = list(row_num), .groups = "drop") %>% 
+      mutate(weight_transfer = list(weight_transfer))
+  }
 
+  for(i in seq_len(nrow(missingness_patterns))) {
+    row_inds <- missingness_patterns$row_inds[[i]]
+
+    # intialize as identity
     impute_mat <- diag(num_models)
 
     col_inds <- which(quantile_levels == unique_quantile_levels[1])
     temp <- !is.na(unclass(qfm)[row_inds[1], col_inds])
     temp <- temp / sum(temp)
 
+    # form transfer matrix based on first quantile for first 
+    # row (location-date-target) with missingness pattern
     for(j_ind in seq_along(col_inds)) {
       j <- col_inds[j_ind]
+      # replace e_i with 'average of non-missing' column
       if(is.na(qfm[row_inds[1], j])) {
         impute_mat[, j_ind] <- temp
       }
     }
 
+    # use this matrix to impute all quantiles in all rows with i'th miss pattern
     for(quantile_level in unique_quantile_levels) {
       col_inds <- which(quantile_levels == quantile_level)
       qfm_imputed[row_inds, col_inds] <-
@@ -1138,13 +1163,37 @@ impute_missing_per_quantile <- function(qfm, impute_method = 'mean') {
     }
 
     weight_transfer <- weight_transfer + length(row_inds) * impute_mat
+    if (per_group) {
+      row_groups <- row_groups %>% mutate(
+        weight_transfer = purrr::map2(
+          weight_transfer, row_inds_per_proup,
+          ~ .x + length(intersect(row_inds, .y)) * impute_mat 
+          )
+        )
+    }
   }
   weight_transfer <- weight_transfer / nrow(qfm)
+  if (per_group) {
+    row_groups <- row_groups %>% mutate(
+      weight_transfer = purrr::map2(
+        weight_transfer, row_inds_per_proup,
+        ~ .x / length(.y)
+        )
+      )
+  }
 
-  return(list(
-    qfm_imputed = qfm_imputed,
-    weight_transfer = weight_transfer
-  ))
+  if (per_group) {
+    return(list(
+      qfm_imputed = qfm_imputed,
+      weight_transfer = weight_transfer,
+      weight_transfer_per_group = dplyr::select(row_groups, -row_inds_per_proup)
+    ))
+  } else {
+    return(list(
+      qfm_imputed = qfm_imputed,
+      weight_transfer = weight_transfer
+    ))
+  }
 }
 
 
