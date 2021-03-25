@@ -1,0 +1,22 @@
+location,location_name,model,mean ahead,past mean,SD,cutoff,reason excluded
+US,US,Google_Harvard-CPF,NA,8135,1162.2,3486.5,missing forecasts; cannot evaluate less than 4 SD below criterion
+11,District of Columbia,MOBS-GLEAM_COVID,NA,25,8,-7.2,missing forecasts; cannot evaluate less than 4 SD below criterion
+04,Arizona,GT-DeepCOVID,NA,252,46.9,64,missing forecasts; cannot evaluate less than 4 SD below criterion
+06,California,GT-DeepCOVID,NA,911,174.6,212.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+15,Hawaii,GT-DeepCOVID,NA,4,1.3,-1.5,missing forecasts; cannot evaluate less than 4 SD below criterion
+25,Massachusetts,GT-DeepCOVID,NA,139,25.7,36.1,missing forecasts; cannot evaluate less than 4 SD below criterion
+34,New Jersey,GT-DeepCOVID,NA,264,49.3,66.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+42,Pennsylvania,GT-DeepCOVID,NA,286,40.7,123.2,missing forecasts; cannot evaluate less than 4 SD below criterion
+45,South Carolina,GT-DeepCOVID,NA,147,31.6,20.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,CU-select,NA,19,9.9,-21.1,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,Google_Harvard-CPF,NA,19,9.9,-21.1,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,GT-DeepCOVID,NA,19,9.9,-21.1,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,IHME-CurveFit,NA,19,9.9,-21.1,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,MOBS-GLEAM_COVID,NA,19,9.9,-21.1,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,Covid19Sim-Simulator,NA,0,0,0,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,CU-select,NA,0,0,0,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,Google_Harvard-CPF,NA,0,0,0,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,GT-DeepCOVID,NA,0,0,0,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,IHME-CurveFit,NA,0,0,0,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,Karlen-pypm,NA,0,0,0,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,MOBS-GLEAM_COVID,NA,0,0,0,missing forecasts; cannot evaluate less than 4 SD below criterion

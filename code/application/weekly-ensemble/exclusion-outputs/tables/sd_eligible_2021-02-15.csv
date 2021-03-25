@@ -1,0 +1,599 @@
+location,location_name,model,mean ahead,past mean,SD,cutoff,reason excluded
+US,US,Covid19Sim-Simulator,9270,8135,1162.2,3486.5,eligible
+US,US,CU-select,7820,8135,1162.2,3486.5,eligible
+US,US,GT-DeepCOVID,6936,8135,1162.2,3486.5,eligible
+US,US,IHME-CurveFit,5689,8135,1162.2,3486.5,eligible
+US,US,JHU_IDD-CovidSP,6999,8135,1162.2,3486.5,eligible
+US,US,JHUAPL-Bucky,7822,8135,1162.2,3486.5,eligible
+US,US,JHUAPL-Gecko,5497,8135,1162.2,3486.5,eligible
+US,US,Karlen-pypm,6427,8135,1162.2,3486.5,eligible
+US,US,LANL-GrowthRate,4741,8135,1162.2,3486.5,eligible
+US,US,MOBS-GLEAM_COVID,8143,8135,1162.2,3486.5,eligible
+US,US,USC-SI_kJalpha,7006,8135,1162.2,3486.5,eligible
+11,District of Columbia,Covid19Sim-Simulator,31,25,8,-7.2,eligible
+11,District of Columbia,CU-select,23,25,8,-7.2,eligible
+11,District of Columbia,Google_Harvard-CPF,8,25,8,-7.2,eligible
+11,District of Columbia,GT-DeepCOVID,27,25,8,-7.2,eligible
+11,District of Columbia,IHME-CurveFit,20,25,8,-7.2,eligible
+11,District of Columbia,JHU_IDD-CovidSP,5,25,8,-7.2,eligible
+11,District of Columbia,JHUAPL-Bucky,24,25,8,-7.2,eligible
+11,District of Columbia,JHUAPL-Gecko,23,25,8,-7.2,eligible
+11,District of Columbia,Karlen-pypm,18,25,8,-7.2,eligible
+11,District of Columbia,LANL-GrowthRate,14,25,8,-7.2,eligible
+11,District of Columbia,USC-SI_kJalpha,25,25,8,-7.2,eligible
+01,Alabama,Covid19Sim-Simulator,224,174,34,38.3,eligible
+01,Alabama,CU-select,193,174,34,38.3,eligible
+01,Alabama,Google_Harvard-CPF,85,174,34,38.3,eligible
+01,Alabama,GT-DeepCOVID,206,174,34,38.3,eligible
+01,Alabama,IHME-CurveFit,147,174,34,38.3,eligible
+01,Alabama,JHU_IDD-CovidSP,99,174,34,38.3,eligible
+01,Alabama,JHUAPL-Bucky,134,174,34,38.3,eligible
+01,Alabama,JHUAPL-Gecko,108,174,34,38.3,eligible
+01,Alabama,Karlen-pypm,102,174,34,38.3,eligible
+01,Alabama,LANL-GrowthRate,77,174,34,38.3,eligible
+01,Alabama,MOBS-GLEAM_COVID,194,174,34,38.3,eligible
+01,Alabama,USC-SI_kJalpha,148,174,34,38.3,eligible
+02,Alaska,Covid19Sim-Simulator,5,4,1.4,-1.8,eligible
+02,Alaska,CU-select,2,4,1.4,-1.8,eligible
+02,Alaska,Google_Harvard-CPF,3,4,1.4,-1.8,eligible
+02,Alaska,GT-DeepCOVID,4,4,1.4,-1.8,eligible
+02,Alaska,IHME-CurveFit,4,4,1.4,-1.8,eligible
+02,Alaska,JHU_IDD-CovidSP,5,4,1.4,-1.8,eligible
+02,Alaska,JHUAPL-Bucky,6,4,1.4,-1.8,eligible
+02,Alaska,JHUAPL-Gecko,4,4,1.4,-1.8,eligible
+02,Alaska,Karlen-pypm,2,4,1.4,-1.8,eligible
+02,Alaska,LANL-GrowthRate,2,4,1.4,-1.8,eligible
+02,Alaska,MOBS-GLEAM_COVID,3,4,1.4,-1.8,eligible
+02,Alaska,USC-SI_kJalpha,3,4,1.4,-1.8,eligible
+04,Arizona,Covid19Sim-Simulator,413,252,46.9,64,eligible
+04,Arizona,CU-select,223,252,46.9,64,eligible
+04,Arizona,Google_Harvard-CPF,153,252,46.9,64,eligible
+04,Arizona,IHME-CurveFit,199,252,46.9,64,eligible
+04,Arizona,JHU_IDD-CovidSP,153,252,46.9,64,eligible
+04,Arizona,JHUAPL-Bucky,164,252,46.9,64,eligible
+04,Arizona,JHUAPL-Gecko,138,252,46.9,64,eligible
+04,Arizona,Karlen-pypm,155,252,46.9,64,eligible
+04,Arizona,LANL-GrowthRate,104,252,46.9,64,eligible
+04,Arizona,MOBS-GLEAM_COVID,219,252,46.9,64,eligible
+04,Arizona,USC-SI_kJalpha,209,252,46.9,64,eligible
+05,Arkansas,Covid19Sim-Simulator,108,93,13.3,40.2,eligible
+05,Arkansas,CU-select,95,93,13.3,40.2,eligible
+05,Arkansas,GT-DeepCOVID,77,93,13.3,40.2,eligible
+05,Arkansas,IHME-CurveFit,66,93,13.3,40.2,eligible
+05,Arkansas,JHU_IDD-CovidSP,69,93,13.3,40.2,eligible
+05,Arkansas,JHUAPL-Bucky,87,93,13.3,40.2,eligible
+05,Arkansas,JHUAPL-Gecko,66,93,13.3,40.2,eligible
+05,Arkansas,Karlen-pypm,70,93,13.3,40.2,eligible
+05,Arkansas,LANL-GrowthRate,47,93,13.3,40.2,eligible
+05,Arkansas,MOBS-GLEAM_COVID,71,93,13.3,40.2,eligible
+05,Arkansas,USC-SI_kJalpha,88,93,13.3,40.2,eligible
+06,California,CU-select,840,911,174.6,212.4,eligible
+06,California,IHME-CurveFit,1090,911,174.6,212.4,eligible
+06,California,JHU_IDD-CovidSP,816,911,174.6,212.4,eligible
+06,California,JHUAPL-Bucky,868,911,174.6,212.4,eligible
+06,California,JHUAPL-Gecko,481,911,174.6,212.4,eligible
+06,California,Karlen-pypm,661,911,174.6,212.4,eligible
+06,California,LANL-GrowthRate,477,911,174.6,212.4,eligible
+06,California,MOBS-GLEAM_COVID,993,911,174.6,212.4,eligible
+06,California,USC-SI_kJalpha,639,911,174.6,212.4,eligible
+08,Colorado,Covid19Sim-Simulator,86,79,14.9,18.9,eligible
+08,Colorado,CU-select,83,79,14.9,18.9,eligible
+08,Colorado,Google_Harvard-CPF,60,79,14.9,18.9,eligible
+08,Colorado,GT-DeepCOVID,70,79,14.9,18.9,eligible
+08,Colorado,IHME-CurveFit,22,79,14.9,18.9,eligible
+08,Colorado,JHU_IDD-CovidSP,81,79,14.9,18.9,eligible
+08,Colorado,JHUAPL-Bucky,65,79,14.9,18.9,eligible
+08,Colorado,JHUAPL-Gecko,56,79,14.9,18.9,eligible
+08,Colorado,Karlen-pypm,59,79,14.9,18.9,eligible
+08,Colorado,LANL-GrowthRate,57,79,14.9,18.9,eligible
+08,Colorado,MOBS-GLEAM_COVID,73,79,14.9,18.9,eligible
+08,Colorado,USC-SI_kJalpha,70,79,14.9,18.9,eligible
+09,Connecticut,Covid19Sim-Simulator,106,94,17.4,24.6,eligible
+09,Connecticut,CU-select,86,94,17.4,24.6,eligible
+09,Connecticut,Google_Harvard-CPF,32,94,17.4,24.6,eligible
+09,Connecticut,GT-DeepCOVID,106,94,17.4,24.6,eligible
+09,Connecticut,IHME-CurveFit,28,94,17.4,24.6,eligible
+09,Connecticut,JHU_IDD-CovidSP,77,94,17.4,24.6,eligible
+09,Connecticut,JHUAPL-Bucky,61,94,17.4,24.6,eligible
+09,Connecticut,JHUAPL-Gecko,69,94,17.4,24.6,eligible
+09,Connecticut,Karlen-pypm,58,94,17.4,24.6,eligible
+09,Connecticut,LANL-GrowthRate,48,94,17.4,24.6,eligible
+09,Connecticut,MOBS-GLEAM_COVID,93,94,17.4,24.6,eligible
+09,Connecticut,USC-SI_kJalpha,79,94,17.4,24.6,eligible
+10,Delaware,Covid19Sim-Simulator,41,29,7.4,-0.3,eligible
+10,Delaware,CU-select,22,29,7.4,-0.3,eligible
+10,Delaware,Google_Harvard-CPF,7,29,7.4,-0.3,eligible
+10,Delaware,GT-DeepCOVID,38,29,7.4,-0.3,eligible
+10,Delaware,IHME-CurveFit,12,29,7.4,-0.3,eligible
+10,Delaware,JHU_IDD-CovidSP,17,29,7.4,-0.3,eligible
+10,Delaware,JHUAPL-Bucky,17,29,7.4,-0.3,eligible
+10,Delaware,JHUAPL-Gecko,24,29,7.4,-0.3,eligible
+10,Delaware,Karlen-pypm,20,29,7.4,-0.3,eligible
+10,Delaware,LANL-GrowthRate,17,29,7.4,-0.3,eligible
+10,Delaware,MOBS-GLEAM_COVID,24,29,7.4,-0.3,eligible
+10,Delaware,USC-SI_kJalpha,23,29,7.4,-0.3,eligible
+12,Florida,Covid19Sim-Simulator,776,719,81.1,394.7,eligible
+12,Florida,CU-select,686,719,81.1,394.7,eligible
+12,Florida,GT-DeepCOVID,809,719,81.1,394.7,eligible
+12,Florida,IHME-CurveFit,407,719,81.1,394.7,eligible
+12,Florida,JHU_IDD-CovidSP,544,719,81.1,394.7,eligible
+12,Florida,JHUAPL-Bucky,517,719,81.1,394.7,eligible
+12,Florida,JHUAPL-Gecko,612,719,81.1,394.7,eligible
+12,Florida,Karlen-pypm,552,719,81.1,394.7,eligible
+12,Florida,LANL-GrowthRate,470,719,81.1,394.7,eligible
+12,Florida,MOBS-GLEAM_COVID,804,719,81.1,394.7,eligible
+12,Florida,USC-SI_kJalpha,659,719,81.1,394.7,eligible
+13,Georgia,Covid19Sim-Simulator,586,418,52,210.2,eligible
+13,Georgia,CU-select,390,418,52,210.2,eligible
+13,Georgia,GT-DeepCOVID,408,418,52,210.2,eligible
+13,Georgia,IHME-CurveFit,268,418,52,210.2,eligible
+13,Georgia,JHU_IDD-CovidSP,215,418,52,210.2,eligible
+13,Georgia,JHUAPL-Bucky,312,418,52,210.2,eligible
+13,Georgia,JHUAPL-Gecko,344,418,52,210.2,eligible
+13,Georgia,Karlen-pypm,289,418,52,210.2,eligible
+13,Georgia,LANL-GrowthRate,223,418,52,210.2,eligible
+13,Georgia,MOBS-GLEAM_COVID,465,418,52,210.2,eligible
+13,Georgia,USC-SI_kJalpha,361,418,52,210.2,eligible
+15,Hawaii,Covid19Sim-Simulator,9,4,1.3,-1.5,eligible
+15,Hawaii,CU-select,5,4,1.3,-1.5,eligible
+15,Hawaii,Google_Harvard-CPF,2,4,1.3,-1.5,eligible
+15,Hawaii,IHME-CurveFit,4,4,1.3,-1.5,eligible
+15,Hawaii,JHUAPL-Gecko,2,4,1.3,-1.5,eligible
+15,Hawaii,Karlen-pypm,3,4,1.3,-1.5,eligible
+15,Hawaii,LANL-GrowthRate,2,4,1.3,-1.5,eligible
+15,Hawaii,MOBS-GLEAM_COVID,8,4,1.3,-1.5,eligible
+15,Hawaii,USC-SI_kJalpha,3,4,1.3,-1.5,eligible
+16,Idaho,Covid19Sim-Simulator,26,22,4.2,5.1,eligible
+16,Idaho,CU-select,16,22,4.2,5.1,eligible
+16,Idaho,Google_Harvard-CPF,16,22,4.2,5.1,eligible
+16,Idaho,GT-DeepCOVID,24,22,4.2,5.1,eligible
+16,Idaho,IHME-CurveFit,8,22,4.2,5.1,eligible
+16,Idaho,JHU_IDD-CovidSP,20,22,4.2,5.1,eligible
+16,Idaho,JHUAPL-Bucky,13,22,4.2,5.1,eligible
+16,Idaho,JHUAPL-Gecko,20,22,4.2,5.1,eligible
+16,Idaho,Karlen-pypm,12,22,4.2,5.1,eligible
+16,Idaho,LANL-GrowthRate,10,22,4.2,5.1,eligible
+16,Idaho,MOBS-GLEAM_COVID,16,22,4.2,5.1,eligible
+16,Idaho,USC-SI_kJalpha,17,22,4.2,5.1,eligible
+17,Illinois,CU-select,185,187,29.9,67.9,eligible
+17,Illinois,GT-DeepCOVID,245,187,29.9,67.9,eligible
+17,Illinois,IHME-CurveFit,151,187,29.9,67.9,eligible
+17,Illinois,JHU_IDD-CovidSP,169,187,29.9,67.9,eligible
+17,Illinois,JHUAPL-Bucky,131,187,29.9,67.9,eligible
+17,Illinois,JHUAPL-Gecko,124,187,29.9,67.9,eligible
+17,Illinois,Karlen-pypm,158,187,29.9,67.9,eligible
+17,Illinois,LANL-GrowthRate,114,187,29.9,67.9,eligible
+17,Illinois,MOBS-GLEAM_COVID,181,187,29.9,67.9,eligible
+17,Illinois,USC-SI_kJalpha,151,187,29.9,67.9,eligible
+18,Indiana,Covid19Sim-Simulator,204,120,35,-20.1,eligible
+18,Indiana,CU-select,128,120,35,-20.1,eligible
+18,Indiana,Google_Harvard-CPF,82,120,35,-20.1,eligible
+18,Indiana,GT-DeepCOVID,107,120,35,-20.1,eligible
+18,Indiana,IHME-CurveFit,55,120,35,-20.1,eligible
+18,Indiana,JHU_IDD-CovidSP,97,120,35,-20.1,eligible
+18,Indiana,JHUAPL-Bucky,80,120,35,-20.1,eligible
+18,Indiana,JHUAPL-Gecko,62,120,35,-20.1,eligible
+18,Indiana,Karlen-pypm,85,120,35,-20.1,eligible
+18,Indiana,LANL-GrowthRate,74,120,35,-20.1,eligible
+18,Indiana,MOBS-GLEAM_COVID,103,120,35,-20.1,eligible
+18,Indiana,USC-SI_kJalpha,94,120,35,-20.1,eligible
+19,Iowa,Covid19Sim-Simulator,47,42,10,2.5,eligible
+19,Iowa,CU-select,35,42,10,2.5,eligible
+19,Iowa,Google_Harvard-CPF,14,42,10,2.5,eligible
+19,Iowa,GT-DeepCOVID,51,42,10,2.5,eligible
+19,Iowa,IHME-CurveFit,37,42,10,2.5,eligible
+19,Iowa,JHU_IDD-CovidSP,50,42,10,2.5,eligible
+19,Iowa,JHUAPL-Bucky,42,42,10,2.5,eligible
+19,Iowa,JHUAPL-Gecko,37,42,10,2.5,eligible
+19,Iowa,Karlen-pypm,32,42,10,2.5,eligible
+19,Iowa,LANL-GrowthRate,27,42,10,2.5,eligible
+19,Iowa,MOBS-GLEAM_COVID,35,42,10,2.5,eligible
+19,Iowa,USC-SI_kJalpha,34,42,10,2.5,eligible
+20,Kansas,Covid19Sim-Simulator,69,61,14.6,2.8,eligible
+20,Kansas,CU-select,53,61,14.6,2.8,eligible
+20,Kansas,Google_Harvard-CPF,49,61,14.6,2.8,eligible
+20,Kansas,GT-DeepCOVID,60,61,14.6,2.8,eligible
+20,Kansas,IHME-CurveFit,110,61,14.6,2.8,eligible
+20,Kansas,JHU_IDD-CovidSP,53,61,14.6,2.8,eligible
+20,Kansas,JHUAPL-Bucky,43,61,14.6,2.8,eligible
+20,Kansas,JHUAPL-Gecko,43,61,14.6,2.8,eligible
+20,Kansas,Karlen-pypm,34,61,14.6,2.8,eligible
+20,Kansas,LANL-GrowthRate,24,61,14.6,2.8,eligible
+20,Kansas,MOBS-GLEAM_COVID,70,61,14.6,2.8,eligible
+20,Kansas,USC-SI_kJalpha,56,61,14.6,2.8,eligible
+21,Kentucky,Covid19Sim-Simulator,187,260,40.6,97.9,eligible
+21,Kentucky,CU-select,263,260,40.6,97.9,eligible
+21,Kentucky,GT-DeepCOVID,305,260,40.6,97.9,eligible
+21,Kentucky,JHU_IDD-CovidSP,111,260,40.6,97.9,eligible
+21,Kentucky,JHUAPL-Bucky,140,260,40.6,97.9,eligible
+21,Kentucky,JHUAPL-Gecko,193,260,40.6,97.9,eligible
+21,Kentucky,Karlen-pypm,201,260,40.6,97.9,eligible
+21,Kentucky,LANL-GrowthRate,159,260,40.6,97.9,eligible
+21,Kentucky,MOBS-GLEAM_COVID,247,260,40.6,97.9,eligible
+21,Kentucky,USC-SI_kJalpha,245,260,40.6,97.9,eligible
+22,Louisiana,Covid19Sim-Simulator,174,110,24.7,11.5,eligible
+22,Louisiana,CU-select,115,110,24.7,11.5,eligible
+22,Louisiana,Google_Harvard-CPF,27,110,24.7,11.5,eligible
+22,Louisiana,GT-DeepCOVID,116,110,24.7,11.5,eligible
+22,Louisiana,IHME-CurveFit,46,110,24.7,11.5,eligible
+22,Louisiana,JHU_IDD-CovidSP,85,110,24.7,11.5,eligible
+22,Louisiana,JHUAPL-Bucky,103,110,24.7,11.5,eligible
+22,Louisiana,JHUAPL-Gecko,64,110,24.7,11.5,eligible
+22,Louisiana,Karlen-pypm,84,110,24.7,11.5,eligible
+22,Louisiana,LANL-GrowthRate,71,110,24.7,11.5,eligible
+22,Louisiana,MOBS-GLEAM_COVID,101,110,24.7,11.5,eligible
+22,Louisiana,USC-SI_kJalpha,103,110,24.7,11.5,eligible
+23,Maine,Covid19Sim-Simulator,19,11,3.7,-3.7,eligible
+23,Maine,CU-select,9,11,3.7,-3.7,eligible
+23,Maine,Google_Harvard-CPF,11,11,3.7,-3.7,eligible
+23,Maine,GT-DeepCOVID,15,11,3.7,-3.7,eligible
+23,Maine,IHME-CurveFit,4,11,3.7,-3.7,eligible
+23,Maine,JHUAPL-Bucky,10,11,3.7,-3.7,eligible
+23,Maine,JHUAPL-Gecko,9,11,3.7,-3.7,eligible
+23,Maine,Karlen-pypm,6,11,3.7,-3.7,eligible
+23,Maine,LANL-GrowthRate,6,11,3.7,-3.7,eligible
+23,Maine,MOBS-GLEAM_COVID,11,11,3.7,-3.7,eligible
+23,Maine,USC-SI_kJalpha,7,11,3.7,-3.7,eligible
+24,Maryland,Covid19Sim-Simulator,197,127,29.4,9,eligible
+24,Maryland,CU-select,127,127,29.4,9,eligible
+24,Maryland,Google_Harvard-CPF,95,127,29.4,9,eligible
+24,Maryland,GT-DeepCOVID,142,127,29.4,9,eligible
+24,Maryland,IHME-CurveFit,58,127,29.4,9,eligible
+24,Maryland,JHU_IDD-CovidSP,97,127,29.4,9,eligible
+24,Maryland,JHUAPL-Bucky,92,127,29.4,9,eligible
+24,Maryland,JHUAPL-Gecko,74,127,29.4,9,eligible
+24,Maryland,Karlen-pypm,93,127,29.4,9,eligible
+24,Maryland,LANL-GrowthRate,84,127,29.4,9,eligible
+24,Maryland,MOBS-GLEAM_COVID,153,127,29.4,9,eligible
+24,Maryland,USC-SI_kJalpha,109,127,29.4,9,eligible
+25,Massachusetts,Covid19Sim-Simulator,172,139,25.7,36.1,eligible
+25,Massachusetts,CU-select,139,139,25.7,36.1,eligible
+25,Massachusetts,Google_Harvard-CPF,44,139,25.7,36.1,eligible
+25,Massachusetts,IHME-CurveFit,50,139,25.7,36.1,eligible
+25,Massachusetts,JHU_IDD-CovidSP,97,139,25.7,36.1,eligible
+25,Massachusetts,JHUAPL-Bucky,99,139,25.7,36.1,eligible
+25,Massachusetts,JHUAPL-Gecko,79,139,25.7,36.1,eligible
+25,Massachusetts,Karlen-pypm,99,139,25.7,36.1,eligible
+25,Massachusetts,LANL-GrowthRate,82,139,25.7,36.1,eligible
+25,Massachusetts,MOBS-GLEAM_COVID,175,139,25.7,36.1,eligible
+25,Massachusetts,USC-SI_kJalpha,120,139,25.7,36.1,eligible
+26,Michigan,Covid19Sim-Simulator,173,110,28.4,-3.3,eligible
+26,Michigan,CU-select,119,110,28.4,-3.3,eligible
+26,Michigan,Google_Harvard-CPF,39,110,28.4,-3.3,eligible
+26,Michigan,GT-DeepCOVID,135,110,28.4,-3.3,eligible
+26,Michigan,IHME-CurveFit,72,110,28.4,-3.3,eligible
+26,Michigan,JHU_IDD-CovidSP,149,110,28.4,-3.3,eligible
+26,Michigan,JHUAPL-Bucky,98,110,28.4,-3.3,eligible
+26,Michigan,JHUAPL-Gecko,60,110,28.4,-3.3,eligible
+26,Michigan,Karlen-pypm,90,110,28.4,-3.3,eligible
+26,Michigan,LANL-GrowthRate,78,110,28.4,-3.3,eligible
+26,Michigan,MOBS-GLEAM_COVID,95,110,28.4,-3.3,eligible
+26,Michigan,USC-SI_kJalpha,98,110,28.4,-3.3,eligible
+27,Minnesota,Covid19Sim-Simulator,55,50,7.6,19.5,eligible
+27,Minnesota,CU-select,45,50,7.6,19.5,eligible
+27,Minnesota,GT-DeepCOVID,56,50,7.6,19.5,eligible
+27,Minnesota,JHU_IDD-CovidSP,74,50,7.6,19.5,eligible
+27,Minnesota,JHUAPL-Bucky,40,50,7.6,19.5,eligible
+27,Minnesota,JHUAPL-Gecko,40,50,7.6,19.5,eligible
+27,Minnesota,Karlen-pypm,38,50,7.6,19.5,eligible
+27,Minnesota,LANL-GrowthRate,32,50,7.6,19.5,eligible
+27,Minnesota,MOBS-GLEAM_COVID,38,50,7.6,19.5,eligible
+27,Minnesota,USC-SI_kJalpha,45,50,7.6,19.5,eligible
+28,Mississippi,CU-select,58,58,13.6,3.4,eligible
+28,Mississippi,Google_Harvard-CPF,22,58,13.6,3.4,eligible
+28,Mississippi,GT-DeepCOVID,63,58,13.6,3.4,eligible
+28,Mississippi,IHME-CurveFit,40,58,13.6,3.4,eligible
+28,Mississippi,JHU_IDD-CovidSP,55,58,13.6,3.4,eligible
+28,Mississippi,JHUAPL-Bucky,44,58,13.6,3.4,eligible
+28,Mississippi,JHUAPL-Gecko,36,58,13.6,3.4,eligible
+28,Mississippi,Karlen-pypm,41,58,13.6,3.4,eligible
+28,Mississippi,LANL-GrowthRate,33,58,13.6,3.4,eligible
+28,Mississippi,MOBS-GLEAM_COVID,80,58,13.6,3.4,eligible
+28,Mississippi,USC-SI_kJalpha,48,58,13.6,3.4,eligible
+29,Missouri,CU-select,107,110,22.6,19.3,eligible
+29,Missouri,Google_Harvard-CPF,39,110,22.6,19.3,eligible
+29,Missouri,GT-DeepCOVID,140,110,22.6,19.3,eligible
+29,Missouri,IHME-CurveFit,60,110,22.6,19.3,eligible
+29,Missouri,JHU_IDD-CovidSP,87,110,22.6,19.3,eligible
+29,Missouri,JHUAPL-Bucky,97,110,22.6,19.3,eligible
+29,Missouri,JHUAPL-Gecko,68,110,22.6,19.3,eligible
+29,Missouri,Karlen-pypm,72,110,22.6,19.3,eligible
+29,Missouri,LANL-GrowthRate,57,110,22.6,19.3,eligible
+29,Missouri,MOBS-GLEAM_COVID,127,110,22.6,19.3,eligible
+29,Missouri,USC-SI_kJalpha,82,110,22.6,19.3,eligible
+30,Montana,Covid19Sim-Simulator,14,16,7.1,-12.2,eligible
+30,Montana,CU-select,18,16,7.1,-12.2,eligible
+30,Montana,Google_Harvard-CPF,5,16,7.1,-12.2,eligible
+30,Montana,GT-DeepCOVID,19,16,7.1,-12.2,eligible
+30,Montana,IHME-CurveFit,7,16,7.1,-12.2,eligible
+30,Montana,JHU_IDD-CovidSP,15,16,7.1,-12.2,eligible
+30,Montana,JHUAPL-Bucky,16,16,7.1,-12.2,eligible
+30,Montana,JHUAPL-Gecko,7,16,7.1,-12.2,eligible
+30,Montana,Karlen-pypm,14,16,7.1,-12.2,eligible
+30,Montana,LANL-GrowthRate,11,16,7.1,-12.2,eligible
+30,Montana,MOBS-GLEAM_COVID,19,16,7.1,-12.2,eligible
+30,Montana,USC-SI_kJalpha,17,16,7.1,-12.2,eligible
+31,Nebraska,CU-select,16,18,6.9,-9.9,eligible
+31,Nebraska,Google_Harvard-CPF,18,18,6.9,-9.9,eligible
+31,Nebraska,GT-DeepCOVID,19,18,6.9,-9.9,eligible
+31,Nebraska,IHME-CurveFit,15,18,6.9,-9.9,eligible
+31,Nebraska,JHU_IDD-CovidSP,28,18,6.9,-9.9,eligible
+31,Nebraska,JHUAPL-Bucky,18,18,6.9,-9.9,eligible
+31,Nebraska,JHUAPL-Gecko,5,18,6.9,-9.9,eligible
+31,Nebraska,Karlen-pypm,15,18,6.9,-9.9,eligible
+31,Nebraska,LANL-GrowthRate,10,18,6.9,-9.9,eligible
+31,Nebraska,MOBS-GLEAM_COVID,20,18,6.9,-9.9,eligible
+31,Nebraska,USC-SI_kJalpha,17,18,6.9,-9.9,eligible
+32,Nevada,Covid19Sim-Simulator,155,82,18.7,7,eligible
+32,Nevada,CU-select,72,82,18.7,7,eligible
+32,Nevada,Google_Harvard-CPF,19,82,18.7,7,eligible
+32,Nevada,GT-DeepCOVID,69,82,18.7,7,eligible
+32,Nevada,IHME-CurveFit,74,82,18.7,7,eligible
+32,Nevada,JHU_IDD-CovidSP,29,82,18.7,7,eligible
+32,Nevada,JHUAPL-Bucky,80,82,18.7,7,eligible
+32,Nevada,JHUAPL-Gecko,53,82,18.7,7,eligible
+32,Nevada,Karlen-pypm,51,82,18.7,7,eligible
+32,Nevada,LANL-GrowthRate,43,82,18.7,7,eligible
+32,Nevada,MOBS-GLEAM_COVID,59,82,18.7,7,eligible
+32,Nevada,USC-SI_kJalpha,69,82,18.7,7,eligible
+33,New Hampshire,Covid19Sim-Simulator,27,15,5.3,-6.5,eligible
+33,New Hampshire,CU-select,14,15,5.3,-6.5,eligible
+33,New Hampshire,Google_Harvard-CPF,4,15,5.3,-6.5,eligible
+33,New Hampshire,GT-DeepCOVID,21,15,5.3,-6.5,eligible
+33,New Hampshire,IHME-CurveFit,4,15,5.3,-6.5,eligible
+33,New Hampshire,JHU_IDD-CovidSP,29,15,5.3,-6.5,eligible
+33,New Hampshire,JHUAPL-Bucky,12,15,5.3,-6.5,eligible
+33,New Hampshire,JHUAPL-Gecko,10,15,5.3,-6.5,eligible
+33,New Hampshire,Karlen-pypm,10,15,5.3,-6.5,eligible
+33,New Hampshire,LANL-GrowthRate,10,15,5.3,-6.5,eligible
+33,New Hampshire,MOBS-GLEAM_COVID,20,15,5.3,-6.5,eligible
+33,New Hampshire,USC-SI_kJalpha,13,15,5.3,-6.5,eligible
+34,New Jersey,Covid19Sim-Simulator,334,264,49.3,66.4,eligible
+34,New Jersey,CU-select,267,264,49.3,66.4,eligible
+34,New Jersey,Google_Harvard-CPF,172,264,49.3,66.4,eligible
+34,New Jersey,IHME-CurveFit,136,264,49.3,66.4,eligible
+34,New Jersey,JHU_IDD-CovidSP,184,264,49.3,66.4,eligible
+34,New Jersey,JHUAPL-Bucky,195,264,49.3,66.4,eligible
+34,New Jersey,JHUAPL-Gecko,187,264,49.3,66.4,eligible
+34,New Jersey,Karlen-pypm,223,264,49.3,66.4,eligible
+34,New Jersey,LANL-GrowthRate,192,264,49.3,66.4,eligible
+34,New Jersey,MOBS-GLEAM_COVID,243,264,49.3,66.4,eligible
+34,New Jersey,USC-SI_kJalpha,249,264,49.3,66.4,eligible
+35,New Mexico,Covid19Sim-Simulator,63,38,13.9,-17.7,eligible
+35,New Mexico,CU-select,51,38,13.9,-17.7,eligible
+35,New Mexico,Google_Harvard-CPF,19,38,13.9,-17.7,eligible
+35,New Mexico,GT-DeepCOVID,30,38,13.9,-17.7,eligible
+35,New Mexico,IHME-CurveFit,39,38,13.9,-17.7,eligible
+35,New Mexico,JHU_IDD-CovidSP,27,38,13.9,-17.7,eligible
+35,New Mexico,JHUAPL-Bucky,36,38,13.9,-17.7,eligible
+35,New Mexico,JHUAPL-Gecko,9,38,13.9,-17.7,eligible
+35,New Mexico,Karlen-pypm,33,38,13.9,-17.7,eligible
+35,New Mexico,LANL-GrowthRate,28,38,13.9,-17.7,eligible
+35,New Mexico,MOBS-GLEAM_COVID,38,38,13.9,-17.7,eligible
+35,New Mexico,USC-SI_kJalpha,37,38,13.9,-17.7,eligible
+36,New York,Covid19Sim-Simulator,833,717,97.1,328.7,eligible
+36,New York,CU-select,628,717,97.1,328.7,eligible
+36,New York,GT-DeepCOVID,653,717,97.1,328.7,eligible
+36,New York,IHME-CurveFit,590,717,97.1,328.7,eligible
+36,New York,JHU_IDD-CovidSP,509,717,97.1,328.7,eligible
+36,New York,JHUAPL-Bucky,673,717,97.1,328.7,eligible
+36,New York,JHUAPL-Gecko,575,717,97.1,328.7,eligible
+36,New York,Karlen-pypm,538,717,97.1,328.7,eligible
+36,New York,LANL-GrowthRate,513,717,97.1,328.7,eligible
+36,New York,MOBS-GLEAM_COVID,525,717,97.1,328.7,eligible
+36,New York,USC-SI_kJalpha,637,717,97.1,328.7,eligible
+37,North Carolina,CU-select,246,216,41,51.6,eligible
+37,North Carolina,Google_Harvard-CPF,59,216,41,51.6,eligible
+37,North Carolina,GT-DeepCOVID,207,216,41,51.6,eligible
+37,North Carolina,IHME-CurveFit,138,216,41,51.6,eligible
+37,North Carolina,JHU_IDD-CovidSP,251,216,41,51.6,eligible
+37,North Carolina,JHUAPL-Bucky,278,216,41,51.6,eligible
+37,North Carolina,JHUAPL-Gecko,128,216,41,51.6,eligible
+37,North Carolina,Karlen-pypm,188,216,41,51.6,eligible
+37,North Carolina,LANL-GrowthRate,123,216,41,51.6,eligible
+37,North Carolina,MOBS-GLEAM_COVID,232,216,41,51.6,eligible
+37,North Carolina,USC-SI_kJalpha,194,216,41,51.6,eligible
+38,North Dakota,Covid19Sim-Simulator,4,11,3.8,-4.2,eligible
+38,North Dakota,CU-select,4,11,3.8,-4.2,eligible
+38,North Dakota,Google_Harvard-CPF,1,11,3.8,-4.2,eligible
+38,North Dakota,GT-DeepCOVID,14,11,3.8,-4.2,eligible
+38,North Dakota,IHME-CurveFit,2,11,3.8,-4.2,eligible
+38,North Dakota,JHU_IDD-CovidSP,6,11,3.8,-4.2,eligible
+38,North Dakota,JHUAPL-Bucky,4,11,3.8,-4.2,eligible
+38,North Dakota,JHUAPL-Gecko,10,11,3.8,-4.2,eligible
+38,North Dakota,Karlen-pypm,5,11,3.8,-4.2,eligible
+38,North Dakota,LANL-GrowthRate,5,11,3.8,-4.2,eligible
+38,North Dakota,MOBS-GLEAM_COVID,3,11,3.8,-4.2,eligible
+38,North Dakota,USC-SI_kJalpha,8,11,3.8,-4.2,eligible
+39,Ohio,Covid19Sim-Simulator,339,268,35.3,127.1,eligible
+39,Ohio,CU-select,252,268,35.3,127.1,eligible
+39,Ohio,GT-DeepCOVID,183,268,35.3,127.1,eligible
+39,Ohio,JHU_IDD-CovidSP,211,268,35.3,127.1,eligible
+39,Ohio,JHUAPL-Bucky,187,268,35.3,127.1,eligible
+39,Ohio,JHUAPL-Gecko,210,268,35.3,127.1,eligible
+39,Ohio,Karlen-pypm,200,268,35.3,127.1,eligible
+39,Ohio,LANL-GrowthRate,154,268,35.3,127.1,eligible
+39,Ohio,MOBS-GLEAM_COVID,288,268,35.3,127.1,eligible
+39,Ohio,USC-SI_kJalpha,202,268,35.3,127.1,eligible
+40,Oklahoma,Covid19Sim-Simulator,149,173,32.5,42.9,eligible
+40,Oklahoma,CU-select,177,173,32.5,42.9,eligible
+40,Oklahoma,GT-DeepCOVID,139,173,32.5,42.9,eligible
+40,Oklahoma,IHME-CurveFit,72,173,32.5,42.9,eligible
+40,Oklahoma,JHU_IDD-CovidSP,84,173,32.5,42.9,eligible
+40,Oklahoma,JHUAPL-Bucky,117,173,32.5,42.9,eligible
+40,Oklahoma,JHUAPL-Gecko,102,173,32.5,42.9,eligible
+40,Oklahoma,Karlen-pypm,137,173,32.5,42.9,eligible
+40,Oklahoma,LANL-GrowthRate,94,173,32.5,42.9,eligible
+40,Oklahoma,MOBS-GLEAM_COVID,168,173,32.5,42.9,eligible
+40,Oklahoma,USC-SI_kJalpha,163,173,32.5,42.9,eligible
+41,Oregon,Covid19Sim-Simulator,41,34,8.2,0.9,eligible
+41,Oregon,CU-select,30,34,8.2,0.9,eligible
+41,Oregon,Google_Harvard-CPF,13,34,8.2,0.9,eligible
+41,Oregon,GT-DeepCOVID,28,34,8.2,0.9,eligible
+41,Oregon,IHME-CurveFit,21,34,8.2,0.9,eligible
+41,Oregon,JHU_IDD-CovidSP,45,34,8.2,0.9,eligible
+41,Oregon,JHUAPL-Bucky,31,34,8.2,0.9,eligible
+41,Oregon,JHUAPL-Gecko,26,34,8.2,0.9,eligible
+41,Oregon,Karlen-pypm,28,34,8.2,0.9,eligible
+41,Oregon,LANL-GrowthRate,21,34,8.2,0.9,eligible
+41,Oregon,MOBS-GLEAM_COVID,33,34,8.2,0.9,eligible
+41,Oregon,USC-SI_kJalpha,29,34,8.2,0.9,eligible
+42,Pennsylvania,Covid19Sim-Simulator,409,286,40.7,123.2,eligible
+42,Pennsylvania,CU-select,309,286,40.7,123.2,eligible
+42,Pennsylvania,IHME-CurveFit,162,286,40.7,123.2,eligible
+42,Pennsylvania,JHU_IDD-CovidSP,312,286,40.7,123.2,eligible
+42,Pennsylvania,JHUAPL-Bucky,284,286,40.7,123.2,eligible
+42,Pennsylvania,JHUAPL-Gecko,186,286,40.7,123.2,eligible
+42,Pennsylvania,Karlen-pypm,254,286,40.7,123.2,eligible
+42,Pennsylvania,LANL-GrowthRate,196,286,40.7,123.2,eligible
+42,Pennsylvania,MOBS-GLEAM_COVID,258,286,40.7,123.2,eligible
+42,Pennsylvania,USC-SI_kJalpha,268,286,40.7,123.2,eligible
+44,Rhode Island,Covid19Sim-Simulator,35,17,7.4,-12.1,eligible
+44,Rhode Island,CU-select,18,17,7.4,-12.1,eligible
+44,Rhode Island,Google_Harvard-CPF,18,17,7.4,-12.1,eligible
+44,Rhode Island,GT-DeepCOVID,26,17,7.4,-12.1,eligible
+44,Rhode Island,IHME-CurveFit,10,17,7.4,-12.1,eligible
+44,Rhode Island,JHU_IDD-CovidSP,20,17,7.4,-12.1,eligible
+44,Rhode Island,JHUAPL-Bucky,17,17,7.4,-12.1,eligible
+44,Rhode Island,JHUAPL-Gecko,11,17,7.4,-12.1,eligible
+44,Rhode Island,Karlen-pypm,15,17,7.4,-12.1,eligible
+44,Rhode Island,LANL-GrowthRate,10,17,7.4,-12.1,eligible
+44,Rhode Island,MOBS-GLEAM_COVID,18,17,7.4,-12.1,eligible
+44,Rhode Island,USC-SI_kJalpha,14,17,7.4,-12.1,eligible
+45,South Carolina,Covid19Sim-Simulator,245,147,31.6,20.4,eligible
+45,South Carolina,CU-select,163,147,31.6,20.4,eligible
+45,South Carolina,Google_Harvard-CPF,105,147,31.6,20.4,eligible
+45,South Carolina,IHME-CurveFit,97,147,31.6,20.4,eligible
+45,South Carolina,JHU_IDD-CovidSP,130,147,31.6,20.4,eligible
+45,South Carolina,JHUAPL-Bucky,151,147,31.6,20.4,eligible
+45,South Carolina,JHUAPL-Gecko,110,147,31.6,20.4,eligible
+45,South Carolina,Karlen-pypm,120,147,31.6,20.4,eligible
+45,South Carolina,LANL-GrowthRate,126,147,31.6,20.4,eligible
+45,South Carolina,MOBS-GLEAM_COVID,144,147,31.6,20.4,eligible
+45,South Carolina,USC-SI_kJalpha,137,147,31.6,20.4,eligible
+46,South Dakota,Covid19Sim-Simulator,17,9,3.4,-4.7,eligible
+46,South Dakota,CU-select,5,9,3.4,-4.7,eligible
+46,South Dakota,Google_Harvard-CPF,4,9,3.4,-4.7,eligible
+46,South Dakota,GT-DeepCOVID,7,9,3.4,-4.7,eligible
+46,South Dakota,IHME-CurveFit,14,9,3.4,-4.7,eligible
+46,South Dakota,JHU_IDD-CovidSP,10,9,3.4,-4.7,eligible
+46,South Dakota,JHUAPL-Bucky,10,9,3.4,-4.7,eligible
+46,South Dakota,JHUAPL-Gecko,5,9,3.4,-4.7,eligible
+46,South Dakota,Karlen-pypm,6,9,3.4,-4.7,eligible
+46,South Dakota,LANL-GrowthRate,5,9,3.4,-4.7,eligible
+46,South Dakota,MOBS-GLEAM_COVID,6,9,3.4,-4.7,eligible
+46,South Dakota,USC-SI_kJalpha,6,9,3.4,-4.7,eligible
+47,Tennessee,CU-select,118,128,21.6,41.5,eligible
+47,Tennessee,GT-DeepCOVID,144,128,21.6,41.5,eligible
+47,Tennessee,IHME-CurveFit,193,128,21.6,41.5,eligible
+47,Tennessee,JHU_IDD-CovidSP,111,128,21.6,41.5,eligible
+47,Tennessee,JHUAPL-Bucky,108,128,21.6,41.5,eligible
+47,Tennessee,JHUAPL-Gecko,89,128,21.6,41.5,eligible
+47,Tennessee,Karlen-pypm,90,128,21.6,41.5,eligible
+47,Tennessee,LANL-GrowthRate,62,128,21.6,41.5,eligible
+47,Tennessee,MOBS-GLEAM_COVID,143,128,21.6,41.5,eligible
+47,Tennessee,USC-SI_kJalpha,101,128,21.6,41.5,eligible
+48,Texas,Covid19Sim-Simulator,1433,1020,129.1,503.9,eligible
+48,Texas,CU-select,969,1020,129.1,503.9,eligible
+48,Texas,GT-DeepCOVID,1046,1020,129.1,503.9,eligible
+48,Texas,IHME-CurveFit,788,1020,129.1,503.9,eligible
+48,Texas,JHU_IDD-CovidSP,696,1020,129.1,503.9,eligible
+48,Texas,JHUAPL-Gecko,780,1020,129.1,503.9,eligible
+48,Texas,Karlen-pypm,699,1020,129.1,503.9,eligible
+48,Texas,LANL-GrowthRate,509,1020,129.1,503.9,eligible
+48,Texas,MOBS-GLEAM_COVID,1116,1020,129.1,503.9,eligible
+48,Texas,USC-SI_kJalpha,928,1020,129.1,503.9,eligible
+49,Utah,Covid19Sim-Simulator,60,49,10.9,5.5,eligible
+49,Utah,CU-select,47,49,10.9,5.5,eligible
+49,Utah,Google_Harvard-CPF,9,49,10.9,5.5,eligible
+49,Utah,GT-DeepCOVID,50,49,10.9,5.5,eligible
+49,Utah,IHME-CurveFit,38,49,10.9,5.5,eligible
+49,Utah,JHU_IDD-CovidSP,28,49,10.9,5.5,eligible
+49,Utah,JHUAPL-Bucky,25,49,10.9,5.5,eligible
+49,Utah,JHUAPL-Gecko,32,49,10.9,5.5,eligible
+49,Utah,Karlen-pypm,34,49,10.9,5.5,eligible
+49,Utah,LANL-GrowthRate,26,49,10.9,5.5,eligible
+49,Utah,MOBS-GLEAM_COVID,42,49,10.9,5.5,eligible
+49,Utah,USC-SI_kJalpha,40,49,10.9,5.5,eligible
+50,Vermont,Covid19Sim-Simulator,7,5,3.2,-7.6,eligible
+50,Vermont,CU-select,7,5,3.2,-7.6,eligible
+50,Vermont,Google_Harvard-CPF,2,5,3.2,-7.6,eligible
+50,Vermont,GT-DeepCOVID,5,5,3.2,-7.6,eligible
+50,Vermont,IHME-CurveFit,2,5,3.2,-7.6,eligible
+50,Vermont,JHU_IDD-CovidSP,12,5,3.2,-7.6,eligible
+50,Vermont,JHUAPL-Bucky,9,5,3.2,-7.6,eligible
+50,Vermont,JHUAPL-Gecko,5,5,3.2,-7.6,eligible
+50,Vermont,Karlen-pypm,7,5,3.2,-7.6,eligible
+50,Vermont,LANL-GrowthRate,6,5,3.2,-7.6,eligible
+50,Vermont,MOBS-GLEAM_COVID,6,5,3.2,-7.6,eligible
+50,Vermont,USC-SI_kJalpha,5,5,3.2,-7.6,eligible
+51,Virginia,CU-select,178,194,37,46.4,eligible
+51,Virginia,Google_Harvard-CPF,160,194,37,46.4,eligible
+51,Virginia,GT-DeepCOVID,211,194,37,46.4,eligible
+51,Virginia,IHME-CurveFit,71,194,37,46.4,eligible
+51,Virginia,JHU_IDD-CovidSP,200,194,37,46.4,eligible
+51,Virginia,JHUAPL-Bucky,148,194,37,46.4,eligible
+51,Virginia,JHUAPL-Gecko,142,194,37,46.4,eligible
+51,Virginia,Karlen-pypm,148,194,37,46.4,eligible
+51,Virginia,LANL-GrowthRate,141,194,37,46.4,eligible
+51,Virginia,MOBS-GLEAM_COVID,179,194,37,46.4,eligible
+51,Virginia,USC-SI_kJalpha,167,194,37,46.4,eligible
+53,Washington,CU-select,58,59,10.6,16.3,eligible
+53,Washington,Google_Harvard-CPF,42,59,10.6,16.3,eligible
+53,Washington,GT-DeepCOVID,48,59,10.6,16.3,eligible
+53,Washington,IHME-CurveFit,37,59,10.6,16.3,eligible
+53,Washington,JHU_IDD-CovidSP,91,59,10.6,16.3,eligible
+53,Washington,JHUAPL-Bucky,68,59,10.6,16.3,eligible
+53,Washington,JHUAPL-Gecko,45,59,10.6,16.3,eligible
+53,Washington,Karlen-pypm,46,59,10.6,16.3,eligible
+53,Washington,LANL-GrowthRate,36,59,10.6,16.3,eligible
+53,Washington,MOBS-GLEAM_COVID,73,59,10.6,16.3,eligible
+53,Washington,USC-SI_kJalpha,51,59,10.6,16.3,eligible
+54,West Virginia,Covid19Sim-Simulator,55,33,12.7,-17.7,eligible
+54,West Virginia,CU-select,39,33,12.7,-17.7,eligible
+54,West Virginia,Google_Harvard-CPF,9,33,12.7,-17.7,eligible
+54,West Virginia,GT-DeepCOVID,37,33,12.7,-17.7,eligible
+54,West Virginia,IHME-CurveFit,27,33,12.7,-17.7,eligible
+54,West Virginia,JHU_IDD-CovidSP,44,33,12.7,-17.7,eligible
+54,West Virginia,JHUAPL-Bucky,33,33,12.7,-17.7,eligible
+54,West Virginia,JHUAPL-Gecko,23,33,12.7,-17.7,eligible
+54,West Virginia,Karlen-pypm,25,33,12.7,-17.7,eligible
+54,West Virginia,LANL-GrowthRate,22,33,12.7,-17.7,eligible
+54,West Virginia,MOBS-GLEAM_COVID,32,33,12.7,-17.7,eligible
+54,West Virginia,USC-SI_kJalpha,30,33,12.7,-17.7,eligible
+55,Wisconsin,Covid19Sim-Simulator,87,99,24.5,0.4,eligible
+55,Wisconsin,CU-select,106,99,24.5,0.4,eligible
+55,Wisconsin,Google_Harvard-CPF,29,99,24.5,0.4,eligible
+55,Wisconsin,GT-DeepCOVID,119,99,24.5,0.4,eligible
+55,Wisconsin,IHME-CurveFit,45,99,24.5,0.4,eligible
+55,Wisconsin,JHU_IDD-CovidSP,91,99,24.5,0.4,eligible
+55,Wisconsin,JHUAPL-Bucky,59,99,24.5,0.4,eligible
+55,Wisconsin,JHUAPL-Gecko,60,99,24.5,0.4,eligible
+55,Wisconsin,Karlen-pypm,68,99,24.5,0.4,eligible
+55,Wisconsin,LANL-GrowthRate,51,99,24.5,0.4,eligible
+55,Wisconsin,MOBS-GLEAM_COVID,89,99,24.5,0.4,eligible
+55,Wisconsin,USC-SI_kJalpha,85,99,24.5,0.4,eligible
+56,Wyoming,Covid19Sim-Simulator,5,10,3.2,-3,eligible
+56,Wyoming,CU-select,6,10,3.2,-3,eligible
+56,Wyoming,Google_Harvard-CPF,1,10,3.2,-3,eligible
+56,Wyoming,GT-DeepCOVID,16,10,3.2,-3,eligible
+56,Wyoming,IHME-CurveFit,7,10,3.2,-3,eligible
+56,Wyoming,JHU_IDD-CovidSP,7,10,3.2,-3,eligible
+56,Wyoming,JHUAPL-Bucky,5,10,3.2,-3,eligible
+56,Wyoming,JHUAPL-Gecko,10,10,3.2,-3,eligible
+56,Wyoming,Karlen-pypm,5,10,3.2,-3,eligible
+56,Wyoming,LANL-GrowthRate,2,10,3.2,-3,eligible
+56,Wyoming,MOBS-GLEAM_COVID,7,10,3.2,-3,eligible
+56,Wyoming,USC-SI_kJalpha,6,10,3.2,-3,eligible
+72,Puerto Rico,Covid19Sim-Simulator,39,19,9.9,-21.1,eligible
+72,Puerto Rico,JHU_IDD-CovidSP,24,19,9.9,-21.1,eligible
+72,Puerto Rico,JHUAPL-Bucky,16,19,9.9,-21.1,eligible
+72,Puerto Rico,JHUAPL-Gecko,2,19,9.9,-21.1,eligible
+72,Puerto Rico,Karlen-pypm,10,19,9.9,-21.1,eligible
+72,Puerto Rico,LANL-GrowthRate,12,19,9.9,-21.1,eligible
+72,Puerto Rico,USC-SI_kJalpha,14,19,9.9,-21.1,eligible
+78,Virgin Islands,JHU_IDD-CovidSP,1,0,0,0,eligible
+78,Virgin Islands,JHUAPL-Bucky,0,0,0,0,eligible
+78,Virgin Islands,JHUAPL-Gecko,0,0,0,0,eligible
+78,Virgin Islands,LANL-GrowthRate,0,0,0,0,eligible
+78,Virgin Islands,USC-SI_kJalpha,0,0,0,0,eligible

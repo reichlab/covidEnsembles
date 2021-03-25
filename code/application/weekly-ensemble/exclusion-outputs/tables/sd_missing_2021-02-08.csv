@@ -1,0 +1,39 @@
+location,location_name,model,mean ahead,past mean,SD,cutoff,reason excluded
+US,US,Google_Harvard-CPF,NA,9906,1379.3,4389,missing forecasts; cannot evaluate less than 4 SD below criterion
+11,District of Columbia,MOBS-GLEAM_COVID,NA,35,8.2,2.2,missing forecasts; cannot evaluate less than 4 SD below criterion
+11,District of Columbia,UCLA-SuEIR,NA,35,8.2,2.2,missing forecasts; cannot evaluate less than 4 SD below criterion
+01,Alabama,GT-DeepCOVID,NA,215,39.4,57.1,missing forecasts; cannot evaluate less than 4 SD below criterion
+04,Arizona,GT-DeepCOVID,NA,318,71.6,31.8,missing forecasts; cannot evaluate less than 4 SD below criterion
+12,Florida,UCLA-SuEIR,NA,819,97,431.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+13,Georgia,GT-DeepCOVID,NA,525,76.7,217.9,missing forecasts; cannot evaluate less than 4 SD below criterion
+13,Georgia,UCLA-SuEIR,NA,525,76.7,217.9,missing forecasts; cannot evaluate less than 4 SD below criterion
+15,Hawaii,GT-DeepCOVID,NA,4,2,-3.8,missing forecasts; cannot evaluate less than 4 SD below criterion
+15,Hawaii,UCLA-SuEIR,NA,4,2,-3.8,missing forecasts; cannot evaluate less than 4 SD below criterion
+18,Indiana,GT-DeepCOVID,NA,176,24.8,77,missing forecasts; cannot evaluate less than 4 SD below criterion
+18,Indiana,UCLA-SuEIR,NA,176,24.8,77,missing forecasts; cannot evaluate less than 4 SD below criterion
+20,Kansas,UCLA-SuEIR,NA,73,12.9,21.1,missing forecasts; cannot evaluate less than 4 SD below criterion
+24,Maryland,GT-DeepCOVID,NA,183,23.1,90.2,missing forecasts; cannot evaluate less than 4 SD below criterion
+27,Minnesota,UCLA-SuEIR,NA,52,12.3,2.8,missing forecasts; cannot evaluate less than 4 SD below criterion
+28,Mississippi,GT-DeepCOVID,NA,71,17.1,3.2,missing forecasts; cannot evaluate less than 4 SD below criterion
+31,Nebraska,UCLA-SuEIR,NA,27,6.6,0.2,missing forecasts; cannot evaluate less than 4 SD below criterion
+32,Nevada,GT-DeepCOVID,NA,96,22.3,6.5,missing forecasts; cannot evaluate less than 4 SD below criterion
+32,Nevada,UCLA-SuEIR,NA,96,22.3,6.5,missing forecasts; cannot evaluate less than 4 SD below criterion
+34,New Jersey,GT-DeepCOVID,NA,327,42.3,157.3,missing forecasts; cannot evaluate less than 4 SD below criterion
+39,Ohio,UCLA-SuEIR,NA,300,64.1,43.7,missing forecasts; cannot evaluate less than 4 SD below criterion
+40,Oklahoma,UCLA-SuEIR,NA,210,34.8,70.6,missing forecasts; cannot evaluate less than 4 SD below criterion
+45,South Carolina,UCLA-SuEIR,NA,179,38.9,23.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+49,Utah,UCLA-SuEIR,NA,54,14,-1.7,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,CU-select,NA,20,4.4,2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,Google_Harvard-CPF,NA,20,4.4,2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,GT-DeepCOVID,NA,20,4.4,2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,IHME-CurveFit,NA,20,4.4,2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,MOBS-GLEAM_COVID,NA,20,4.4,2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+72,Puerto Rico,UCLA-SuEIR,NA,20,4.4,2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,Covid19Sim-Simulator,NA,0,0.6,-2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,CU-select,NA,0,0.6,-2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,Google_Harvard-CPF,NA,0,0.6,-2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,GT-DeepCOVID,NA,0,0.6,-2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,IHME-CurveFit,NA,0,0.6,-2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,Karlen-pypm,NA,0,0.6,-2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,MOBS-GLEAM_COVID,NA,0,0.6,-2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
+78,Virgin Islands,UCLA-SuEIR,NA,0,0.6,-2.4,missing forecasts; cannot evaluate less than 4 SD below criterion
