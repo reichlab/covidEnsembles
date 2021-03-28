@@ -6,22 +6,41 @@
 It is assumed that in each row, all quantiles for a given model are either
 missing or available.}
 \usage{
-impute_missing_per_quantile(qfm, impute_method = "mean")
+impute_missing_per_quantile(
+  qfm,
+  impute_method = "mean",
+  weight_transfer_per_group = FALSE,
+  weight_transfer_group_factors = "location",
+  imputed_qfm_only = FALSE
+)
 }
 \arguments{
 \item{qfm}{a QuantileForecastMatrix}
 
 \item{impute_method}{character string specifying method for imputing;
 currently only 'mean' is supported}
+
+\item{weight_transfer_per_group}{logical indicating whether to compute weight
+transfer matrices for every group defined by `weight_transfer_group_factors'}
+
+\item{weight_transfer_group_factors}{string vector of these factors with only
+"locations" as default}
+
+\item{imputed_qfm_only}{if TRUE, return only imputed QuantileForecastMatrix}
 }
 \value{
-list of two items:
+if \code{imputed_qfm_only} is TRUE, 'qfm_imputed', the input
+QuantileForecastMatrix object with missing values imputed
+
+otherwise a list of two items:
 \enumerate{
-\item 'qfm_imputed' the input QuantileForecastMatrix object with missing values
-imputed
-\item 'weight_transfer' a square matrix of dimension equal to the number of
-unique models in qfm.  Entry \link{i, j} is the proportion of imputed observations
-for model j that are attributable to model i.
+\item 'qfm_imputed'
+\item if \code{weight_transfer_per_group} is FALSE, 'weight_transfer', a square matrix
+of dimension equal to the number of unique models in qfm.  Entry \link{i, j} is the
+proportion of imputed observations for model j that are attributable to model i.
+if \code{weight_transfer_per_group} is TRUE, a data
+frame having a column for each factor and a list-column of the corresponding
+weight transfer matrices whose entries give within-group proportions.
 }
 }
 \description{

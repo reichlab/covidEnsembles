@@ -83,8 +83,8 @@ test_that("wis works, 1 interval and median", {
   alpha <- 0.5
 
   actual <- wis(y=y, qfm=quantiles)
-  expected <- 0.5 * (
-    abs(y - quantiles[, 2]) +
+  expected <- ( 1 / (1 + 0.5)) * (
+    0.5 * abs(y - quantiles[, 2]) +
     (quantiles[, 3] - quantiles[, 1])*(alpha/2) + c(0, 1-(-15), 22-3)
   )
 
@@ -116,8 +116,8 @@ test_that("wis works, 2 intervals and median", {
   alpha2 <- 0.5
 
   actual <- wis(y=y, qfm=quantiles)
-  expected <- (1/3) * (
-    abs(y - quantiles[, 3]) +
+  expected <- (1 / (2 + 0.5)) * (
+    0.5 * abs(y - quantiles[, 3]) +
     (quantiles[, 5] - quantiles[, 1])*(alpha1/2) + c(0, (-2)-(-15), 22-4) +
     (quantiles[, 4] - quantiles[, 2])*(alpha2/2) + c(0, 1-(-15), 22-3)
   )
