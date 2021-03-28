@@ -368,7 +368,7 @@ load_covid_forecasts_relative_horizon <- function(
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
-#' @param data_as_of_date
+#' @param data_as_of_date date for which observations should be current
 #' @param intercept logical specifying whether an intercept is included
 #' @param combine_method character specifying the approach to model
 #' combination: "equal", "convex", "positive", "unconstrained", or "median".
@@ -1085,27 +1085,31 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
 #' @param qfm a QuantileForecastMatrix
 #' @param impute_method character string specifying method for imputing;
 #' currently only 'mean' is supported
-#' @param per_group logical indicating whether to compute weight transfer matrices
-#' for every group defined by `group_factors'
-#' @param group_factors string vector of these factors with only "locations" as default
-#'
-#' @return if `per_group` is FALSE, list of two items:
-#' 1. 'qfm_imputed' the input QuantileForecastMatrix object with missing values
-#' imputed
-#' 2. 'weight_transfer' a square matrix of dimension equal to the number of
-#' unique models in qfm.  Entry [i, j] is the proportion of imputed observations
-#' for model j that are attributable to model i.
+#' @param weight_transfer_per_group logical indicating whether to compute weight
+#' transfer matrices for every group defined by `weight_transfer_group_factors'
+#' @param weight_transfer_group_factors string vector of these factors with only
+#' "locations" as default
+#' @param imputed_qfm_only if TRUE, return only imputed QuantileForecastMatrix
 #' 
-#' if `per_group` is TRUE, the above list together with a data frame having a column for 
-#' each factor and a list-column of the corresponding weight transfer matrices whose entries
-#' give within group proportions.
+#' @return if `imputed_qfm_only` is TRUE, 'qfm_imputed', the input 
+#' QuantileForecastMatrix object with missing values imputed
+#' 
+#' otherwise a list of two items:
+#' 1. 'qfm_imputed'
+#' 2. if `weight_transfer_per_group` is FALSE, 'weight_transfer', a square matrix 
+#' of dimension equal to the number of unique models in qfm.  Entry [i, j] is the 
+#' proportion of imputed observations for model j that are attributable to model i.
+#'    if `weight_transfer_per_group` is TRUE, a data 
+#' frame having a column for each factor and a list-column of the corresponding 
+#' weight transfer matrices whose entries give within-group proportions.
 #'
 #' @export
 impute_missing_per_quantile <- function(
   qfm, 
   impute_method = 'mean',
-  per_group = FALSE,
-  group_factors = 'location') {
+  weight_transfer_per_group = FALSE,
+  weight_transfer_group_factors = 'location',
+  imputed_qfm_only = FALSE) {
 
   col_index <- attr(qfm, 'col_index')
   model_col <- attr(qfm, 'model_col')
@@ -1127,11 +1131,11 @@ impute_missing_per_quantile <- function(
 
   weight_transfer <- matrix(0, nrow = num_models, ncol = num_models)
 
-  if (per_group) {
+  if (weight_transfer_per_group) {
     row_groups <- attr(qfm, 'row_index') %>% 
       mutate(row_num = dplyr::row_number()) %>%
-      dplyr::group_by(!!!syms(group_factors)) %>% 
-      dplyr::summarise(row_inds_per_proup = list(row_num), .groups = "drop") %>% 
+      dplyr::group_by(!!!syms(weight_transfer_group_factors)) %>% 
+      dplyr::summarise(row_inds_per_group = list(row_num), .groups = "drop") %>% 
       mutate(weight_transfer = list(weight_transfer))
   }
 
@@ -1163,36 +1167,35 @@ impute_missing_per_quantile <- function(
     }
 
     weight_transfer <- weight_transfer + length(row_inds) * impute_mat
-    if (per_group) {
+    if (weight_transfer_per_group) {
       row_groups <- row_groups %>% mutate(
         weight_transfer = purrr::map2(
-          weight_transfer, row_inds_per_proup,
+          weight_transfer, row_inds_per_group,
           ~ .x + length(intersect(row_inds, .y)) * impute_mat 
           )
         )
     }
   }
-  weight_transfer <- weight_transfer / nrow(qfm)
-  if (per_group) {
+
+  weight_transfer <- if (weight_transfer_per_group) {
     row_groups <- row_groups %>% mutate(
       weight_transfer = purrr::map2(
-        weight_transfer, row_inds_per_proup,
+        weight_transfer, row_inds_per_group,
         ~ .x / length(.y)
-        )
       )
+    )
+  } else {
+    tibble(weight_transfer = list(weight_transfer / nrow(qfm)))
   }
 
-  if (per_group) {
-    return(list(
-      qfm_imputed = qfm_imputed,
-      weight_transfer = weight_transfer,
-      weight_transfer_per_group = dplyr::select(row_groups, -row_inds_per_proup)
-    ))
+  if (imputed_qfm_only) {
+    return(qfm_imputed)
   } else {
     return(list(
       qfm_imputed = qfm_imputed,
       weight_transfer = weight_transfer
-    ))
+      )
+    )
   }
 }
 
@@ -1226,12 +1229,18 @@ impute_missing_per_quantile <- function(
 #' sorted.
 #' @param impute_method character string specifying method for imputing missing
 #' forecasts; currently only 'mean' is supported.
+#' @param weight_transfer_per_group 
+#' @param weight_transfer_group_factors 
 #' @param backend back end used for optimization.
 #' @param check_missingness_by_target if TRUE, record missingness for every
 #' combination of model, location, forecast week, and target; if FALSE, record
 #' missingness only for each model and location
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
+#' @param do_baseline_check if TRUE, do baseline quantile check
+#' @param do_sd_check if TRUE, do sd quantile check (for hospitalization forecasts)
+#' @param sd_check_table_path where to save hospitalization sd check table results
+#' @param sd_check_plot_path where to save hospitalization sd check plot results
 #' @param return_all if TRUE, return all quantities; if FALSE, return only some
 #' useful summaries
 #' @param return_eligibility if TRUE, return model eligibility
@@ -1249,6 +1258,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
   quantile_groups = NULL,
   noncross = "constrain",
   impute_method = 'mean',
+  weight_transfer_per_group = FALSE,
+  weight_transfer_group_factors = "location",
   backend = 'quantmod',
   check_missingness_by_target = FALSE,
   do_q10_check,
@@ -1468,12 +1479,19 @@ get_imputed_ensemble_fits_and_predictions <- function(
   }
 
   # impute missing values
+
+  if (!weight_transfer_per_group) weight_transfer_group_factors <- NULL
+
   c(imputed_qfm_train, weight_transfer) %<-% impute_missing_per_quantile(
-    qfm=qfm_train,
-    impute_method = impute_method)
-  c(imputed_qfm_test, test_weight_transfer) %<-% impute_missing_per_quantile(
-    qfm=qfm_test,
-    impute_method = impute_method)
+    qfm = qfm_train,
+    impute_method = impute_method,
+    weight_transfer_per_group = weight_transfer_per_group,
+    weight_transfer_group_factors = weight_transfer_group_factors)
+  c(imputed_qfm_test, weight_transfer_test) %<-% impute_missing_per_quantile(
+    qfm = qfm_test,
+    impute_method = impute_method,
+    weight_transfer_per_group = weight_transfer_per_group,
+    weight_transfer_group_factors = weight_transfer_group_factors)
 
   # observed responses to date
   y_train <- attr(qfm_train, 'row_index') %>%
@@ -1497,9 +1515,11 @@ get_imputed_ensemble_fits_and_predictions <- function(
   imputed_qfm_train <- imputed_qfm_train[non_missing_inds, ]
 
   # fit ensembles and obtain predictions per group
-  if(combine_method == 'ew') {
-    qra_fit <- estimate_qra(imputed_qfm_train, combine_method = 'ew')
-    orig_qra_fit <- qra_fit    
+  if (combine_method == 'ew') {
+    # no y_train given - is this right?
+    qra_fit <- estimate_qra(
+      qfm_train = imputed_qfm_train, 
+      combine_method = 'ew')   
   } else {
     qra_fit <- estimate_qra(
       qfm_train = imputed_qfm_train,
@@ -1510,31 +1530,72 @@ get_imputed_ensemble_fits_and_predictions <- function(
       quantile_groups = quantile_groups,
       noncross = noncross,
       backend = backend)
+  }
+  
+  orig_qra_fit <- qra_fit
 
-    # do weight transfer among models
-    # save original weights for retrospective exploration
-    orig_qra_fit <- qra_fit
+  # do weight transfer among models
+  # save original weights for retrospective exploration
+
+  # leaving logic for "ew" as I found it but not understanding it... AG
+  if (combine_method != 'ew') {
     if(nrow(qra_fit$coefficients) == nrow(weight_transfer)) {
       # single weight per model
-      qra_fit$coefficients$beta <-
-        weight_transfer %*% matrix(qra_fit$coefficients$beta)
+      betas <- weight_transfer %>% 
+      dplyr::mutate(
+        betas = purrr::map(
+          weight_transfer,
+          ~ . %*% matrix(qra_fit$coefficients$beta)
+        )) %>% 
+      dplyr::select(!!!syms(weight_transfer_group_factors), betas)
     } else {
       # weight per quantile; adjust by iterating through quantile levels
       qs <- qra_fit$coefficients[[attr(qfm_train, 'quantile_name_col')]]
-      for (q in unique(qs)) {
-        row_inds <- which(qs == q)
-        qra_fit$coefficients$beta[row_inds] <-
-          weight_transfer %*% matrix(qra_fit$coefficients$beta[row_inds])
-      }
+      betas <- weight_transfer %>% 
+      dplyr::mutate(
+        betas = purrr::map(
+          weight_transfer,
+          function(wt) {
+            betas <- matrix(qra_fit$coefficients$beta)
+            for (q in unique(qs)) {
+              betas[which(qs == q)] <- wt %*% betas[which(qs == q)]
+            }
+            return(betas)
+          }
+        )) %>% 
+      dplyr::select(!!!syms(weight_transfer_group_factors), betas)      
     }
   }
 
   # obtain predictions
-  qra_forecast <- predict(
-    qra_fit,
-    imputed_qfm_test,
-    sort_quantiles = (noncross == "sort")) %>%
-      as.data.frame()
+  if (combine_method == 'ew' || !weight_transfer_per_group) {
+    qra_forecast <- predict(
+      qra_fit,
+      imputed_qfm_test,
+      sort_quantiles = (noncross == "sort")) %>%
+    as.data.frame()
+  } else {
+    qra_forecast <- weight_transfer_test %>% 
+      dplyr::left_join(betas, by = weight_transfer_group_factors) %>% 
+      dplyr::mutate(
+        imputed_qfm_test_per_group = purrr::map(
+          row_inds_per_group,
+          ~ imputed_qfm_test[.,])) %>% 
+      dplyr::mutate(
+        forecasts = purrr::map2(
+          betas, imputed_qfm_test_per_group,
+          function (betas, imputed_qfm_test_per_group) {
+            qra_fit$coefficients$beta <- as.vector(betas)
+            return(
+              predict(qra_fit, imputed_qfm_test_per_group,
+                sort_quantiles = (noncross == "sort")
+                ) %>% as.data.frame()
+            )
+          }
+        )
+      ) %>% dplyr::select(forecasts) %>% 
+      purrr::map_dfr(bind_rows)
+    }
 
   # return
   if(return_all) {

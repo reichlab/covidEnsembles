@@ -21,7 +21,7 @@ calc_sd_check(
   lookback_window_for_sd = 1:14,
   lookahead_window = 1:7,
   exclude_below = TRUE,
-  exclude_above = FALSE,
+  exclude_above = TRUE,
   num_sd = 4,
   show_stats = FALSE
 )
