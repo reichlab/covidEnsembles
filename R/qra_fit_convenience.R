@@ -1088,7 +1088,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
 #' @param weight_transfer_per_group logical indicating whether to compute weight
 #' transfer matrices for every group defined by `weight_transfer_group_factors'
 #' @param weight_transfer_group_factors string vector of these factors with only
-#' "locations" as default
+#' "locations" as default.  Ignored if weight_transfer_per_group is FALSE
 #' @param imputed_qfm_only if TRUE, return only imputed QuantileForecastMatrix
 #' 
 #' @return if `imputed_qfm_only` is TRUE, 'qfm_imputed', the input 
@@ -1824,4 +1824,3 @@ get_rescaled_ensemble_fits_and_predictions <- function(
     )
   )
 }
-
