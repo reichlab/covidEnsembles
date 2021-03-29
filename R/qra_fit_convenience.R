@@ -1537,7 +1537,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
   # do weight transfer among models
   # save original weights for retrospective exploration
 
-  # leaving logic for "ew" as I found it but not understanding it... AG
+  # No need to do redistribution of estimated weights for an equally weighted model --
+  # we just apply equal weights to all models that made test set predictions
   if (combine_method != 'ew') {
     if(nrow(qra_fit$coefficients) == nrow(weight_transfer)) {
       # single weight per model
