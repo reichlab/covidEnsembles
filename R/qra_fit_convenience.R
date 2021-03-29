@@ -1516,7 +1516,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
 
   # fit ensembles and obtain predictions per group
   if (combine_method == 'ew') {
-    # no y_train given - is this right?
+    # no y_train given - no training is done for equal weights
     qra_fit <- estimate_qra(
       qfm_train = imputed_qfm_train, 
       combine_method = 'ew')   
