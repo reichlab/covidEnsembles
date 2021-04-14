@@ -3,19 +3,20 @@
 \name{wis}
 \alias{wis}
 \title{Calculate quantile score, optionally including absolute error,
-for a parametric distribution.}
+for a representation of a distribution for a single model}
 \usage{
 wis(y, qfm)
 }
 \arguments{
 \item{y}{vector of observations from target distribution}
 
-\item{qfm}{object of class QuantileForecastMatrix}
+\item{qfm}{object of class QuantileForecastMatrix representing forecasts
+from one model}
 }
 \value{
 vector of interval scores separately for each element of x
 }
 \description{
 Calculate quantile score, optionally including absolute error,
-for a parametric distribution.
+for a representation of a distribution for a single model
 }
