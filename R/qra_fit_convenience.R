@@ -1088,7 +1088,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
 #' @param weight_transfer_per_group logical indicating whether to compute weight
 #' transfer matrices for every group defined by `weight_transfer_group_factors'
 #' @param weight_transfer_group_factors string vector of these factors with only
-#' "locations" as default
+#' "locations" as default.  Ignored if weight_transfer_per_group is FALSE
 #' @param imputed_qfm_only if TRUE, return only imputed QuantileForecastMatrix
 #' 
 #' @return if `imputed_qfm_only` is TRUE, 'qfm_imputed', the input 
@@ -1516,7 +1516,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
 
   # fit ensembles and obtain predictions per group
   if (combine_method == 'ew') {
-    # no y_train given - is this right?
+    # no y_train given - no training is done for equal weights
     qra_fit <- estimate_qra(
       qfm_train = imputed_qfm_train, 
       combine_method = 'ew')   
@@ -1537,7 +1537,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
   # do weight transfer among models
   # save original weights for retrospective exploration
 
-  # leaving logic for "ew" as I found it but not understanding it... AG
+  # No need to do redistribution of estimated weights for an equally weighted model --
+  # we just apply equal weights to all models that made test set predictions
   if (combine_method != 'ew') {
     if(nrow(qra_fit$coefficients) == nrow(weight_transfer)) {
       # single weight per model
@@ -1824,4 +1825,3 @@ get_rescaled_ensemble_fits_and_predictions <- function(
     )
   )
 }
-
