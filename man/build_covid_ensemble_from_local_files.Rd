@@ -54,6 +54,8 @@ targets, a Monday.}
 
 \item{window_size}{size of window}
 
+\item{data_as_of_date}{date for which observations should be current}
+
 \item{intercept}{logical specifying whether an intercept is included}
 
 \item{combine_method}{character specifying the approach to model
