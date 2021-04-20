@@ -43,7 +43,7 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
 # Drop hospitalizations ensemble from JHU APL and ensemble from FDANIHASU
 candidate_model_abbreviations_to_include <-
   candidate_model_abbreviations_to_include[
-    !(candidate_model_abbreviations_to_include %in% c("JHUAPL-SLPHospEns", "FDANIHASU-Sweight"))
+    !(candidate_model_abbreviations_to_include %in% c("JHUAPL-SLPHospEns", "FDANIHASU-Sweight", "COVIDhub-trained_ensemble", "KITmetricslab-select_ensemble"))
   ]
 
 
