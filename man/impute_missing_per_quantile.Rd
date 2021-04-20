@@ -17,14 +17,14 @@ impute_missing_per_quantile(
 \arguments{
 \item{qfm}{a QuantileForecastMatrix}
 
-\item{impute_method}{character string specifying method for imputing;
-currently only 'mean' is supported}
+\item{impute_method}{character string specifying method for imputing missing
+forecasts; either 'mean' for mean imputation or 'none' for no imputation}
 
 \item{weight_transfer_per_group}{logical indicating whether to compute weight
 transfer matrices for every group defined by `weight_transfer_group_factors'}
 
 \item{weight_transfer_group_factors}{string vector of these factors with only
-"locations" as default}
+"locations" as default.  Ignored if weight_transfer_per_group is FALSE}
 
 \item{imputed_qfm_only}{if TRUE, return only imputed QuantileForecastMatrix}
 }

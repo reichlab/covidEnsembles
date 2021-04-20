@@ -11,6 +11,8 @@ library(yaml)
 
 #debug(covidEnsembles:::get_by_location_group_ensemble_fits_and_predictions)
 #debug(covidEnsembles:::estimate_qra_quantgen)
+#debug(covidEnsembles::estimate_qra)
+#debug(quantgen:::quantile_ensemble_flex)
 
 # extract arguments specifying details of analysis
 #args <- c("cum_death", "2020-05-09", "FALSE", "convex", "by_location_group", "3_groups", "2")
@@ -37,7 +39,11 @@ library(yaml)
 #args <- c("local", "inc_death", "2020-11-23", "FALSE", "convex", "mean_impute", "per_quantile", "full_history", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_hosp", "2021-01-18", "FALSE", "convex", "mean_impute", "per_model", "3", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "inc_death", "2021-01-25", "FALSE", "convex", "mean_impute", "per_quantile", "constrain", "full_history", "TRUE", "FALSE", "FALSE", "state_national")
-#args <- c("local", "inc_death", "2021-02-08", "FALSE", "convex", "mean_impute", "per_quantile", "constrain", "6", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("local", "inc_death", "2021-02-15", "FALSE", "convex", "mean_impute", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("local", "inc_death", "2021-02-15", "FALSE", "convex", "renormalize", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("local", "cum_death", "2020-06-22", "FALSE", "convex", "mean_impute", "3_groups", "sort", "full_history", "TRUE", "FALSE", "FALSE", "state")
+#args <- c("local", "cum_death", "2020-07-13", "FALSE", "convex", "mean_impute", "3_groups", "sort", "full_history", "TRUE", "FALSE", "FALSE", "state")
+#args <- c("local", "cum_death", "2021-02-15", "FALSE", "convex", "mean_impute", "3_groups", "constrain", "5", "TRUE", "FALSE", "FALSE", "state")
 
 args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
@@ -97,14 +103,20 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
 # Drop hospitalizations ensemble from JHU APL and ensemble from FDANIHASU
 candidate_model_abbreviations_to_include <-
   candidate_model_abbreviations_to_include[
-    !(candidate_model_abbreviations_to_include %in% c("JHUAPL-SLPHospEns", "FDANIHASU-Sweight", "COVIDhub-trained_ensemble"))
+    !(candidate_model_abbreviations_to_include %in% c("JHUAPL-SLPHospEns", "FDANIHASU-Sweight", "COVIDhub-trained_ensemble", "KITmetricslab-select_ensemble"))
   ]
 
 
 if (missingness == "mean_impute") {
+  case_missingness <- "impute"
   missingness <- "impute"
   impute_method <- "mean"
+} else if (missingness == "renormalize") {
+  case_missingness <- "renormalize"
+  missingness <- "impute"
+  impute_method <- "none"
 } else {
+  case_missingness <- missingness
   impute_method <- NULL
 }
 
@@ -184,7 +196,7 @@ if (spatial_resolution_arg == "all") {
 case_str <- paste0(
   "intercept_", as.character(intercept),
   "-combine_method_", combine_method,
-  "-missingness_", missingness,
+  "-missingness_", case_missingness,
   "-quantile_groups_", quantile_group_str,
   "-noncross_", noncross,
   "-window_size_", window_size_arg,
@@ -236,7 +248,7 @@ tic <- Sys.time()
 if (!file.exists(forecast_filename)) {
   do_q10_check <- do_nondecreasing_quantile_check <- do_standard_checks
 
-tic <- Sys.time()
+  tictic <- Sys.time()
   results <- build_covid_ensemble_from_local_files(
     candidate_model_abbreviations_to_include =
       candidate_model_abbreviations_to_include,
@@ -254,7 +266,7 @@ tic <- Sys.time()
     noncross = noncross,
     missingness = missingness,
     impute_method = impute_method,
-    backend = "quantgen",
+    backend = "qenspy",
     submissions_root = submissions_root,
     required_quantiles = required_quantiles,
     check_missingness_by_target = check_missingness_by_target,
@@ -267,8 +279,8 @@ tic <- Sys.time()
     return_eligibility = TRUE,
     return_all = TRUE
   )
-toc <- Sys.time()
-toc - tic
+  toctoc <- Sys.time()
+  toctoc - tictic
 
   # save full results including estimated weights, training data, etc.
   # only if running locally; cluster has limited space
@@ -281,19 +293,8 @@ toc - tic
     estimated_weights <- purrr::pmap_dfr(
       results$location_groups %>% dplyr::select(locations, qra_fit),
       function(locations, qra_fit) {
-        weights <- qra_fit$coefficients
-
-        data.frame(
-          quantile = if ("quantile" %in% colnames(weights)) {
-              weights$quantile
-            } else {
-              rep(NA, nrow(weights))
-            },
-          model = weights$model,
-          weight = weights$beta, #[, 1],
-          join_field = "temp",
-          stringsAsFactors = FALSE
-        ) %>%
+        covidEnsembles:::extract_weights_qenspy_qra_fit(qra_fit) %>%
+          dplyr::mutate(join_field = "temp") %>%
           dplyr::left_join(
             data.frame(
               location = locations,
@@ -302,6 +303,28 @@ toc - tic
             )
           ) %>%
           dplyr::select(-join_field)
+
+        # weights <- qra_fit$coefficients
+
+        # data.frame(
+        #   quantile = if ("quantile" %in% colnames(weights)) {
+        #       weights$quantile
+        #     } else {
+        #       rep(NA, nrow(weights))
+        #     },
+        #   model = weights$model,
+        #   weight = weights$beta, #[, 1],
+        #   join_field = "temp",
+        #   stringsAsFactors = FALSE
+        # ) %>%
+        #   dplyr::left_join(
+        #     data.frame(
+        #       location = locations,
+        #       join_field = "temp",
+        #       stringsAsFactors = FALSE
+        #     )
+        #   ) %>%
+        #   dplyr::select(-join_field)
       }
     )
     write_csv(estimated_weights, weight_filename)

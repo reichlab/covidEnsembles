@@ -82,7 +82,7 @@ sorted.}
 forecasts: 'by_location_group', 'rescale', or 'impute'}
 
 \item{impute_method}{character string specifying method for imputing missing
-forecasts; currently only 'mean' is supported.}
+forecasts; either 'mean' for mean imputation or 'none' for no imputation}
 
 \item{backend}{back end used for optimization.}
 

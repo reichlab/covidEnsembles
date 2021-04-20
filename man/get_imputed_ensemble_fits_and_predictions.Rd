@@ -65,7 +65,7 @@ constraints are imposed during estimation, but the resulting forecasts are
 sorted.}
 
 \item{impute_method}{character string specifying method for imputing missing
-forecasts; currently only 'mean' is supported.}
+forecasts; either 'mean' for mean imputation or 'none' for no imputation}
 
 \item{weight_transfer_per_group}{}
 
