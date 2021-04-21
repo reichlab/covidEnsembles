@@ -14,6 +14,8 @@ get_imputed_ensemble_fits_and_predictions(
   quantile_groups = NULL,
   noncross = "constrain",
   impute_method = "mean",
+  weight_transfer_per_group = FALSE,
+  weight_transfer_group_factors = "location",
   backend = "quantmod",
   check_missingness_by_target = FALSE,
   do_q10_check,
@@ -63,7 +65,11 @@ constraints are imposed during estimation, but the resulting forecasts are
 sorted.}
 
 \item{impute_method}{character string specifying method for imputing missing
-forecasts; currently only 'mean' is supported.}
+forecasts; either 'mean' for mean imputation or 'none' for no imputation}
+
+\item{weight_transfer_per_group}{}
+
+\item{weight_transfer_group_factors}{}
 
 \item{backend}{back end used for optimization.}
 
@@ -74,6 +80,14 @@ missingness only for each model and location}
 \item{do_q10_check}{if TRUE, do q10 check}
 
 \item{do_nondecreasing_quantile_check}{if TRUE, do nondecreasing quantile check}
+
+\item{do_baseline_check}{if TRUE, do baseline quantile check}
+
+\item{do_sd_check}{if TRUE, do sd quantile check (for hospitalization forecasts)}
+
+\item{sd_check_table_path}{where to save hospitalization sd check table results}
+
+\item{sd_check_plot_path}{where to save hospitalization sd check plot results}
 
 \item{return_all}{if TRUE, return all quantities; if FALSE, return only some
 useful summaries}

@@ -1,0 +1,199 @@
+---
+title: "Weighted Median Quantile Ensembles"
+author: "Evan L. Ray"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+## Introduction
+
+In this document we will describe a procedure for calculating an ensemble forecast as a weighted median of component model forecasts, where the component forecasts are represented as a collection of predictive quantiles.
+
+## Model Statement
+
+Let $i$ index a combination of location, forecast date, and target for which teams submit forecasts. For each such case $i = 1, \ldots, n$, we have predictive distributions from $M$ different models, and each such distribution is represented by a collection of $K$ predictive quantiles at quantile levels $\tau_1, \ldots, \tau_K$. Denote the predictive quantile for case $i$ from model $m$ at quantile level $\tau_k$ by $q^{i}_{k,m}$. For now, we assume none of these predictive quantiles are missing; if any were missing, we could address this by re-normalizing the model weights described below or imputing missing forecasts.
+
+Our goal is to obtain an ensemble forecast at quantile level $\tau_k$ by combining the predictive quantiles from the component models at that quantile level. We will do this by calculating a weighted median, where each model $m$ is given an estimated weight $w_{k,m}$; we require that these weights are non-negative and sum to one at each quantile level. The weights are held fixed for all cases $i$, but in general may be allowed to vary across quantile levels indexed by $k$. However, we may find it helpful to be able to share parameters within some pre-specified groups of quantile levels.
+
+To calculate the weighted median of the predictive quantiles for given indices $i$ and $k$ (corresponding to a specified location, forecast date, target, and quantile level), we take a two-step approach:
+
+1. Regarding the pairs $(q^{i}_{k,1}, w_{k,1}), \ldots, (q^{i}_{k,M}, w_{k,M})$ as a weighted sample from some hypothetical "population", we estimate the distribution of that population using a weighted kernel density estimate. This yields an estimated pdf $\widehat{f}$ for the given predictive quantile -- and more importantly, a corresponding cdf $\widehat{F}$. (There may be a better way to frame this than the hypothetical population idea?)
+2. We calculate the weighted median by inverting this cdf at the probability level 0.5: $q^i_k = \widehat{F}^{-1}(0.5)$.
+
+This process is illustrated in a simple example below for combining predictive quantiles from three models for a single case $i$ and quantile level $k$.  In this example, we suppose that model 1 had predictive quantile 2 and is given weight 0.2; model 2 had predictive quantile 4 and is given weight 0.7, and model 3 had predictive quantile 8 and is given weight 0.1.  Panel (a) shows a "probability mass function" view of the situation, where each predictive quantile is given the corresponding weight and a rectangular kernel density estimate is used to obtain a distribution over this quantile value.  Two different density estimates are used, with different specifications for the bandwidth as discussed below.  In each case, the estimated weighted median (i.e., the ensemble prediction for case $i$ and quantile level $k$) is illustrated with a vertical dashed line; visually, this divides the area under the corresponding density estimate in half. Panel (b) shows the cumulative distribution functions corresponding to the kernel density estimates in panel (a).  The weighted median is obtained by inverting this CDF at probability level 0.5.
+
+```{r, echo = FALSE}
+library(tidyverse)
+library(gridExtra)
+
+lower_lim <- -5
+upper_lim <- 15
+
+pred_quantiles <- data.frame(
+  model = letters[1:3],
+  quantile = c(2, 4, 8),
+  weight = c(0.2, 0.7, 0.1),
+  cum_weight = cumsum(c(0.2, 0.7, 0.1)),
+  zeros = 0
+)
+
+weighted_mean <- sum(pred_quantiles$weight * pred_quantiles$quantile)
+weighted_sd <- sqrt(sum(pred_quantiles$weight * (pred_quantiles$quantile - weighted_mean)^2) / (3 - 1))
+kde_bw <- 0.9 * weighted_sd * (3^(-0.2))
+weighted_rectangle_width <- sqrt(12 * (kde_bw^2))
+
+unweighted_sd <- sd(pred_quantiles$quantile)
+kde_bw <- 0.9 * unweighted_sd * (3^(-0.2))
+rectangle_width <- sqrt(12 * (kde_bw^2))
+
+calc_cdf_value <- function(x, q, w, rectangle_width) {
+  if (length(q) != length(w)) {
+    stop("lengths of q and w must be equal")
+  }
+
+  result <- rep(0, length(x))
+  for (i in seq_along(q)) {
+    result <- result + dplyr::case_when(
+        x < q[i] - rectangle_width / 2 ~ 0,
+        ((x >= q[i] - rectangle_width/2) & (x <= q[i] + rectangle_width/2)) ~
+          w[i] * (x - (q[i] - rectangle_width/2)) * (1 / rectangle_width),
+        x > q[i] + rectangle_width / 2 ~ w[i]
+      )
+  }
+
+  return(result)
+}
+
+calc_inverse_cdf <- function(p, q, w, rectangle_width) {
+  slope_changepoints <- sort(c(q - rectangle_width / 2, q + rectangle_width / 2))
+  changepoint_cdf_values <- calc_cdf_value(
+    x = slope_changepoints,
+    q = q, w = w, rectangle_width = rectangle_width
+  )
+  purrr::map_dbl(p,
+    function(one_p) {
+      start_ind <- max(which(changepoint_cdf_values < one_p))
+      segment_slope <- diff(changepoint_cdf_values[c(start_ind + 1, start_ind)]) /
+        diff(slope_changepoints[c(start_ind + 1, start_ind)])
+      return(
+        (one_p - changepoint_cdf_values[start_ind] +
+          segment_slope * slope_changepoints[start_ind]) /
+          segment_slope
+      )
+    }
+  )
+}
+
+ensemble_quantile <- calc_inverse_cdf(
+  p = 0.5,
+  q = pred_quantiles$quantile,
+  w = pred_quantiles$weight,
+  rectangle_width = rectangle_width)
+weighted_ensemble_quantile <- calc_inverse_cdf(
+  p = 0.5,
+  q = pred_quantiles$quantile,
+  w = pred_quantiles$weight,
+  rectangle_width = weighted_rectangle_width)
+ensemble_quantile_to_plot = dplyr::bind_rows(
+  data.frame(
+    x = c(lower_lim, ensemble_quantile, ensemble_quantile),
+    y = c(0.5, 0.5, 0),
+    method = "unweighted_bw"
+  ),
+  data.frame(
+    x = c(lower_lim, weighted_ensemble_quantile, weighted_ensemble_quantile),
+    y = c(0.5, 0.5, 0),
+    method = "weighted_bw"
+  )
+)
+
+xs <- seq(from = lower_lim, to = upper_lim, length = 1001)
+implied_pdf_cdf <- dplyr::bind_rows(
+  data.frame(
+    x = xs,
+    pdf = pred_quantiles$weight[1] / rectangle_width *
+      ((xs >= pred_quantiles$quantile[1] - rectangle_width/2) & (xs <= pred_quantiles$quantile[1] + rectangle_width/2)) +
+      pred_quantiles$weight[2] / rectangle_width *
+      ((xs >= pred_quantiles$quantile[2] - rectangle_width/2) & (xs <= pred_quantiles$quantile[2] + rectangle_width/2)) +
+      pred_quantiles$weight[3] / rectangle_width *
+      ((xs >= pred_quantiles$quantile[3] - rectangle_width/2) & (xs <= pred_quantiles$quantile[3] + rectangle_width/2)),
+    cdf = calc_cdf_value(x = xs, q = pred_quantiles$quantile, pred_quantiles$weight, rectangle_width),
+    method = "unweighted_bw"
+  ),
+  data.frame(
+    x = xs,
+    pdf = pred_quantiles$weight[1] / weighted_rectangle_width *
+      ((xs >= pred_quantiles$quantile[1] - weighted_rectangle_width/2) & (xs <= pred_quantiles$quantile[1] + weighted_rectangle_width/2)) +
+      pred_quantiles$weight[2] / weighted_rectangle_width *
+      ((xs >= pred_quantiles$quantile[2] - weighted_rectangle_width/2) & (xs <= pred_quantiles$quantile[2] + weighted_rectangle_width/2)) +
+      pred_quantiles$weight[3] / weighted_rectangle_width *
+      ((xs >= pred_quantiles$quantile[3] - weighted_rectangle_width/2) & (xs <= pred_quantiles$quantile[3] + weighted_rectangle_width/2)),
+    cdf = calc_cdf_value(x = xs, q = pred_quantiles$quantile, pred_quantiles$weight, weighted_rectangle_width),
+    method = "weighted_bw"
+  )
+)
+
+p1 <- ggplot(data = pred_quantiles) +
+  geom_point(mapping = aes(x = quantile, y = weight)) +
+  geom_segment(mapping = aes(x = quantile, y = zeros, xend = quantile, yend = weight)) +
+  geom_vline(
+    data = ensemble_quantile_to_plot %>% dplyr::filter(x != 0),
+    mapping = aes(xintercept = x, color = method), linetype = 2) +
+  geom_line(data = implied_pdf_cdf, mapping = aes(x = x, y = pdf, color = method)) +
+  scale_x_continuous(
+    breaks = seq(from = lower_lim, to = upper_lim, by = 2),
+    limits = c(lower_lim, upper_lim),
+    expand = c(0, 0)) +
+  ylim(0, 1) +
+  ggtitle("   (a) weighted PMF view") +
+  theme_bw()
+
+p2 <- ggplot(data = pred_quantiles) +
+#  geom_point(mapping = aes(x = quantile, y = cum_weight)) +
+#  geom_segment(mapping = aes(x = cdf_start_x, y = cdf_start_y, xend = quantile, yend = cum_weight)) +
+  geom_line(
+    data = ensemble_quantile_to_plot,
+    mapping = aes(x = x, y = y, color = method),
+    linetype = 2) +
+  geom_line(
+    data = implied_pdf_cdf,
+    mapping = aes(x = x, y = cdf, color = method),
+  ) +
+  scale_x_continuous(
+    breaks = seq(from = lower_lim, to = upper_lim, by = 2),
+    limits = c(lower_lim, upper_lim),
+    expand = c(0, 0)) +
+#  ylim(0, 1) +
+  ggtitle("   (b) weighted CDF view") +
+  theme_bw()
+
+grid.arrange(p1, p2)
+```
+
+Comments on form of KDE:
+
+ * The above illustrates kernel density estimates with a rectangular kernel.  This basically amounts to placing a uniform distribution of some width centered at each observation, scaling it down by its weight, and summing across observations to get the pdf.  Using a rectangular kernel is helpful because then the cdf is piecewise linear, which is fast and easy to invert.  Since we'll be doing the inversion many times in the estimation procedure, we want that operation to be fast.  For example if we used a Gaussian kernel I think there would be no analytic way to invert the resulting cdf.
+ * I have illustrated two possibilities for the bandwidth (basically, the bandwidth is the standard deviation of the uniform distribution used as the kernel).  Both are based on "Silverman's rule of thumb", which is a fast way to get an approximately decent bandwidth.  It sets $bandwidth = 0.9 \cdot \widehat{\sigma} \cdot n^{-0.2}$, where $\widehat{\sigma}$ is an estimate of the standard deviation of the quantiles we're combining.  I've used two possible values for $\widehat{\sigma}$: (1) the unweighted standard deviation of the predictive quantiles from different models; and (2) the weighted standard deviation of the predictive quantiles from different models.  I suspect that it will not be too important which we use, as long as it's not too large?  The unweighted one will likely make for an easier optimization problem.  The weighted one is probably a little more correct.
+ * We could also try other weighted kernel density estimates, like with a triangular kernel or adaptive bandwidth or asymmetric kernel -- but I'm not sure these variations would make much of a difference.  Let's start off with a simple approach that's fast, and consider adding complexity if it seems like we're not running into compute time constraints.
+
+### Model estimation
+
+Given an observed value $y^i$, we measure the quality of the ensemble prediction at quantile level $\tau_k \in (0, 1)$ by the pinball loss:
+
+$$L(\mathbf{w}; y^i) = \left\{ \mathbf{1}(y^i < q^i_k) - \tau_k \right\} \cdot (q^i_k - y^i),$$
+where on the right hand side, $q^i_k$ is the ensemble forecast, obtained as the weighted median through the procedure outlined above. Note that this weighted median depends on the model weights vector $\mathbf{w}$.  If we have many observations $i = 1, \ldots, n$, we calculate the overall loss as the average loss across these observations.
+
+In practice we propose to use a gradient-based optimization procedure to estimate the weights $\mathbf{w}$.  To facilitate estimation subject to the constraint that the weights are non-negative and sum to one, we use a softmax parameterization:
+
+$$(w_1, \ldots, w_M) = \text{softmax}(v_1, \ldots, v_M) \text{, that is, } w_j = \frac{\exp(v_j)}{ \sum_{j'} \exp(v_{j'})}.$$
+
+To reduce the potential for numerical problems, we can consider introducing only the parameters $(v_1, \ldots, v_{M-1})$, with $v_M = - \sum_{m=1}^{M-1} v_m$.
+
+## Places for further exploration
+
+ * What is the right way to frame this procedure?  Above I described it as an estimator of a "population median" based on a weighted sample, but that's not completely satisfying.
+ * I am pretty sure that this formulation in terms of KDE resolves the counter-intuitive situation with a previous formulation where increasing the weight assigned to one forecaster could move the weighted median away from that forecaster's prediction.  But maybe we could verify this more formally?  One possible route:
+    * Can we explicitly write down a formula for the median as a function of the $v$ vector, with a fixed bandwidth? This will depend on the distances of the q's from each other relative to the magnitude of the bandwidth... might be kindof messy notationally.
+    * Can we get from there to a gradient of the median with respect to v?
+ * Other things?  Aaron says, "Wondering if there might be some useful principles to have in mind here from L-estimator theory. (Thinking of Huber’s stuff, eg)"
+

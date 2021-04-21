@@ -253,6 +253,7 @@ load_covid_forecasts_relative_horizon <- function(
   # and the filter to last submission from each model for each week
   forecasts <-
     # get forecasts from local files
+    # passing monday_dates as last_time_zero argument for load_covid_forecasts
     purrr::map_dfr(
       monday_dates,
       load_covid_forecasts,
@@ -367,7 +368,7 @@ load_covid_forecasts_relative_horizon <- function(
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
-#' @param data_as_of_date
+#' @param data_as_of_date date for which observations should be current
 #' @param intercept logical specifying whether an intercept is included
 #' @param combine_method character specifying the approach to model
 #' combination: "equal", "convex", "positive", "unconstrained", or "median".
@@ -389,7 +390,7 @@ load_covid_forecasts_relative_horizon <- function(
 #' @param missingness character specifying approach to handling missing
 #' forecasts: 'by_location_group', 'rescale', or 'impute'
 #' @param impute_method character string specifying method for imputing missing
-#' forecasts; currently only 'mean' is supported.
+#' forecasts; either 'mean' for mean imputation or 'none' for no imputation
 #' @param backend back end used for optimization.
 #' @param submissions_root path to the data-processed folder of the
 #' covid19-forecast-hub repository
@@ -523,7 +524,7 @@ build_covid_ensemble_from_local_files <- function(
 #' @param missingness character specifying approach to handling missing
 #' forecasts: 'by_location_group', 'rescale', or 'impute'
 #' @param impute_method character string specifying method for imputing missing
-#' forecasts; currently only 'mean' is supported.
+#' forecasts; either 'mean' for mean imputation or 'none' for no imputation
 #' @param backend back end used for optimization.
 #' @param project_url zoltar project url
 #' @param required_quantiles numeric vector of quantiles component models are
@@ -684,7 +685,7 @@ build_covid_ensemble_from_zoltar <- function(
 #' @param missingness character specifying approach to handling missing
 #' forecasts: 'by_location_group', 'rescale', and 'impute'
 #' @param impute_method character string specifying method for imputing missing
-#' forecasts; currently only 'mean' is supported.
+#' forecasts; either 'mean' for mean imputation or 'none' for no imputation
 #' @param backend back end used for optimization.
 #' @param check_missingness_by_target if TRUE, record missingness for every
 #' combination of model, location, forecast week, and target; if FALSE, record
@@ -1082,68 +1083,128 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
 #' missing or available.
 #'
 #' @param qfm a QuantileForecastMatrix
-#' @param impute_method character string specifying method for imputing;
-#' currently only 'mean' is supported
-#'
-#' @return list of two items:
-#' 1. 'qfm_imputed' the input QuantileForecastMatrix object with missing values
-#' imputed
-#' 2. 'weight_transfer' a square matrix of dimension equal to the number of
-#' unique models in qfm.  Entry [i, j] is the proportion of imputed observations
-#' for model j that are attributable to model i.
+#' @param impute_method character string specifying method for imputing missing
+#' forecasts; either 'mean' for mean imputation or 'none' for no imputation
+#' @param weight_transfer_per_group logical indicating whether to compute weight
+#' transfer matrices for every group defined by `weight_transfer_group_factors'
+#' @param weight_transfer_group_factors string vector of these factors with only
+#' "locations" as default.  Ignored if weight_transfer_per_group is FALSE
+#' @param imputed_qfm_only if TRUE, return only imputed QuantileForecastMatrix
+#' 
+#' @return if `imputed_qfm_only` is TRUE, 'qfm_imputed', the input 
+#' QuantileForecastMatrix object with missing values imputed
+#' 
+#' otherwise a list of two items:
+#' 1. 'qfm_imputed'
+#' 2. if `weight_transfer_per_group` is FALSE, 'weight_transfer', a square matrix 
+#' of dimension equal to the number of unique models in qfm.  Entry [i, j] is the 
+#' proportion of imputed observations for model j that are attributable to model i.
+#'    if `weight_transfer_per_group` is TRUE, a data 
+#' frame having a column for each factor and a list-column of the corresponding 
+#' weight transfer matrices whose entries give within-group proportions.
 #'
 #' @export
-impute_missing_per_quantile <- function(qfm, impute_method = 'mean') {
-  col_index <- attr(qfm, 'col_index')
-  model_col <- attr(qfm, 'model_col')
-  quantile_name_col <- attr(qfm, 'quantile_name_col')
-  quantile_levels <- col_index[[quantile_name_col]]
-  unique_quantile_levels <- unique(quantile_levels)
-  num_models <- length(unique(col_index[[model_col]]))
+impute_missing_per_quantile <- function(
+  qfm, 
+  impute_method = 'mean',
+  weight_transfer_per_group = FALSE,
+  weight_transfer_group_factors = 'location',
+  imputed_qfm_only = FALSE) {
+  
+  if (impute_method == 'none') {
+    qfm_imputed <- qfm
+    weight_transfer <- NULL
+  } else if (impute_method == 'mean') {
+    col_index <- attr(qfm, 'col_index')
+    model_col <- attr(qfm, 'model_col')
+    quantile_name_col <- attr(qfm, 'quantile_name_col')
+    quantile_levels <- col_index[[quantile_name_col]]
+    unique_quantile_levels <- unique(quantile_levels)
+    num_models <- length(unique(col_index[[model_col]]))
 
-  X_na <- is.na(qfm)
+    X_na <- is.na(qfm)
 
-  missingness_groups <- X_na %>%
-    as.data.frame() %>%
-    mutate(row_num = dplyr::row_number()) %>%
-    dplyr::group_by_at(seq_len(ncol(.) - 1)) %>%
-    dplyr::summarise(row_inds = list(row_num))
+    missingness_patterns <- X_na %>%
+      as.data.frame() %>%
+      mutate(row_num = dplyr::row_number()) %>%
+      dplyr::group_by(across(seq_len(ncol(.) - 1))) %>%
+      dplyr::summarise(row_inds = list(row_num), .groups = "drop")
 
-  qfm_imputed <- qfm
-  qfm_imputed[is.na(qfm_imputed)] <- 0.0
+    qfm_imputed <- qfm
+    qfm_imputed[is.na(qfm_imputed)] <- 0.0
 
-  weight_transfer <- matrix(0, nrow = num_models, ncol = num_models)
+    weight_transfer <- matrix(0, nrow = num_models, ncol = num_models)
 
-  for(i in seq_len(nrow(missingness_groups))) {
-    row_inds <- missingness_groups$row_inds[[i]]
+    if (weight_transfer_per_group) {
+      row_groups <- attr(qfm, 'row_index') %>% 
+        mutate(row_num = dplyr::row_number()) %>%
+        dplyr::group_by(!!!syms(weight_transfer_group_factors)) %>% 
+        dplyr::summarise(row_inds_per_group = list(row_num), .groups = "drop") %>% 
+        mutate(weight_transfer = list(weight_transfer))
+    }
 
-    impute_mat <- diag(num_models)
+    for(i in seq_len(nrow(missingness_patterns))) {
+      row_inds <- missingness_patterns$row_inds[[i]]
 
-    col_inds <- which(quantile_levels == unique_quantile_levels[1])
-    temp <- !is.na(unclass(qfm)[row_inds[1], col_inds])
-    temp <- temp / sum(temp)
+      # intialize as identity
+      impute_mat <- diag(num_models)
 
-    for(j_ind in seq_along(col_inds)) {
-      j <- col_inds[j_ind]
-      if(is.na(qfm[row_inds[1], j])) {
-        impute_mat[, j_ind] <- temp
+      col_inds <- which(quantile_levels == unique_quantile_levels[1])
+      temp <- !is.na(unclass(qfm)[row_inds[1], col_inds])
+      temp <- temp / sum(temp)
+
+      # form transfer matrix based on first quantile for first 
+      # row (location-date-target) with missingness pattern
+      for(j_ind in seq_along(col_inds)) {
+        j <- col_inds[j_ind]
+        # replace e_i with 'average of non-missing' column
+        if(is.na(qfm[row_inds[1], j])) {
+          impute_mat[, j_ind] <- temp
+        }
+      }
+
+      # use this matrix to impute all quantiles in all rows with i'th miss pattern
+      for(quantile_level in unique_quantile_levels) {
+        col_inds <- which(quantile_levels == quantile_level)
+        qfm_imputed[row_inds, col_inds] <-
+          qfm_imputed[row_inds, col_inds, drop = FALSE] %*% impute_mat
+      }
+
+      weight_transfer <- weight_transfer + length(row_inds) * impute_mat
+      if (weight_transfer_per_group) {
+        row_groups <- row_groups %>% mutate(
+          weight_transfer = purrr::map2(
+            weight_transfer, row_inds_per_group,
+            ~ .x + length(intersect(row_inds, .y)) * impute_mat 
+            )
+          )
       }
     }
 
-    for(quantile_level in unique_quantile_levels) {
-      col_inds <- which(quantile_levels == quantile_level)
-      qfm_imputed[row_inds, col_inds] <-
-        qfm_imputed[row_inds, col_inds, drop = FALSE] %*% impute_mat
+    weight_transfer <- if (weight_transfer_per_group) {
+      row_groups <- row_groups %>% mutate(
+        weight_transfer = purrr::map2(
+          weight_transfer, row_inds_per_group,
+          ~ .x / length(.y)
+        )
+      )
+    } else {
+      tibble(weight_transfer = list(weight_transfer / nrow(qfm)))
     }
-
-    weight_transfer <- weight_transfer + length(row_inds) * impute_mat
+  } else {
+    # impute method is neither 'mean' nor 'none'
+    stop("Invalid impute_method in impute_missing_per_quantile: must be either 'mean' or 'none'")
   }
-  weight_transfer <- weight_transfer / nrow(qfm)
 
-  return(list(
-    qfm_imputed = qfm_imputed,
-    weight_transfer = weight_transfer
-  ))
+  if (imputed_qfm_only) {
+    return(qfm_imputed)
+  } else {
+    return(list(
+      qfm_imputed = qfm_imputed,
+      weight_transfer = weight_transfer
+      )
+    )
+  }
 }
 
 
@@ -1175,13 +1236,19 @@ impute_missing_per_quantile <- function(qfm, impute_method = 'mean') {
 #' constraints are imposed during estimation, but the resulting forecasts are
 #' sorted.
 #' @param impute_method character string specifying method for imputing missing
-#' forecasts; currently only 'mean' is supported.
+#' forecasts; either 'mean' for mean imputation or 'none' for no imputation
+#' @param weight_transfer_per_group 
+#' @param weight_transfer_group_factors 
 #' @param backend back end used for optimization.
 #' @param check_missingness_by_target if TRUE, record missingness for every
 #' combination of model, location, forecast week, and target; if FALSE, record
 #' missingness only for each model and location
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
+#' @param do_baseline_check if TRUE, do baseline quantile check
+#' @param do_sd_check if TRUE, do sd quantile check (for hospitalization forecasts)
+#' @param sd_check_table_path where to save hospitalization sd check table results
+#' @param sd_check_plot_path where to save hospitalization sd check plot results
 #' @param return_all if TRUE, return all quantities; if FALSE, return only some
 #' useful summaries
 #' @param return_eligibility if TRUE, return model eligibility
@@ -1199,6 +1266,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
   quantile_groups = NULL,
   noncross = "constrain",
   impute_method = 'mean',
+  weight_transfer_per_group = FALSE,
+  weight_transfer_group_factors = "location",
   backend = 'quantmod',
   check_missingness_by_target = FALSE,
   do_q10_check,
@@ -1211,7 +1280,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   manual_eligibility_adjust,
   return_all=FALSE,
   return_eligibility = TRUE) {
-  if(missing(forecasts) ||
+  if (missing(forecasts) ||
      missing(forecast_week_end_date) ||
      missing(window_size)) {
     stop("The arguments `forecasts`, `forecast_week_end_date`, and `window_size` must all be provided.")
@@ -1233,6 +1302,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
     quantile_value_col = 'value'
   )
 
+  # consider refactoring to handle similar to covidHubUtils
+  # (this could be unit tested)
   forecast_base_targets <- substr(
     forecasts$target,
     regexpr(' ', forecasts$target) + 1,
@@ -1247,16 +1318,19 @@ get_imputed_ensemble_fits_and_predictions <- function(
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
-    do_sd_check = do_sd_check,  
+    do_sd_check = do_sd_check,
     sd_check_table_path = sd_check_table_path,
-    sd_check_plot_path = sd_check_plot_path,   
+    sd_check_plot_path = sd_check_plot_path,
     baseline_tol = baseline_tol,
     window_size = window_size,
     decrease_tol = 0.0
   )
 
-  if(length(manual_eligibility_adjust) > 0) {
-    for(i in seq_len(nrow(manual_eligibility_adjust))) {
+  # insert manual adjustments into model eligibility results
+  # this code is different (and better) in get_by_location_... function above
+  # can we move this into calc_model_eligibility_for_ensemble?  and unit test it?
+  if (length(manual_eligibility_adjust) > 0) {
+    for (i in seq_len(nrow(manual_eligibility_adjust))) {
       el_inds <- which(
         model_eligibility$model == manual_eligibility_adjust$model[i] &
           model_eligibility$location == manual_eligibility_adjust$location[i]
@@ -1266,6 +1340,16 @@ get_imputed_ensemble_fits_and_predictions <- function(
     }
   }
 
+  # this code should go in a separate function that is called and needs to be
+  # unit tested
+  # intention: remove models that fail to submit all forecasts, at some level
+  # of granularity specified by check_missingness_by_target
+  #  - check_missingness_by_target TRUE: drop a forecast for a combination of
+  #    model, location, forecast_date, target (horizon) if not all quantiles
+  #    provided
+  #  - check_missingness_by_target FALSE: drop a forecast for a combination of
+  #    model, location if not all combinations of forecast date, target
+  #    (horizon) and quantile are provided
   # keep only models that are eligible for inclusion in at least one location,
   # or one combination of location, forecast week, and target if
   # check_missingness_by_target is TRUE
@@ -1319,15 +1403,18 @@ get_imputed_ensemble_fits_and_predictions <- function(
     forecast_matrix <- forecast_matrix[, cols_to_keep]
   }
 
+  # (in new function)
   # drop rows with no eligible models
   rows_to_keep <- apply(forecast_matrix, 1, function(qfm_row) any(!is.na(qfm_row))) %>%
     which()
 
+  # (in new function)
   if(length(rows_to_keep) != nrow(forecast_matrix)) {
 #    dropped_rows <- forecast_matrix[-rows_to_keep, ]
     forecast_matrix <- forecast_matrix[rows_to_keep, ]
   }
 
+  # refactor train/test split into its own unit tested function.
   # get train/test inds
   # train:
   #  - if window_size >= 1, training set comprises only forecasts where
@@ -1335,7 +1422,8 @@ get_imputed_ensemble_fits_and_predictions <- function(
   #  - else if window_size == 0, just keep horizon 1 for train set
   col_index <- attr(forecast_matrix, 'col_index')
   row_index <- attr(forecast_matrix, 'row_index')
-  if(window_size >= 1) {
+  if (window_size >= 1) {
+    # this should call a function that's tested
     target_end_date <- row_index %>%
       dplyr::mutate(
         target_end_date = as.character(
@@ -1418,12 +1506,19 @@ get_imputed_ensemble_fits_and_predictions <- function(
   }
 
   # impute missing values
+
+  if (!weight_transfer_per_group) weight_transfer_group_factors <- NULL
+
   c(imputed_qfm_train, weight_transfer) %<-% impute_missing_per_quantile(
-    qfm=qfm_train,
-    impute_method = impute_method)
-  c(imputed_qfm_test, test_weight_transfer) %<-% impute_missing_per_quantile(
-    qfm=qfm_test,
-    impute_method = impute_method)
+    qfm = qfm_train,
+    impute_method = impute_method,
+    weight_transfer_per_group = weight_transfer_per_group,
+    weight_transfer_group_factors = weight_transfer_group_factors)
+  c(imputed_qfm_test, weight_transfer_test) %<-% impute_missing_per_quantile(
+    qfm = qfm_test,
+    impute_method = impute_method,
+    weight_transfer_per_group = weight_transfer_per_group,
+    weight_transfer_group_factors = weight_transfer_group_factors)
 
   # observed responses to date
   y_train <- attr(qfm_train, 'row_index') %>%
@@ -1447,9 +1542,11 @@ get_imputed_ensemble_fits_and_predictions <- function(
   imputed_qfm_train <- imputed_qfm_train[non_missing_inds, ]
 
   # fit ensembles and obtain predictions per group
-  if(combine_method == 'ew') {
-    qra_fit <- estimate_qra(imputed_qfm_train, combine_method = 'ew')
-    orig_qra_fit <- qra_fit    
+  if (combine_method == 'ew') {
+    # no y_train given - no training is done for equal weights
+    qra_fit <- estimate_qra(
+      qfm_train = imputed_qfm_train, 
+      combine_method = 'ew')   
   } else {
     qra_fit <- estimate_qra(
       qfm_train = imputed_qfm_train,
@@ -1460,31 +1557,73 @@ get_imputed_ensemble_fits_and_predictions <- function(
       quantile_groups = quantile_groups,
       noncross = noncross,
       backend = backend)
+  }
+  
+  orig_qra_fit <- qra_fit
 
-    # do weight transfer among models
-    # save original weights for retrospective exploration
-    orig_qra_fit <- qra_fit
+  # do weight transfer among models
+  # save original weights for retrospective exploration
+
+  # No need to do redistribution of estimated weights for an equally weighted model --
+  # we just apply equal weights to all models that made test set predictions
+  if (combine_method != 'ew' && impute_method != 'none') {
     if(nrow(qra_fit$coefficients) == nrow(weight_transfer)) {
       # single weight per model
-      qra_fit$coefficients$beta <-
-        weight_transfer %*% matrix(qra_fit$coefficients$beta)
+      betas <- weight_transfer %>% 
+      dplyr::mutate(
+        betas = purrr::map(
+          weight_transfer,
+          ~ . %*% matrix(qra_fit$coefficients$beta)
+        )) %>% 
+      dplyr::select(!!!syms(weight_transfer_group_factors), betas)
     } else {
       # weight per quantile; adjust by iterating through quantile levels
       qs <- qra_fit$coefficients[[attr(qfm_train, 'quantile_name_col')]]
-      for (q in unique(qs)) {
-        row_inds <- which(qs == q)
-        qra_fit$coefficients$beta[row_inds] <-
-          weight_transfer %*% matrix(qra_fit$coefficients$beta[row_inds])
-      }
+      betas <- weight_transfer %>% 
+      dplyr::mutate(
+        betas = purrr::map(
+          weight_transfer,
+          function(wt) {
+            betas <- matrix(qra_fit$coefficients$beta)
+            for (q in unique(qs)) {
+              betas[which(qs == q)] <- wt %*% betas[which(qs == q)]
+            }
+            return(betas)
+          }
+        )) %>% 
+      dplyr::select(!!!syms(weight_transfer_group_factors), betas)      
     }
   }
 
   # obtain predictions
-  qra_forecast <- predict(
-    qra_fit,
-    imputed_qfm_test,
-    sort_quantiles = (noncross == "sort")) %>%
-      as.data.frame()
+  if (combine_method == 'ew' || !weight_transfer_per_group) {
+    qra_forecast <- predict(
+      qra_fit,
+      imputed_qfm_test,
+      sort_quantiles = (noncross == "sort")) %>%
+    as.data.frame()
+  } else {
+    qra_forecast <- weight_transfer_test %>% 
+      dplyr::left_join(betas, by = weight_transfer_group_factors) %>% 
+      dplyr::mutate(
+        imputed_qfm_test_per_group = purrr::map(
+          row_inds_per_group,
+          ~ imputed_qfm_test[.,])) %>% 
+      dplyr::mutate(
+        forecasts = purrr::map2(
+          betas, imputed_qfm_test_per_group,
+          function (betas, imputed_qfm_test_per_group) {
+            qra_fit$coefficients$beta <- as.vector(betas)
+            return(
+              predict(qra_fit, imputed_qfm_test_per_group,
+                sort_quantiles = (noncross == "sort")
+                ) %>% as.data.frame()
+            )
+          }
+        )
+      ) %>% dplyr::select(forecasts) %>% 
+      purrr::map_dfr(bind_rows)
+    }
 
   # return
   if(return_all) {
@@ -1510,207 +1649,3 @@ get_imputed_ensemble_fits_and_predictions <- function(
 
   return(result)
 }
-
-
-#' Calculate rescaled convex ensemble fit, renormalizing in case of missing models
-#'
-#' @param forecasts data frame with columns 'model', 'location',
-#' 'forecast_week_end_date', 'target', 'quantile', and 'value'
-#' @param observed_by_location_target_end_date data frame with columns
-#' 'location', 'base_target', 'target_end_date', and 'observed'
-#' @param forecast_week_end_date Date object: date of the saturday for the end
-#' of the forecast week; week-ahead targets are with respect to this date
-#' @param window_size size of window
-#'
-#' @return tibble or data frame with ensemble fits and results
-get_rescaled_ensemble_fits_and_predictions <- function(
-  forecasts,
-  observed_by_location_target_end_date,
-  forecast_week_end_date,
-  window_size,
-  do_q10_check,
-  do_nondecreasing_quantile_check,
-  do_baseline_check = do_baseline_check,
-  do_sd_check, 
-  sd_check_table_path = NULL,
-  sd_check_plot_path = NULL, 
-  baseline_tol = 1.2,
-  manual_eligibility_adjust,
-  return_all=FALSE,
-  return_eligibility = TRUE) {
-  # for development/debugging
-  #forecast_week_end_date <- lubridate::ymd("2020-05-02")
-  #window_size <- 2L
-
-  if(window_size == 0) {
-    stop("window size must be >= 1 for rescaled convex ensemble!")
-  }
-
-  # obtain model eligibility for each model in the current week.
-  # - drop forecasts for all weeks from models that are not eligible for any
-  #   location in the current week
-  # - drop forecasts for the current week for model-location combinations where
-  #   the model is ineligible
-  forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
-    forecast_df = forecasts %>%
-      filter(forecast_week_end_date == UQ(forecast_week_end_date)),
-    model_col = 'model',
-    id_cols = c('location', 'forecast_week_end_date', 'target'),
-    quantile_name_col = 'quantile',
-    quantile_value_col = 'value'
-  )
-
-  model_eligibility <- covidEnsembles::calc_model_eligibility_for_ensemble(
-    qfm = forecast_matrix,
-    observed_by_location_target_end_date =
-      observed_by_location_target_end_date,
-    do_q10_check = do_q10_check,
-    do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
-    do_baseline_check = do_baseline_check,
-    do_sd_check = do_sd_check,
-    sd_check_table_path = sd_check_table_path,
-    sd_check_plot_path = sd_check_plot_path,     
-    baseline_tol = baseline_tol,
-    window_size = 0,
-    decrease_tol = 0.0
-  )
-
-  models_ineligible_all_locations <- model_eligibility %>%
-    group_by(model) %>%
-    summarize(all_ineligible = all(overall_eligibility != 'eligible')) %>%
-    filter(all_ineligible) %>%
-    pull(model)
-
-  forecasts <- forecasts %>%
-    dplyr::filter(!(model %in% models_ineligible_all_locations)) %>%
-    dplyr::left_join(model_eligibility %>%
-      dplyr::filter(!(model %in% models_ineligible_all_locations)) %>%
-      dplyr::select(location, model, overall_eligibility)) %>%
-    dplyr::filter(overall_eligibility == 'eligible' |
-      forecast_week_end_date != UQ(forecast_week_end_date)) %>%
-    dplyr::select(-overall_eligibility)
-
-  # obtain model eligibility for each model separately for past weeks in the
-  # window.
-  # - drop forecasts for that week for model-location combinations where
-  #   the model is ineligible
-  for(w in seq_len(window_size)) {
-    forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
-      forecast_df = forecasts %>%
-        filter(forecast_week_end_date == UQ(forecast_week_end_date) - 7*w),
-      model_col = 'model',
-      id_cols = c('location', 'forecast_week_end_date', 'target'),
-      quantile_name_col = 'quantile',
-      quantile_value_col = 'value'
-    )
-
-    model_eligibility <- covidEnsembles::calc_model_eligibility_for_ensemble(
-      qfm = forecast_matrix,
-      observed_by_location_target_end_date =
-        observed_by_location_target_end_date %>%
-        dplyr::filter(base_target == paste0('wk ahead cum death')),
-      do_q10_check = do_q10_check,
-      do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
-      do_baseline_check = do_baseline_check,
-      do_sd_check = do_sd_check,
-      sd_check_table_path = sd_check_table_path,
-      sd_check_plot_path = sd_check_plot_path,             
-      baseline_tol = baseline_tol,
-      window_size = 0,
-      decrease_tol = 0.0
-    )
-
-    forecasts <- forecasts %>%
-      dplyr::filter(!(model %in% models_ineligible_all_locations)) %>%
-      dplyr::left_join(model_eligibility %>%
-                         dplyr::filter(!(model %in% models_ineligible_all_locations)) %>%
-                         dplyr::select(location, model, overall_eligibility)) %>%
-      dplyr::filter(overall_eligibility == 'eligible' |
-                      forecast_week_end_date != UQ(forecast_week_end_date) - 7*w) %>%
-      dplyr::select(-overall_eligibility)
-  }
-
-
-  # create training and test sets
-  this_week_forecasts_train <-
-    forecasts %>%
-    filter(target_end_date <= UQ(forecast_week_end_date))
-
-  this_week_forecasts_test <-
-    forecasts %>%
-    filter(
-      forecast_week_end_date == UQ(forecast_week_end_date),
-      model %in% this_week_forecasts_train$model
-    )
-  
-  # from the test set, drop combinations of model and location that don't
-  # appear in the training set
-  train_model_and_location <- paste0(
-    this_week_forecasts_train$model, "_", this_week_forecasts_train$location
-  ) %>%
-    unique()
-  this_week_forecasts_test <- this_week_forecasts_test %>%
-    dplyr::mutate(
-      model_and_location = paste(model, location, sep = "_")
-    ) %>%
-    dplyr::filter(model_and_location %in% train_model_and_location) %>%
-    dplyr::select(-model_and_location)
-
-  # when training, don't include models that aren't available in the test set
-  this_week_forecasts_train <- this_week_forecasts_train %>%
-    filter(model %in% this_week_forecasts_test$model)
-
-  qfm_train <- new_QuantileForecastMatrix_from_df(
-    forecast_df = this_week_forecasts_train,
-    model_col = 'model',
-    id_cols = c('location', 'forecast_week_end_date', 'target'),
-    quantile_name_col = 'quantile',
-    quantile_value_col = 'value',
-    drop_missing_id_levels = TRUE
-  )
-
-  qfm_test <- new_QuantileForecastMatrix_from_df(
-    forecast_df = this_week_forecasts_test %>%
-      left_join(
-        observed_by_location_target_end_date %>%
-          dplyr::filter(base_target == paste0('wk ahead cum death')),
-        by = c('location', 'target_end_date')) %>%
-      filter(
-        forecast_week_end_date == max(forecast_week_end_date),
-        !is.na(observed)),
-    model_col = 'model',
-    id_cols = c('location', 'forecast_week_end_date', 'target'),
-    quantile_name_col = 'quantile',
-    quantile_value_col = 'value'
-  )
-
-  y_train <- attr(qfm_train, 'row_index') %>%
-    dplyr::mutate(
-      target_end_date = as.character(
-        lubridate::ymd(forecast_week_end_date) +
-          as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
-            ifelse(grepl("day", target), 1, 7)
-      ),
-      base_target = substr(target, regexpr(" ", target, fixed = TRUE) + 1, nchar(target))
-    ) %>%
-    dplyr::left_join(
-      observed_by_location_target_end_date %>%
-        dplyr::filter(base_target == paste0('wk ahead cum death')),
-      by = c('location', 'target_end_date', 'base_target')) %>%
-    dplyr::pull(observed)
-
-  rescaled_convex_qra_fit <- estimate_qra(
-    qfm_train = qfm_train,
-    y_train = y_train,
-    qra_model = 'rescaled_convex_per_model',
-    backend = 'optim')[[2]]
-
-  return(
-    list(
-      rescaled_convex_qra_fit = rescaled_convex_qra_fit,
-      qfm_test = qfm_test,
-      predicted_test = predict(rescaled_convex_qra_fit, qfm_test)
-    )
-  )
-}
-

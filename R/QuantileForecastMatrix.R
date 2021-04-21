@@ -301,3 +301,39 @@ sort.QuantileForecastMatrix <- function(qfm) {
   return(qfm)
 }
 
+#' Show the basic data matrix of a QuantileForecastMatrix
+#' @param qfm wide matrix representation of forecasts
+#' @param digits number of digits to leave after decimal
+#' @export
+qfm_data <- function(qfm, digits = 1) {
+  array(round(qfm, digits), dim(qfm))
+}
+
+#' Print a QuantileForecastMatrix
+#' @param qfm wide matrix representation of forecasts
+#' 
+#' @return a dataframe of all characters with no names
+#' @export
+print.qfm <- function(qfm) {
+  cols <- attr(qfm, "col_index")
+  rows <- attr(qfm, "row_index")
+  cnames <- names(cols)
+  qname <- attr(qfm, "quantile_name_col")
+  m <- rbind(
+    cbind(
+      array("",c(ncol(cols)-1,ncol(rows)-1)), 
+      cnames[cnames!=qname],
+      t(unname(cols[,cnames!=qname]))
+      ),
+    c(names(rows), cols[[qname]]),
+    cbind(
+      as.matrix(unname(rows)), 
+      array(as.character(round(qfm,1)), dim(qfm))
+    )
+  )
+  m[is.na(m)] <- "."
+  m <- unname(as.data.frame(m))
+  rownames(m) <- NULL
+  print(m)
+}
+

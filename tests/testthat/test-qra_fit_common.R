@@ -39,7 +39,7 @@ test_that("predict.qra_fit works: single weight per model, no normalization", {
     class = "qra_fit"
   )
 
-  actual <- predict(qra_fit, forecast_matrix)
+  actual <- predict(qra_fit, forecast_matrix, sort_quantiles = FALSE)
   # list of null dimnames was causing test to fail pointlessly
   attr(actual, "dimnames") <- NULL
 
@@ -107,7 +107,7 @@ test_that(
     class = "qra_fit"
   )
 
-  actual <- predict(qra_fit, forecast_matrix)
+  actual <- predict(qra_fit, forecast_matrix, sort_quantiles = FALSE)
   # list of null dimnames was causing test to fail pointlessly
   attr(actual, "dimnames") <- NULL
 
@@ -162,7 +162,7 @@ test_that("predict.qra_fit works: single weight per model, convex constraint", {
     par = c(-1, 4, 5),
     qfm_train = forecast_matrix)
 
-  actual <- predict(qra_fit, forecast_matrix)
+  actual <- predict(qra_fit, forecast_matrix, sort_quantiles = FALSE)
   # list of null dimnames was causing test to fail pointlessly
   attr(actual, "dimnames") <- NULL
 

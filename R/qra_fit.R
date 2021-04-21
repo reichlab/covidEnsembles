@@ -46,6 +46,22 @@ is.median_qra_fit <- function(object) {
 }
 
 
+#' Check if object is of class qenspy_qra_fit
+#'
+#' @param object an object that may be a qenspy_qra_fit object
+#'
+#' @return boolean; whether object is inherits qenspy_qra_fit class
+#'
+#' @export
+is.qenspy_qra_fit <- function(object) {
+  if (inherits(object, "qenspy_qra_fit")) {
+    return(TRUE)
+  } else {
+    return(FALSE)
+  }
+}
+
+
 #' Validate qra_fit object
 #'
 #' @param qra_fit
@@ -92,6 +108,49 @@ new_qra_fit <- function(
   )
 
 #  validate_qra_fit(qra_fit)
+
+  return(qra_fit)
+}
+
+
+#' Create a qenspy_qra_fit object
+#'
+#' @param param_vec numeric vector of "raw" parameter estimates
+#' @param M integer number of models
+#' @param model_names name for each model
+#' @param quantile_levels numeric vector of quantile levels
+#' @param quantile_groups number of quantile groups
+#' @param combine_method string specifying combination method;
+#' either "convex_mean" or "convex_median"
+#' @param bw_method bandwidth method, relevant only if combine_method is
+#' "convex_median"
+#'
+#' @return qenspy_qra_fit object
+#'
+#' @export
+new_qenspy_qra_fit <- function(
+  param_vec,
+  M,
+  model_names = rep("", M),
+  quantile_levels,
+  quantile_groups,
+  combine_method,
+  bw_method = NULL
+) {
+  qra_fit <- structure(
+    list(
+      param_vec = param_vec,
+      M = M,
+      model_names = model_names,
+      quantile_levels = quantile_levels,
+      quantile_groups = quantile_groups,
+      combine_method = combine_method,
+      bw_method = bw_method
+    ),
+    class = 'qenspy_qra_fit'
+  )
+
+#  validate_qenspy_qra_fit(qra_fit)
 
   return(qra_fit)
 }
@@ -144,6 +203,44 @@ new_median_qra_fit <- function(...) {
   )
 
   return(median_qra_fit)
+}
+
+
+
+#' Predict based on a quantile regression averaging fit
+#'
+#' @param qra_fit object of class qra_fit
+#'
+#' @return object of class QuantileForecastMatrix with quantile forecasts
+#'
+#' @export
+extract_weights_qenspy_qra_fit <- function(qra_fit) {
+  # create qenspy object of appropriate class
+  qens <- reticulate::import("qenspy.qens", delay_load = TRUE)
+  if (qra_fit$combine_method == "convex_mean") {
+    qens_model <- qens$MeanQEns()
+  } else if (qra_fit$combine_method == "convex_median") {
+    qens_model <- qens$MedianQEns(bw_method = qra_fit$bw_method)
+  } else {
+    stop("combine_method must be convex_mean or convex_median")
+  }
+
+  weights <- qens_model$unpack_params(
+    qra_fit$param_vec,
+    qra_fit$M,
+    qra_fit$quantile_groups)
+  weights <- weights$w$numpy()
+
+  weights_df <- weights %>%
+    as.data.frame() %>%
+    `colnames<-`(qra_fit$model_names) %>%
+    dplyr::mutate(quantile_level = qra_fit$quantile_levels) %>%
+    tidyr::pivot_longer(
+      cols = qra_fit$model_names,
+      names_to = "model",
+      values_to = "weight")
+
+  return(weights_df)
 }
 
 
@@ -231,17 +328,92 @@ predict.qra_fit <- function(qra_fit, qfm, sort_quantiles) {
 }
 
 
+
 #' Predict based on a quantile regression averaging fit
 #'
-#' @param qra_fit_rescalable object of class qra_fit_rescalable
+#' @param qra_fit object of class qra_fit
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
-#' @param ... ignored additional arguments (in particular, absorbs the
-#' sort_quantiles argument used by \code{predict.qra_fit})
+#' @param sort_quantiles logical; if TRUE, the predictive quantiles are sorted
+#' in order of the quantile level.  Otherwise, the raw predictive quantiles are
+#' returned.
 #'
 #' @return object of class QuantileForecastMatrix with quantile forecasts
 #'
 #' @export
-predict.rescaled_qra_fit <- function(qra_fit, qfm, ...) {
+predict.qenspy_qra_fit <- function(qra_fit, qfm, sort_quantiles) {
+  # construct sparse matrix representing model weights across quantiles
+  ## pull out parameter values
+  row_index <- attr(qfm, 'row_index')
+  col_index <- attr(qfm, 'col_index')
+  num_models <- qra_fit$M
+
+  quantiles <- col_index[[attr(qfm, 'quantile_name_col')]] %>%
+    unique() %>%
+    sort() %>%
+    as.numeric()
+  num_quantiles <- length(quantiles)
+
+  qarr <- unclass(qfm)
+  dim(qarr) <- c(nrow(qarr), num_quantiles, num_models)
+
+  # create qenspy object of appropriate class
+  qens <- reticulate::import("qenspy.qens", delay_load = TRUE)
+  if (qra_fit$combine_method == "convex_mean") {
+    qens_model <- qens$MeanQEns()
+  } else if (qra_fit$combine_method == "convex_median") {
+    qens_model <- qens$MedianQEns(bw_method = qra_fit$bw_method)
+  } else {
+    stop("combine_method must be convex_mean or convex_median")
+  }
+
+  # get_predictions
+  predictions_raw <- qens_model$predict(
+    q = qarr,
+    w = qens_model$unpack_params(
+      qra_fit$param_vec,
+      M = num_models,
+      tau_groups = qra_fit$quantile_groups
+    )
+  )
+  result_matrix <- predictions_raw$numpy()
+  
+  # Create QuantileForecastMatrix with result
+  model_col <- attr(qfm, 'model_col')
+  new_col_index <- col_index[
+    col_index[[model_col]] == col_index[[model_col]][1], ]
+  new_col_index[[model_col]] <- 'qra'
+
+  result_qfm <- new_QuantileForecastMatrix(
+    qfm = result_matrix,
+    row_index = row_index,
+    col_index = new_col_index,
+    model_col = attr(qfm, 'model_col'),
+    quantile_name_col = attr(qfm, 'quantile_name_col'),
+    quantile_value_col = attr(qfm, 'quantile_value_col')
+  )
+
+  # sort predictive quantiles if requested
+  if (sort_quantiles) {
+    result_qfm <- sort(result_qfm)
+  }
+
+  return(result_qfm)
+}
+
+
+#' Predict based on a quantile regression averaging fit
+#'
+#' @param qra_fit_rescalable object of class qra_fit_rescalable
+#' @param qfm matrix of model forecasts of class QuantileForecastMatrix
+#' @param sort_quantiles logical; if TRUE, the predictive quantiles are sorted
+#' in order of the quantile level.  Otherwise, the raw predictive quantiles are
+#' returned.
+#' @param ... ignored additional arguments
+#'
+#' @return object of class QuantileForecastMatrix with quantile forecasts
+#'
+#' @export
+predict.rescaled_qra_fit <- function(qra_fit, qfm, sort_quantiles, ...) {
   # construct sparse matrix representing model weights across quantiles
   ## pull out parameter values
   col_index <- attr(qfm, 'col_index')
@@ -298,7 +470,7 @@ predict.rescaled_qra_fit <- function(qra_fit, qfm, ...) {
         convex = TRUE
       )
 
-      return(predict(reduced_qra_fit, reduced_qfm))
+      return(predict(reduced_qra_fit, reduced_qfm, sort_quantiles = sort_quantiles))
     }
   )
 
@@ -437,9 +609,25 @@ estimate_qra <- function(
     choices = c("ew", "convex", "positive", "unconstrained", "median"))
   backend <- match.arg(
     backend,
-    choices = c("optim", "NlcOptim", "qra", "quantgen"))
+    choices = c("optim", "NlcOptim", "qra", "quantgen", "qenspy"))
 
-  if(backend == "quantgen") {
+  if (backend == "qenspy") {
+    combine_method <- match.arg(
+      combine_method,
+      choices = c("convex", "convex_median"))
+    if (combine_method == "convex") {
+      combine_method <- "convex_mean"
+    }
+    if (noncross != "sort") {
+      stop('For backend "qenspy", noncross method must be "sort"')
+    }
+    result <- estimate_qra_qenspy(
+      qfm_train = qfm_train,
+      y_train = y_train,
+      combine_method = combine_method,
+      quantile_groups = quantile_groups,
+      ...)
+  } else if(backend == "quantgen") {
     combine_method <- match.arg(
       combine_method,
       choices = c("convex", "positive", "unconstrained"))
@@ -872,6 +1060,91 @@ estimate_qra_quantgen <- function(
       quantgen_qarr_train = qarr_train,
       quantgen_y_train = y_train),
     convex = FALSE
+  )
+
+  return(qra_fit)
+}
+
+
+
+
+#' Estimate qra model using qenspy package as backend
+#'
+#' @param qfm_train QuantileForecastMatrix with training set predictions
+#' @param y_train numeric vector of responses for training set
+#' @param qfm_test QuantileForecastMatrix with test set predictions
+#' @param intercept logical specifying whether an intercept is included
+#' @param constraint character specifying constraints on parameters; 'convex',
+#' 'positive' or 'unconstrained'
+#' @param quantile_groups Vector of group labels for quantiles, having the same
+#' length as the number of quantiles.  Common labels indicate that the ensemble
+#' weights for the corresponding quantile levels should be tied together.
+#' Default is rep(1,length(quantiles)), which means that a common set of
+#' ensemble weights should be used across all levels.  This is the argument
+#' `tau_groups` for `quantgen::quantile_ensemble`
+#'
+#' @return object of class qra_fit
+estimate_qra_qenspy <- function(
+    qfm_train,
+    y_train,
+    combine_method,
+    bw_method = "silverman_weighted",
+    quantile_groups,
+    init_param_vec = NULL,
+    optim_method = "adam",
+    num_iter = 20000,
+    learning_rate = 0.1,
+    verbose = FALSE
+    ) {
+  require(reticulate)
+  
+  # unpack and process arguments
+  col_index <- attr(qfm_train, 'col_index')
+  model_col <- attr(qfm_train, 'model_col')
+  quantile_name_col <- attr(qfm_train, 'quantile_name_col')
+
+  models <- unique(col_index[[model_col]])
+  num_models <- length(models)
+
+  quantiles <- as.numeric(sort(unique(col_index[[quantile_name_col]])))
+  num_quantiles <- length(quantiles)
+
+  quantile_groups <- as.integer(factor(quantile_groups)) - 1
+
+  # reformat training set predictive quantiles from component models as 3d
+  # array in format required for qenspy
+  qarr_train <- unclass(qfm_train)
+  dim(qarr_train) <- c(nrow(qarr_train), num_quantiles, num_models)
+
+  # estimate ensemble parameters
+  qens <- reticulate::import("qenspy.qens", delay_load = TRUE)
+  if (combine_method == "convex_mean") {
+    qens_model <- qens$MeanQEns()
+  } else if (combine_method == "convex_median") {
+    qens_model <- qens$MedianQEns(bw_method = bw_method)
+  }
+
+  qens_model$fit(
+    y_train,
+    qarr_train,
+    quantiles,
+    quantile_groups,
+    init_param_vec =
+      rep(0.0, (dim(qarr_train)[3] - 1) * length(unique(quantile_groups))),
+    optim_method = optim_method,
+    num_iter = as.integer(num_iter),
+    learning_rate = learning_rate,
+    verbose = verbose)
+
+  # Create R object representing the model fit
+  qra_fit <- new_qenspy_qra_fit(
+    param_vec = qens_model$get_param_estimates_vec(),
+    M = dim(qarr_train)[3],
+    model_names = models,
+    quantile_levels = quantiles,
+    quantile_groups = quantile_groups,
+    combine_method = combine_method,
+    bw_method = bw_method
   )
 
   return(qra_fit)

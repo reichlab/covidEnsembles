@@ -54,6 +54,8 @@ targets, a Monday.}
 
 \item{window_size}{size of window}
 
+\item{data_as_of_date}{date for which observations should be current}
+
 \item{intercept}{logical specifying whether an intercept is included}
 
 \item{combine_method}{character specifying the approach to model
@@ -80,7 +82,7 @@ sorted.}
 forecasts: 'by_location_group', 'rescale', or 'impute'}
 
 \item{impute_method}{character string specifying method for imputing missing
-forecasts; currently only 'mean' is supported.}
+forecasts; either 'mean' for mean imputation or 'none' for no imputation}
 
 \item{backend}{back end used for optimization.}
 
