@@ -41,7 +41,7 @@ if (run_setting == "midas_cluster_single_node") {
   num_cores <- 18L
 
   first_forecast_date <- lubridate::ymd("2020-05-11")
-  last_forecast_date <- lubridate::ymd("2021-02-01")
+  last_forecast_date <- lubridate::ymd("2021-03-01")
 
   #last_forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
   num_forecast_weeks <-
@@ -56,8 +56,9 @@ if (run_setting == "midas_cluster_single_node") {
     intercept = c("FALSE"),
     combine_method = c("convex"),
     quantile_group_str = c("per_quantile", "3_groups", "per_model"),
+    noncross = "sort",
     missingness = c("mean_impute"),
-    window_size = as.character(3:10), #"full_history", #c(as.character(3:10)), #"full_history"),
+    window_size = c(as.character(3:10), "full_history"),
     check_missingness_by_target = "TRUE",
     do_standard_checks = "FALSE",
     do_baseline_check = "FALSE"
@@ -67,10 +68,9 @@ if (run_setting == "midas_cluster_single_node") {
         spatial_resolution != "county" &
         forecast_date >= "2020-06-22") |
       (response_var == "inc_case" & forecast_date >= "2020-09-14") |
-      (response_var == "inc_hosp" & forecast_date > "2020-11-16" &
-        spatial_resolution != "county"),# |
-  #    (response_var == "inc_hosp" & forecast_week >= "2020-11-16"),
-      (spatial_resolution != "county" & window_size %in% c("8", "9", "10") ) | window_size %in% c("3")
+      (response_var == "inc_hosp" & forecast_date >= "2020-11-23" &
+        spatial_resolution != "county"),
+      (spatial_resolution != "county") | window_size %in% c("3", "4")
     ) %>%
     dplyr::arrange(window_size, forecast_date)
 
@@ -83,6 +83,7 @@ if (run_setting == "midas_cluster_single_node") {
     intercept = c("FALSE"),
     combine_method = c("ew", "median"),
     quantile_group_str = c("per_model"),
+    noncross = "constrain",
     missingness = c("by_location_group"),
     window_size = "0",
     check_missingness_by_target = "FALSE",
@@ -94,15 +95,14 @@ if (run_setting == "midas_cluster_single_node") {
         spatial_resolution != "county" &
         forecast_date >= "2020-06-22") |
       (response_var == "inc_case" & forecast_date >= "2020-09-14") |
-      (response_var == "inc_hosp" & forecast_date > "2020-11-16" &
+      (response_var == "inc_hosp" & forecast_date >= "2020-11-23" &
         spatial_resolution != "county")
     )
 
   analysis_combinations <- dplyr::bind_rows(
     trained_analysis_combinations,
     unweighted_analysis_combinations
-  )# %>%
-#    filter(forecast_date < "2021-01-18")
+  )
 
   # filter to keep only cases that have not successfully run previously
   analysis_combinations <- analysis_combinations %>%
@@ -112,6 +112,7 @@ if (run_setting == "midas_cluster_single_node") {
         "-combine_method_", combine_method,
         "-missingness_", ifelse(missingness == "mean_impute", "impute", missingness),
         "-quantile_groups_", quantile_group_str,
+	"-noncross_", noncross,
         "-window_size_", window_size,
         "-check_missingness_by_target_", check_missingness_by_target,
         "-do_standard_checks_", do_standard_checks,
@@ -130,36 +131,6 @@ if (run_setting == "midas_cluster_single_node") {
       job_complete = file.exists(forecast_filename)) %>%
     dplyr::filter(!job_complete)
 
-  # dim(analysis_combinations)
-
-  # prev_analysis_combinations <- readr::read_csv("code/application/retrospective-qra-comparison/analysis_combinations.csv")
-  # analysis_combinations <- analysis_combinations %>%
-  #   dplyr::mutate(
-  #     full_case = paste0(case_str, spatial_resolution, response_var, forecast_date)
-  #   )
-  # prev_analysis_combinations <- prev_analysis_combinations %>%
-  #   dplyr::mutate(
-  #     full_case = paste0(case_str, spatial_resolution, response_var, forecast_date)
-  #   )
-
-  # prev_analysis_combinations$failed <- prev_analysis_combinations$full_case %in% analysis_combinations$full_case
-  # prev_analysis_combinations$failed %>% which()
-  # prev_analysis_combinations$failed %>% sum()
-
-
-  # analysis_combinations %>%
-  # #  filter(forecast_date < "2021-01-18") %>%
-  #   select(spatial_resolution:do_baseline_check) %>%
-  #   as.data.frame()
-
-  # analysis_combinations <- analysis_combinations[1:3, ]
-
-  # analysis_combinations <- analysis_combinations %>%
-  #   dplyr::filter(response_var == "inc_hosp")
-
-  #analysis_combinations <- analysis_combinations %>%
-  #  dplyr::filter(response_var %in% c("inc_death", "inc_case"), window_size == "full_history")
-
   dim(analysis_combinations)
 }
 
@@ -175,6 +146,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
     intercept <- analysis_combinations$intercept[row_ind]
     combine_method <- analysis_combinations$combine_method[row_ind]
     quantile_group_str <- analysis_combinations$quantile_group_str[row_ind]
+    noncross <- analysis_combinations$noncross[row_ind]
     missingness <- analysis_combinations$missingness[row_ind]
     window_size <- analysis_combinations$window_size[row_ind]
     check_missingness_by_target <-
@@ -192,6 +164,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
       combine_method, " ",
       missingness, " ",
       quantile_group_str, " ",
+      noncross, " ",
       window_size, " ",
       check_missingness_by_target, " ",
       do_standard_checks, " ",
@@ -200,7 +173,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
       "\' code/application/retrospective-qra-comparison/fit_retrospective_model.R ",
       output_path, "output-", response_var, "-", forecast_date, "-",
       intercept, "-", combine_method, "-", missingness, "-", quantile_group_str,
-      "-", window_size, "-", check_missingness_by_target, "-",
+      "-", noncross, "-", window_size, "-", check_missingness_by_target, "-",
       do_standard_checks, "-", do_baseline_check, "-", spatial_resolution,
       ".Rout")
 
@@ -250,6 +223,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
     intercept <- analysis_combinations$intercept[row_ind]
     combine_method <- analysis_combinations$combine_method[row_ind]
     quantile_group_str <- analysis_combinations$quantile_group_str[row_ind]
+    noncross <- analysis_combinations$noncross[row_ind]
     missingness <- analysis_combinations$missingness[row_ind]
     window_size <- analysis_combinations$window_size[row_ind]
     check_missingness_by_target <-
@@ -265,6 +239,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
       "-", combine_method,
       "-", ifelse(missingness == "mean_impute", "impute", missingness),
       "-", quantile_group_str,
+      "-", noncross,
       "-", window_size,
       "-", check_missingness_by_target,
       "-", do_standard_checks,
@@ -280,7 +255,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
                 "#BSUB -R span[hosts=1] # ask for all the cores on a single machine\n",
                 "#BSUB -R rusage[mem=10000] # ask for memory\n",
                 "#BSUB -o covidEnsembles.out # log LSF output to a file\n",
-                "#BSUB -W 74:00 # run time\n",
+                "#BSUB -W 48:00 # run time\n",
                 "#BSUB -q long # which queue we want to run in\n")
     
     cat(requestCmds, file = filename)
@@ -295,6 +270,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
         combine_method, " ",
         missingness, " ",
         quantile_group_str, " ",
+	noncross, " ",
         window_size, " ",
         check_missingness_by_target, " ",
         do_standard_checks, " ",
@@ -303,7 +279,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
         "\' code/application/retrospective-qra-comparison/fit_retrospective_model.R ",
         output_path, "output-", response_var, "-", forecast_date, "-",
         intercept, "-", combine_method, "-", missingness, "-", quantile_group_str,
-        "-", window_size, "-", check_missingness_by_target, "-",
+        "-", noncross, "-", window_size, "-", check_missingness_by_target, "-",
         do_standard_checks, "-", do_baseline_check, "-", spatial_resolution,
         ".Rout"),
       file = filename, append = TRUE)
