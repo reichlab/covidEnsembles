@@ -1,11 +1,11 @@
-library(gurobi)
-library(quantgen)
 library(covidData)
 library(covidEnsembles)
 library(tidyverse)
 library(zeallot)
 library(gridExtra)
 library(yaml)
+library(reticulate)
+Sys.setenv(CUDA_VISIBLE_DEVICES = '-1')
 
 #options(warn=2, error=recover)
 
@@ -41,6 +41,8 @@ library(yaml)
 #args <- c("local", "inc_death", "2021-01-25", "FALSE", "convex", "mean_impute", "per_quantile", "constrain", "full_history", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_death", "2021-02-15", "FALSE", "convex", "mean_impute", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_death", "2021-02-15", "FALSE", "convex", "renormalize", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("local", "inc_death", "2021-02-15", "FALSE", "convex_median", "renormalize", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("cluster_single_node", "inc_death", "2021-02-15", "FALSE", "convex", "renormalize", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "cum_death", "2020-06-22", "FALSE", "convex", "mean_impute", "3_groups", "sort", "full_history", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "cum_death", "2020-07-13", "FALSE", "convex", "mean_impute", "3_groups", "sort", "full_history", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "cum_death", "2021-02-15", "FALSE", "convex", "mean_impute", "3_groups", "constrain", "5", "TRUE", "FALSE", "FALSE", "state")
@@ -67,6 +69,7 @@ if (run_setting %in% c("local", "cluster_single_node")) {
     submissions_root <- "~/research/epi/covid/covid19-forecast-hub/data-processed/"
   } else {
     submissions_root <- "/project/uma_nicholas_reich/covid19-forecast-hub/data-processed/"
+    reticulate::use_python("/usr/bin/python3.8")
   }
 } else {
   # running on midas cluster -- extract run settings from csv file of analysis
@@ -407,7 +410,7 @@ if (!file.exists(forecast_filename)) {
           quantile = NA_real_
         )
     )
-    
+
     write_csv(formatted_ensemble_predictions, forecast_filename)
   }
 }

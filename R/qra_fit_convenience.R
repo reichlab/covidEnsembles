@@ -371,10 +371,12 @@ load_covid_forecasts_relative_horizon <- function(
 #' @param data_as_of_date date for which observations should be current
 #' @param intercept logical specifying whether an intercept is included
 #' @param combine_method character specifying the approach to model
-#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' combination: "equal", "convex", "positive", "unconstrained", "median",
+#' or "convex_median".
 #' The first four form a linear combination of quantiles across component
 #' models with varying levels of restrictions on the combination coefficients.
-#' "median" takes the median across models at each quantile level.
+#' "median" takes the median across models at each quantile level, and
+#' "convex_median" uses a weighted median with convext constraints on weights
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -510,10 +512,12 @@ build_covid_ensemble_from_local_files <- function(
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
 #' @param combine_method character specifying the approach to model
-#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' combination: "equal", "convex", "positive", "unconstrained", "median",
+#' or "convex_median".
 #' The first four form a linear combination of quantiles across component
 #' models with varying levels of restrictions on the combination coefficients.
-#' "median" takes the median across models at each quantile level.
+#' "median" takes the median across models at each quantile level, and
+#' "convex_median" uses a weighted median with convext constraints on weights
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -666,10 +670,12 @@ build_covid_ensemble_from_zoltar <- function(
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
 #' @param combine_method character specifying the approach to model
-#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' combination: "equal", "convex", "positive", "unconstrained", "median",
+#' or "convex_median".
 #' The first four form a linear combination of quantiles across component
 #' models with varying levels of restrictions on the combination coefficients.
-#' "median" takes the median across models at each quantile level.
+#' "median" takes the median across models at each quantile level, and
+#' "convex_median" uses a weighted median with convext constraints on weights
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -706,7 +712,7 @@ get_ensemble_fit_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  combine_method = c('ew', 'convex', 'positive', 'unconstrained', 'median'),
+  combine_method = c('ew', 'convex', 'positive', 'unconstrained', 'median', 'convex_median'),
   quantile_groups = NULL,
   noncross = "constrain",
   missingness = c('by_location_group', 'rescale', 'mean_impute'),
@@ -731,7 +737,7 @@ get_ensemble_fit_and_predictions <- function(
 
   combine_method <- match.arg(
     combine_method,
-    choices = c("ew", "convex", "positive", "unconstrained", "median"),
+    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median"),
     several.ok = FALSE)
 
   if(missingness == "by_location_group") {
@@ -816,10 +822,12 @@ get_ensemble_fit_and_predictions <- function(
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
 #' @param combine_method character specifying the approach to model
-#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' combination: "equal", "convex", "positive", "unconstrained", "median",
+#' or "convex_median".
 #' The first four form a linear combination of quantiles across component
 #' models with varying levels of restrictions on the combination coefficients.
-#' "median" takes the median across models at each quantile level.
+#' "median" takes the median across models at each quantile level, and
+#' "convex_median" uses a weighted median with convext constraints on weights
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -848,7 +856,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  combine_method = c("ew", "convex", "positive", "unconstrained", "median"),
+  combine_method = c("ew", "convex", "positive", "unconstrained", "median", "convex_median"),
   quantile_groups = NULL,
   noncross = "constrain",
   backend = "quantmod",
@@ -870,7 +878,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
 
   combine_method <- match.arg(
     combine_method,
-    choices = c("ew", "convex", "positive", "unconstrained", "median"),
+    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median"),
     several.ok = TRUE)
 
   # obtain model eligibility by location
@@ -1219,10 +1227,12 @@ impute_missing_per_quantile <- function(
 #' @param window_size size of window
 #' @param intercept logical specifying whether an intercept is included
 #' @param combine_method character specifying the approach to model
-#' combination: "equal", "convex", "positive", "unconstrained", or "median".
+#' combination: "equal", "convex", "positive", "unconstrained", "median",
+#' or "convex_median".
 #' The first four form a linear combination of quantiles across component
 #' models with varying levels of restrictions on the combination coefficients.
-#' "median" takes the median across models at each quantile level.
+#' "median" takes the median across models at each quantile level, and
+#' "convex_median" uses a weighted median with convext constraints on weights
 #' @param quantile_groups Vector of group labels for quantiles, having the same
 #' length as the number of quantiles.  Common labels indicate that the ensemble
 #' weights for the corresponding quantile levels should be tied together.
@@ -1262,7 +1272,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  combine_method = c('ew', 'convex', 'positive', 'unconstrained'),
+  combine_method = c('ew', 'convex', 'positive', 'unconstrained', 'convex_median'),
   quantile_groups = NULL,
   noncross = "constrain",
   impute_method = 'mean',
@@ -1288,7 +1298,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
 
   combine_method <- match.arg(
     combine_method,
-    choices = c('ew', 'convex', 'positive', 'unconstrained'),
+    choices = c('ew', 'convex', 'positive', 'unconstrained', 'convex_median'),
     several.ok = TRUE)
 
   # obtain model eligibility by location
@@ -1591,7 +1601,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
             return(betas)
           }
         )) %>% 
-      dplyr::select(!!!syms(weight_transfer_group_factors), betas)      
+      dplyr::select(!!!syms(weight_transfer_group_factors), betas)
     }
   }
 

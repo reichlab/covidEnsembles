@@ -606,7 +606,7 @@ estimate_qra <- function(
 ) {
   combine_method <- match.arg(
     combine_method,
-    choices = c("ew", "convex", "positive", "unconstrained", "median"))
+    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median"))
   backend <- match.arg(
     backend,
     choices = c("optim", "NlcOptim", "qra", "quantgen", "qenspy"))
