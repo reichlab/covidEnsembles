@@ -87,6 +87,7 @@ if (run_setting %in% c("local", "cluster_single_node")) {
   combine_method <- analysis_combinations$combine_method[job_ind]
   missingness <- analysis_combinations$missingness[job_ind]
   quantile_group_str <- analysis_combinations$quantile_group_str[job_ind]
+  noncross <- analysis_combinations$noncross[job_ind]
   window_size_arg <- analysis_combinations$window_size[job_ind]
   check_missingness_by_target <- analysis_combinations$check_missingness_by_target[job_ind]
   do_standard_checks <- analysis_combinations$do_standard_checks[job_ind]
