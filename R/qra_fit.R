@@ -124,6 +124,7 @@ new_qra_fit <- function(
 #' either "convex_mean" or "convex_median"
 #' @param bw_method bandwidth method, relevant only if combine_method is
 #' "convex_median"
+#' @param loss_trace numeric vector of loss trace per iteration of estimation
 #'
 #' @return qenspy_qra_fit object
 #'
@@ -135,7 +136,8 @@ new_qenspy_qra_fit <- function(
   quantile_levels,
   quantile_groups,
   combine_method,
-  bw_method = NULL
+  bw_method = NULL,
+  loss_trace = NULL
 ) {
   qra_fit <- structure(
     list(
@@ -145,7 +147,8 @@ new_qenspy_qra_fit <- function(
       quantile_levels = quantile_levels,
       quantile_groups = quantile_groups,
       combine_method = combine_method,
-      bw_method = bw_method
+      bw_method = bw_method,
+      loss_trace = loss_trace
     ),
     class = 'qenspy_qra_fit'
   )
@@ -1092,7 +1095,7 @@ estimate_qra_qenspy <- function(
     quantile_groups,
     init_param_vec = NULL,
     optim_method = "adam",
-    num_iter = 20000,
+    num_iter = 10000,
     learning_rate = 0.1,
     verbose = FALSE
     ) {
@@ -1144,7 +1147,8 @@ estimate_qra_qenspy <- function(
     quantile_levels = quantiles,
     quantile_groups = quantile_groups,
     combine_method = combine_method,
-    bw_method = bw_method
+    bw_method = bw_method,
+    loss_trace = qens_model$loss_trace
   )
 
   return(qra_fit)

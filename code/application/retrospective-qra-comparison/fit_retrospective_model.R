@@ -6,6 +6,8 @@ library(gridExtra)
 library(yaml)
 library(reticulate)
 Sys.setenv(CUDA_VISIBLE_DEVICES = '-1')
+Sys.setenv(LANG = "en_US.UTF-8")
+
 
 #options(warn=2, error=recover)
 
@@ -220,6 +222,11 @@ fit_filename <- paste0(
   fits_dir, "/",
   response_var, "-", forecast_date, "-",
   case_str, ".rds")
+loss_trace_filename <- paste0(
+  fits_dir, "/",
+  response_var, "-", forecast_date, "-",
+  case_str, "_loss_trace.rds")
+
 
 # create folder where model weights should be saved
 weights_dir <- file.path(
@@ -294,6 +301,10 @@ if (!file.exists(forecast_filename)) {
 
   # extract and save just the estimated weights in csv format
   if (!(combine_method %in% c("ew", "mean", "median"))) {
+    # save loss trace as a function of optimization iteration
+    loss_trace <- results$location_groups$qra_fit[[1]]$loss_trace
+    saveRDS(loss_trace, file = loss_trace_filename)
+
     estimated_weights <- purrr::pmap_dfr(
       results$location_groups %>% dplyr::select(locations, qra_fit),
       function(locations, qra_fit) {
