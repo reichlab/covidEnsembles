@@ -220,6 +220,10 @@ fit_filename <- paste0(
   fits_dir, "/",
   response_var, "-", forecast_date, "-",
   case_str, ".rds")
+partial_save_filename <- paste0(
+  fits_dir, "/",
+  response_var, "-", forecast_date, "-",
+  case_str, ".pkl")
 
 # create folder where model weights should be saved
 weights_dir <- file.path(
@@ -281,7 +285,8 @@ if (!file.exists(forecast_filename)) {
     baseline_tol = 1.0,
     manual_eligibility_adjust = NULL,
     return_eligibility = TRUE,
-    return_all = TRUE
+    return_all = TRUE,
+    partial_save_filename = partial_save_filename
   )
   toctoc <- Sys.time()
   toctoc - tictic

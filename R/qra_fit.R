@@ -602,6 +602,8 @@ estimate_qra <- function(
   quantile_groups = NULL,
   noncross = "constrain",
   backend = 'optim',
+  partial_save_frequency,
+  partial_save_filename,
   ...
 ) {
   combine_method <- match.arg(
@@ -626,6 +628,8 @@ estimate_qra <- function(
       y_train = y_train,
       combine_method = combine_method,
       quantile_groups = quantile_groups,
+      partial_save_frequency = partial_save_frequency,
+      partial_save_filename = partial_save_filename,
       ...)
   } else if(backend == "quantgen") {
     combine_method <- match.arg(
@@ -1094,7 +1098,9 @@ estimate_qra_qenspy <- function(
     optim_method = "adam",
     num_iter = 20000,
     learning_rate = 0.1,
-    verbose = FALSE
+    verbose = FALSE,
+    partial_save_frequency,
+    partial_save_filename
     ) {
   require(reticulate)
   
@@ -1134,7 +1140,9 @@ estimate_qra_qenspy <- function(
     optim_method = optim_method,
     num_iter = as.integer(num_iter),
     learning_rate = learning_rate,
-    verbose = verbose)
+    verbose = verbose,
+    save_frequency = partial_save_frequency,
+    save_path = partial_save_filename)
 
   # Create R object representing the model fit
   qra_fit <- new_qenspy_qra_fit(
