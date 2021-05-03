@@ -13,6 +13,8 @@ estimate_qra(
   quantile_groups = NULL,
   noncross = "constrain",
   backend = "optim",
+  partial_save_frequency,
+  partial_save_filename,
   ...
 )
 }

@@ -40,25 +40,36 @@ if (run_setting == "midas_cluster_single_node") {
   # number of cores to use for local runs
   num_cores <- 18L
 
-  first_forecast_date <- lubridate::ymd("2020-05-11")
-  last_forecast_date <- lubridate::ymd("2021-03-01")
+  first_forecast_date <- lubridate::ymd("2020-06-22")
+  last_forecast_date <- lubridate::ymd("2021-04-26")
+#  first_forecast_date <- lubridate::ymd("2020-12-07")
+#  last_forecast_date <- lubridate::ymd("2020-12-07")
 
   #last_forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
   num_forecast_weeks <-
     as.numeric(last_forecast_date - first_forecast_date) / 7 + 1
 
   trained_analysis_combinations <- tidyr::expand_grid(
-    spatial_resolution = c("county", "state", "national", "state_national"),
-    response_var = c("inc_case", "inc_death", "cum_death", "inc_hosp"),
+#    spatial_resolution = c("county", "state", "national", "state_national"),
+    spatial_resolution = c("state"),
+#    response_var = c("inc_case", "inc_death", "cum_death", "inc_hosp"),
+    response_var = c("inc_case", "inc_death"),
     forecast_date = as.character(
       lubridate::ymd(first_forecast_date) +
         seq(from = 0, length = num_forecast_weeks) * 7),
     intercept = c("FALSE"),
-    combine_method = c("convex"),
-    quantile_group_str = c("per_quantile", "3_groups", "per_model"),
+    combine_method = "median",
+#    combine_method = c("convex", "convex_median"),
+#    quantile_group_str = c("per_quantile", "3_groups", "per_model"),
+    #quantile_group_str = c("3_groups"),
+    quantile_group_str = c("per_model"),
     noncross = "sort",
-    missingness = c("mean_impute"),
-    window_size = c(as.character(3:10), "full_history"),
+#    missingness = c("mean_impute"),
+#    missingness = "renormalize",
+    missingness = "none",
+#    window_size = c(as.character(3:10), "full_history"),
+    window_size = c(as.character(4), "full_history"),
+    top_models = c("5", "10"),
     check_missingness_by_target = "TRUE",
     do_standard_checks = "FALSE",
     do_baseline_check = "FALSE"
@@ -75,8 +86,10 @@ if (run_setting == "midas_cluster_single_node") {
     dplyr::arrange(window_size, forecast_date)
 
   unweighted_analysis_combinations <- tidyr::expand_grid(
-    spatial_resolution = c("county", "state", "national"),
-    response_var = c("inc_case", "inc_death", "cum_death", "inc_hosp"),
+#    spatial_resolution = c("county", "state", "national"),
+    spatial_resolution = c("state"),
+#    response_var = c("inc_case", "inc_death", "cum_death", "inc_hosp"),
+    response_var = c("inc_case", "inc_death"),
     forecast_date = as.character(
       lubridate::ymd(first_forecast_date) +
         seq(from = 0, length = num_forecast_weeks) * 7),
@@ -100,8 +113,8 @@ if (run_setting == "midas_cluster_single_node") {
     )
 
   analysis_combinations <- dplyr::bind_rows(
-    trained_analysis_combinations,
-    unweighted_analysis_combinations
+    trained_analysis_combinations#,
+#    unweighted_analysis_combinations
   )
 
   # filter to keep only cases that have not successfully run previously
@@ -114,6 +127,7 @@ if (run_setting == "midas_cluster_single_node") {
         "-quantile_groups_", quantile_group_str,
 	"-noncross_", noncross,
         "-window_size_", window_size,
+        "-top_models_", top_models,
         "-check_missingness_by_target_", check_missingness_by_target,
         "-do_standard_checks_", do_standard_checks,
         "-do_baseline_check_", do_baseline_check),
@@ -149,6 +163,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
     noncross <- analysis_combinations$noncross[row_ind]
     missingness <- analysis_combinations$missingness[row_ind]
     window_size <- analysis_combinations$window_size[row_ind]
+    top_models <- analysis_combinations$top_models[row_ind]
     check_missingness_by_target <-
       analysis_combinations$check_missingness_by_target[row_ind]
     do_standard_checks <- analysis_combinations$do_standard_checks[row_ind]
@@ -166,6 +181,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
       quantile_group_str, " ",
       noncross, " ",
       window_size, " ",
+      top_models, " ",
       check_missingness_by_target, " ",
       do_standard_checks, " ",
       do_baseline_check, " ",
@@ -173,9 +189,9 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
       "\' code/application/retrospective-qra-comparison/fit_retrospective_model.R ",
       output_path, "output-", response_var, "-", forecast_date, "-",
       intercept, "-", combine_method, "-", missingness, "-", quantile_group_str,
-      "-", noncross, "-", window_size, "-", check_missingness_by_target, "-",
-      do_standard_checks, "-", do_baseline_check, "-", spatial_resolution,
-      ".Rout")
+      "-", noncross, "-", window_size, "-", top_models, "-",
+      check_missingness_by_target, "-", do_standard_checks, "-",
+      do_baseline_check, "-", spatial_resolution, ".Rout")
 
     system(run_cmd)
   }
@@ -201,11 +217,13 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
 #    "#SBATCH --mem-per-cpu=3G\n",
     "\n",
     "module purge\n",
-    "module load gcc/9.1.0\n",
-    "module load python/anaconda3.7-2019.03\n",
-    "module load r/4.0.3_no-MPI\n",
-    "module load gurobi\n",
-    "\n",
+#    "module load gcc/9.1.0\n",
+#    "module load python/anaconda3.7-2019.03\n",
+#    "module load r/4.0.3_no-MPI\n",
+#    "module load gurobi\n",
+    "module load singularity/singularity-3.6.2\n",
+    "singularity shell code/application/singularity/singularity_tfp_cpu.sif\n",
+#    "\n",
     "R CMD BATCH --vanilla \'--args midas_cluster_single_node\' ",
       "code/application/retrospective-qra-comparison/run_fit_retrospective_model.R ",
       output_path, "output-$SLURM_ARRAY_TASK_ID.Rout"
@@ -249,20 +267,35 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
     filename <- paste0(
       "code/application/retrospective-qra-comparison/submit_fit_retrospective_model_",
       model_case, ".sh")
+
+    if (combine_method == "convex_median" && window_size == "full_history") {
+      num_cores <- "8"
+      memory <- "8000"
+    } else {
+      num_cores <- "1"
+      if (window_size == "full_history") {
+        memory <- "40000"
+      } else {
+        memory <- as.character(as.numeric(window_size) * 3000)
+      }
+    }
     
     requestCmds <- "#!/bin/bash\n"
-    requestCmds <- paste0(requestCmds, "#BSUB -n 1 # how many cores we want for our job\n",
+    requestCmds <- paste0(requestCmds, "#BSUB -n ", num_cores, " # how many cores we want for our job\n",
                 "#BSUB -R span[hosts=1] # ask for all the cores on a single machine\n",
-                "#BSUB -R rusage[mem=10000] # ask for memory\n",
-                "#BSUB -o covidEnsembles.out # log LSF output to a file\n",
-                "#BSUB -W 48:00 # run time\n",
+                "#BSUB -R rusage[mem=", memory, "] # ask for memory\n",
+                "#BSUB -o covidEnsembles_new.out # log LSF output to a file\n",
+                "#BSUB -W 72:00 # run time\n",
                 "#BSUB -q long # which queue we want to run in\n")
     
     cat(requestCmds, file = filename)
-    cat("module load gcc/8.1.0\n", file = filename, append = TRUE)
-    cat("module load R/4.0.0_gcc\n", file = filename, append = TRUE)
-    cat("module load gurobi/900\n", file = filename, append = TRUE)
-    cat(paste0("R CMD BATCH --vanilla \'--args ",
+#    cat("module load gcc/8.1.0\n", file = filename, append = TRUE)
+#    cat("module load R/4.0.0_gcc\n", file = filename, append = TRUE)
+#    cat("module load gurobi/900\n", file = filename, append = TRUE)
+    cat("module load singularity/singularity-3.6.2\n", file = filename, append = TRUE)
+    cat(paste0(
+        "singularity exec code/application/singularity/singularity_tfp_cpu.sif ",
+        "R CMD BATCH --vanilla \'--args ",
         "cluster_single_node ",
         response_var, " ",
         forecast_date, " ",

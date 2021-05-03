@@ -435,9 +435,12 @@ build_covid_ensemble_from_local_files <- function(
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,
   baseline_tol = 1.2,
+  top_models = 0,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
-  return_all = TRUE
+  return_all = TRUE,
+  partial_save_frequency,
+  partial_save_filename
 ) {
   # Get observed values ("truth" in Zoltar's parlance)
   observed_by_location_target_end_date <-
@@ -483,11 +486,14 @@ build_covid_ensemble_from_local_files <- function(
     do_baseline_check = do_baseline_check,
     do_sd_check = do_sd_check,
     sd_check_table_path = sd_check_table_path,
-    sd_check_plot_path = sd_check_plot_path,    
+    sd_check_plot_path = sd_check_plot_path,
     baseline_tol = baseline_tol,
+    top_models = top_models,
     manual_eligibility_adjust = manual_eligibility_adjust,
     return_eligibility = return_eligibility,
-    return_all = return_all)
+    return_all = return_all,
+    partial_save_frequency = partial_save_frequency,
+    partial_save_filename = partial_save_filename)
 
   # return
   return(c(
@@ -564,6 +570,7 @@ build_covid_ensemble_from_zoltar <- function(
   do_nondecreasing_quantile_check,
   do_baseline_check,
   baseline_tol = 1.2,
+  top_models = 0,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
   return_all = TRUE
@@ -647,6 +654,7 @@ build_covid_ensemble_from_zoltar <- function(
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
     do_baseline_check = do_baseline_check,
     baseline_tol = baseline_tol,
+    top_models = top_models,
     manual_eligibility_adjust = manual_eligibility_adjust,
     return_eligibility = return_eligibility,
     return_all = return_all)
@@ -726,9 +734,12 @@ get_ensemble_fit_and_predictions <- function(
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,  
   baseline_tol = 1.2,
+  top_models=0,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
-  return_all = FALSE) {
+  return_all = FALSE,
+  partial_save_frequency,
+  partial_save_filename) {
   if(missing(forecasts) ||
      missing(forecast_week_end_date) ||
      missing(window_size)) {
@@ -783,26 +794,12 @@ get_ensemble_fit_and_predictions <- function(
       sd_check_table_path = sd_check_table_path,
       sd_check_plot_path = sd_check_plot_path, 
       baseline_tol = baseline_tol,
+      top_models=top_models,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility = return_eligibility,
-      return_all = return_all)
-  } else if(missingness == 'rescale') {
-    results <- get_rescaled_ensemble_fits_and_predictions(
-      forecasts = forecasts,
-      observed_by_location_target_end_date =
-        observed_by_location_target_end_date,
-      forecast_week_end_date = forecast_week_end_date,
-      window_size = window_size,
-      do_q10_check = do_q10_check,
-      do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
-      do_baseline_check = do_baseline_check,
-      do_sd_check = do_sd_check,
-      sd_check_table_path = sd_check_table_path,
-      sd_check_plot_path = sd_check_plot_path,       
-      baseline_tol = baseline_tol,
-      manual_eligibility_adjust = manual_eligibility_adjust,
-      return_eligibility = return_eligibility,
-      return_all = return_all)
+      return_all = return_all,
+      partial_save_frequency = partial_save_frequency,
+      partial_save_filename = partial_save_filename)
   } else {
     stop('invalid value for argument missingness')
   }
@@ -1272,7 +1269,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  combine_method = c('ew', 'convex', 'positive', 'unconstrained', 'convex_median'),
+  combine_method = c('ew', 'median', 'convex', 'positive', 'unconstrained', 'convex_median'),
   quantile_groups = NULL,
   noncross = "constrain",
   impute_method = 'mean',
@@ -1287,9 +1284,12 @@ get_imputed_ensemble_fits_and_predictions <- function(
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,
   baseline_tol = 1.2,
+  top_models=0,
   manual_eligibility_adjust,
   return_all=FALSE,
-  return_eligibility = TRUE) {
+  return_eligibility = TRUE,
+  partial_save_frequency,
+  partial_save_filename) {
   if (missing(forecasts) ||
      missing(forecast_week_end_date) ||
      missing(window_size)) {
@@ -1298,7 +1298,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
 
   combine_method <- match.arg(
     combine_method,
-    choices = c('ew', 'convex', 'positive', 'unconstrained', 'convex_median'),
+    choices = c('ew', 'median', 'convex', 'positive', 'unconstrained', 'convex_median'),
     several.ok = TRUE)
 
   # obtain model eligibility by location
@@ -1551,12 +1551,25 @@ get_imputed_ensemble_fits_and_predictions <- function(
   y_train <- y_train[non_missing_inds]
   imputed_qfm_train <- imputed_qfm_train[non_missing_inds, ]
 
+  # if requested, subset to models with best individual performance
+  if (top_models > 0) {
+    rel_wis <- calc_relative_wis(y_train, imputed_qfm_train)
+    top_models <- min(top_models, nrow(rel_wis))
+    models_to_keep <- rel_wis$model[seq_len(top_models)]
+    col_index <- attr(imputed_qfm_train, 'col_index')
+    cols_to_keep <- which(col_index$model %in% models_to_keep)
+    imputed_qfm_train <- imputed_qfm_train[, cols_to_keep]
+    imputed_qfm_test <- imputed_qfm_test[, cols_to_keep]
+  }
+
   # fit ensembles and obtain predictions per group
   if (combine_method == 'ew') {
     # no y_train given - no training is done for equal weights
     qra_fit <- estimate_qra(
-      qfm_train = imputed_qfm_train, 
-      combine_method = 'ew')   
+      qfm_train = imputed_qfm_train,
+      combine_method = 'ew')
+  } else if(combine_method == 'median') {
+    qra_fit <- new_median_qra_fit(imputed_qfm_train)
   } else {
     qra_fit <- estimate_qra(
       qfm_train = imputed_qfm_train,
@@ -1566,7 +1579,9 @@ get_imputed_ensemble_fits_and_predictions <- function(
       combine_method = combine_method,
       quantile_groups = quantile_groups,
       noncross = noncross,
-      backend = backend)
+      backend = backend,
+      partial_save_frequency = partial_save_frequency,
+      partial_save_filename = partial_save_filename)
   }
   
   orig_qra_fit <- qra_fit
@@ -1606,7 +1621,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   }
 
   # obtain predictions
-  if (combine_method == 'ew' || !weight_transfer_per_group) {
+  if (combine_method %in% c('ew', 'median') || !weight_transfer_per_group) {
     qra_forecast <- predict(
       qra_fit,
       imputed_qfm_test,

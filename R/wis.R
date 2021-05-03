@@ -227,3 +227,41 @@ get_all_wis_components <- function(
 
   return(row_index[!is.na(y_test), ])
 }
+
+calc_relative_wis <- function(y, qfm) {
+  col_index <- attr(qfm, 'col_index')
+  model_col <- attr(qfm, 'model_col')
+  models <- unique(col_index[[model_col]])
+  wis_per_model <- matrix(NA, nrow = nrow(qfm), ncol = length(models))
+
+  for (m in seq_along(models)) {
+    model <- models[m]
+    model_qfm <- qfm[, col_index[[model_col]] == model]
+    wis_per_model[, m] <- wis(y, model_qfm)
+  }
+
+  pairwise_ratios <- diag(length(models))
+  for (m1 in seq_along(models)) {
+    for (m2 in seq_len(m1 - 1)) {
+      non_na_inds <- which(!is.na(wis_per_model[, m1]) & !is.na(wis_per_model[, m2]))
+      pairwise_ratios[m1, m2] <- mean(wis_per_model[non_na_inds, m1]) / mean(wis_per_model[non_na_inds, m2])
+      pairwise_ratios[m2, m1] <- 1 / pairwise_ratios[m1, m2]
+    }
+  }
+
+  rownames(pairwise_ratios) <- models
+  if ("COVIDhub-baseline" %in% models) {
+    ind_baseline <- which(rownames(pairwise_ratios) == "COVIDhub-baseline")
+  } else {
+    ind_baseline <- 1L
+  }
+  geom_mean_ratios <- exp(rowMeans(log(pairwise_ratios[, -ind_baseline]), na.rm = TRUE))
+  ratios_baseline2 <- geom_mean_ratios / geom_mean_ratios["COVIDhub-baseline"]
+
+  tab <- data.frame(
+    model = names(geom_mean_ratios),
+    rel_wis = ratios_baseline2)
+
+  tab <- tab[order(tab$rel_wis), ]
+  return(tab)
+}

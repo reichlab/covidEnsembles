@@ -6,6 +6,8 @@ library(gridExtra)
 library(yaml)
 library(reticulate)
 Sys.setenv(CUDA_VISIBLE_DEVICES = '-1')
+Sys.setenv(LANG = "en_US.UTF-8")
+
 
 #options(warn=2, error=recover)
 
@@ -15,37 +17,20 @@ Sys.setenv(CUDA_VISIBLE_DEVICES = '-1')
 #debug(quantgen:::quantile_ensemble_flex)
 
 # extract arguments specifying details of analysis
-#args <- c("cum_death", "2020-05-09", "FALSE", "convex", "by_location_group", "3_groups", "2")
-#args <- c("cum_death", "2020-05-09", "TRUE", "positive", "by_location_group", "3_groups", "2")
-#args <- c("cum_death", "2020-05-09", "TRUE", "positive", "mean_impute", "3_groups", "2")
-#args <- c("cum_death", "2020-05-16", "FALSE", "convex", "mean_impute", "per_model", "3")
-#args <- c("cum_death", "2020-06-06", "FALSE", "convex", "mean_impute", "per_model", "6", "TRUE")
-#args <- c("cum_death", "2020-06-13", "FALSE", "convex", "by_location_group", "per_quantile", "4", "TRUE")
-#args <- c("cum_death", "2020-06-13", "FALSE", "convex", "by_location_group", "per_quantile", "4", "TRUE", "TRUE")
-#args <- c("inc_death", "2020-05-23", "TRUE", "positive", "mean_impute", "3_groups", "3", "FALSE", "TRUE")
-#args <- c("inc_death", "2020-07-25", "TRUE", "positive", "mean_impute", "per_quantile", "5", "TRUE", "FALSE")
-#args <- c("cum_death", "2020-05-16", "FALSE", "convex", "by_location_group", "per_quantile", "5", "FALSE", "FALSE")
-#args <- c("inc_death", "2020-07-25", "TRUE", "positive", "mean_impute", "3_groups", "3", "TRUE", "FALSE", "FALSE")
-#args <- c("cum_death", "2020-05-09", "FALSE", "convex", "mean_impute", "3_groups", "2", "FALSE", "TRUE", "FALSE")
-#args <- c("cum_death", "2020-08-01", "FALSE", "ew", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE")
-#args <- c("inc_case", "2020-08-01", "FALSE", "convex", "by_location_group", "per_quantile", "2", "FALSE", "TRUE", "FALSE")
-#args <- c("inc_case", "2020-10-24", "TRUE", "positive", "mean_impute", "3_groups", "4", "FALSE", "FALSE", "FALSE")
-#args <- c("inc_case", "2020-05-09", "FALSE", "ew", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE")
-#args <- c("inc_case", "2020-06-27", "FALSE", "ew", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE", "national")
-#args <- c("inc_death", "2020-11-30", "FALSE", "median", "by_location_group", "per_model", "0", "FALSE", "FALSE", "FALSE", "state")
-#args <- c("inc_hosp", "2020-11-16", "FALSE", "convex", "mean_impute", "per_model", "3", "FALSE", "FALSE", "FALSE", "state")
-#args <- c("inc_death", "2020-11-30", "FALSE", "convex", "mean_impute", "per_quantile", "4", "FALSE", "FALSE", "FALSE", "state")
-#args <- c("inc_death", "2020-05-18", "FALSE", "convex", "mean_impute", "per_model", "10", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_death", "2020-11-23", "FALSE", "convex", "mean_impute", "per_quantile", "full_history", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_hosp", "2021-01-18", "FALSE", "convex", "mean_impute", "per_model", "3", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "inc_death", "2021-01-25", "FALSE", "convex", "mean_impute", "per_quantile", "constrain", "full_history", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_death", "2021-02-15", "FALSE", "convex", "mean_impute", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_death", "2021-02-15", "FALSE", "convex", "renormalize", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "inc_death", "2021-02-15", "FALSE", "convex_median", "renormalize", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("local", "inc_death", "2020-10-26", "FALSE", "convex", "renormalize", "per_model", "sort", "4", "all_models", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("cluster_single_node", "inc_death", "2021-02-15", "FALSE", "convex", "renormalize", "per_model", "sort", "6", "TRUE", "FALSE", "FALSE", "state_national")
 #args <- c("local", "cum_death", "2020-06-22", "FALSE", "convex", "mean_impute", "3_groups", "sort", "full_history", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "cum_death", "2020-07-13", "FALSE", "convex", "mean_impute", "3_groups", "sort", "full_history", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "cum_death", "2021-02-15", "FALSE", "convex", "mean_impute", "3_groups", "constrain", "5", "TRUE", "FALSE", "FALSE", "state")
+#args <- c("local", "inc_hosp", "2021-04-26", "FALSE", "convex", "renormalize", "per_model", "sort", "full_history", "TRUE", "FALSE", "FALSE", "state_national")
+#args <- c("local", "inc_case", "2021-04-26", "FALSE", "convex", "renormalize", "per_model", "sort", "full_history", "TRUE", "FALSE", "FALSE", "county")
+#args <- c("local", "inc_hosp", "2021-04-26", "FALSE", "median", "none", "per_model", "sort", "full_history", "5", "TRUE", "FALSE", "FALSE", "state_national")
 
 args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
@@ -60,10 +45,11 @@ if (run_setting %in% c("local", "cluster_single_node")) {
   quantile_group_str <- args[7]
   noncross <- args[8]
   window_size_arg <- args[9]
-  check_missingness_by_target <- as.logical(args[10])
-  do_standard_checks <- as.logical(args[11])
-  do_baseline_check <- as.logical(args[12])
-  spatial_resolution_arg <- args[13]
+  top_models_arg <- args[10]
+  check_missingness_by_target <- as.logical(args[11])
+  do_standard_checks <- as.logical(args[12])
+  do_baseline_check <- as.logical(args[13])
+  spatial_resolution_arg <- args[14]
 
   if (run_setting == "local") {
     submissions_root <- "~/research/epi/covid/covid19-forecast-hub/data-processed/"
@@ -71,30 +57,6 @@ if (run_setting %in% c("local", "cluster_single_node")) {
     submissions_root <- "/project/uma_nicholas_reich/covid19-forecast-hub/data-processed/"
     reticulate::use_python("/usr/bin/python3.8")
   }
-} else {
-  # running on midas cluster -- extract run settings from csv file of analysis
-  # combinations, row specified by job run index in environment variable
-  job_ind <- as.integer(Sys.getenv("SLURM_ARRAY_TASK_ID"))
-  print(paste0("Job index: ", job_ind))
-
-  analysis_combinations <- readr::read_csv(
-    "code/application/retrospective-qra-comparison/analysis_combinations.csv"
-  )
-  
-  response_var <- analysis_combinations$response_var[job_ind]
-  forecast_date <- analysis_combinations$forecast_date[job_ind]
-  intercept <- analysis_combinations$intercept[job_ind]
-  combine_method <- analysis_combinations$combine_method[job_ind]
-  missingness <- analysis_combinations$missingness[job_ind]
-  quantile_group_str <- analysis_combinations$quantile_group_str[job_ind]
-  noncross <- analysis_combinations$noncross[job_ind]
-  window_size_arg <- analysis_combinations$window_size[job_ind]
-  check_missingness_by_target <- analysis_combinations$check_missingness_by_target[job_ind]
-  do_standard_checks <- analysis_combinations$do_standard_checks[job_ind]
-  do_baseline_check <- analysis_combinations$do_baseline_check[job_ind]
-  spatial_resolution_arg <- analysis_combinations$spatial_resolution[job_ind]
-
-  submissions_root <- "~/covid19-forecast-hub/data-processed/"
 }
 
 # List of candidate models for inclusion in ensemble
@@ -115,8 +77,8 @@ if (missingness == "mean_impute") {
   case_missingness <- "impute"
   missingness <- "impute"
   impute_method <- "mean"
-} else if (missingness == "renormalize") {
-  case_missingness <- "renormalize"
+} else if (missingness == "renormalize" || missingness == "none") {
+  case_missingness <- missingness
   missingness <- "impute"
   impute_method <- "none"
 } else {
@@ -197,6 +159,12 @@ if (spatial_resolution_arg == "all") {
   spatial_resolution_path <- spatial_resolution
 }
 
+if (top_models_arg == "all_models") {
+  top_models <- 0L
+} else {
+  top_models <- as.integer(top_models_arg)
+}
+
 case_str <- paste0(
   "intercept_", as.character(intercept),
   "-combine_method_", combine_method,
@@ -204,6 +172,7 @@ case_str <- paste0(
   "-quantile_groups_", quantile_group_str,
   "-noncross_", noncross,
   "-window_size_", window_size_arg,
+  "-top_models_", top_models_arg,
   "-check_missingness_by_target_", check_missingness_by_target,
   "-do_standard_checks_", do_standard_checks,
   "-do_baseline_check_", do_baseline_check)
@@ -224,6 +193,10 @@ partial_save_filename <- paste0(
   fits_dir, "/",
   response_var, "-", forecast_date, "-",
   case_str, ".pkl")
+loss_trace_filename <- paste0(
+  fits_dir, "/",
+  response_var, "-", forecast_date, "-",
+  case_str, "_loss_trace.rds")
 
 # create folder where model weights should be saved
 weights_dir <- file.path(
@@ -283,9 +256,11 @@ if (!file.exists(forecast_filename)) {
     do_baseline_check = do_baseline_check,
     do_sd_check = FALSE,
     baseline_tol = 1.0,
+    top_models = top_models,
     manual_eligibility_adjust = NULL,
     return_eligibility = TRUE,
     return_all = TRUE,
+    partial_save_frequency = 10,
     partial_save_filename = partial_save_filename
   )
   toctoc <- Sys.time()
@@ -299,6 +274,10 @@ if (!file.exists(forecast_filename)) {
 
   # extract and save just the estimated weights in csv format
   if (!(combine_method %in% c("ew", "mean", "median"))) {
+    # save loss trace as a function of optimization iteration
+    loss_trace <- results$location_groups$qra_fit[[1]]$loss_trace
+    saveRDS(loss_trace, file = loss_trace_filename)
+
     estimated_weights <- purrr::pmap_dfr(
       results$location_groups %>% dplyr::select(locations, qra_fit),
       function(locations, qra_fit) {
@@ -345,13 +324,13 @@ if (!file.exists(forecast_filename)) {
     c(model_eligibility, wide_model_eligibility, location_groups,
       weight_transfer, component_forecasts) %<-% results
     
-    col_index <- attr(location_groups$qfm_test[[1]], "col_index")
+    col_index <- attr(location_groups$imputed_qfm_test[[1]], "col_index")
     models_used <- purrr::map_dfc(
       unique(col_index$model),
       function(model) {
         col_ind <- min(which(col_index$model == model))
         result <- data.frame(
-          m = !is.na(unclass(location_groups$qfm_test[[1]])[, col_ind]))
+          m = !is.na(unclass(location_groups$imputed_qfm_test[[1]])[, col_ind]))
         colnames(result) <- model
         return(result)
       }
@@ -362,12 +341,12 @@ if (!file.exists(forecast_filename)) {
       sum
     )
 
-    locations_to_drop <- unique(
-      attr(location_groups$qfm_test[[1]], "row_index")[
-        model_counts == 1, "location"])
+    # locations_to_drop <- unique(
+    #   attr(location_groups$imputed_qfm_test[[1]], "row_index")[
+    #     model_counts == 1, "location"])
     
-    ensemble_predictions <- location_groups$qra_forecast[[1]] %>%
-      dplyr::filter(!(location %in% locations_to_drop))
+    ensemble_predictions <- location_groups$qra_forecast[[1]] #%>%
+      #dplyr::filter(!(location %in% locations_to_drop))
   } else {
     c(model_eligibility, wide_model_eligibility, location_groups,
       component_forecasts) %<-% results

@@ -51,10 +51,12 @@ targets, a Monday.}
 \item{intercept}{logical specifying whether an intercept is included}
 
 \item{combine_method}{character specifying the approach to model
-combination: "equal", "convex", "positive", "unconstrained", or "median".
+combination: "equal", "convex", "positive", "unconstrained", "median",
+or "convex_median".
 The first four form a linear combination of quantiles across component
 models with varying levels of restrictions on the combination coefficients.
-"median" takes the median across models at each quantile level.}
+"median" takes the median across models at each quantile level, and
+"convex_median" uses a weighted median with convext constraints on weights}
 
 \item{quantile_groups}{Vector of group labels for quantiles, having the same
 length as the number of quantiles.  Common labels indicate that the ensemble

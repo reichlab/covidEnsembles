@@ -14,7 +14,9 @@ estimate_qra_qenspy(
   optim_method = "adam",
   num_iter = 20000,
   learning_rate = 0.1,
-  verbose = FALSE
+  verbose = FALSE,
+  partial_save_frequency,
+  partial_save_filename
 )
 }
 \arguments{

@@ -244,6 +244,14 @@ parse_model_case <- function(model_abbr) {
         return(data.frame(
           window_size = substr(case_part, 13, nc)
         ))
+      } else if (substr(case_part, 1, min(nc, 8)) == "noncross") {
+        return(data.frame(
+          noncross = substr(case_part, 10, nc)
+        ))
+      } else if (substr(case_part, 1, min(nc, 10)) == "top_models") {
+        return(data.frame(
+          top_models = substr(case_part, 12, nc)
+        ))
       } else if (substr(case_part, 1, min(nc, 27)) ==
           "check_missingness_by_target") {
         return(data.frame(
