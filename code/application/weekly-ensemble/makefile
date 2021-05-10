@@ -10,6 +10,9 @@ HUB = ../../../../covid19-forecast-hub/
 # data-processed folder within the covid19-forecast-hub repo
 PROCESSED = $(HUB)data-processed/
 
+# current date, for git tags
+TODAY_DATE = $(shell date +'%Y-%m-%d')
+
 # Define the full make, making plots and
 all: incvscum ensemble pull data
 
@@ -26,7 +29,7 @@ plots: pull data
 	Rscript plot_submissions.R
 
 # Build the ensemble
-ensemble: pull data
+ensemble: pull tag data
 	Rscript build_ensembles.R
 
 # Compare one week ahead forecasts of incident and cumulative deaths at
@@ -34,4 +37,6 @@ ensemble: pull data
 incvscum: pull data
 	Rscript inc_vs_cum.R
 
-# TODO: commit, push to github, file pull request
+git_tag: pull
+	git -C $(HUB) tag -a $(TODAY_DATE)-COVIDhub-ensemble -m "$(TODAY_DATE)-COVIDhub-ensemble build inputs"
+	git -C $(HUB) push origin $(TODAY_DATE)-COVIDhub-ensemble
