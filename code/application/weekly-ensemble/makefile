@@ -29,7 +29,7 @@ plots: pull data
 	Rscript plot_submissions.R
 
 # Build the ensemble
-ensemble: pull tag data
+ensemble: pull data
 	Rscript build_ensembles.R
 
 # Compare one week ahead forecasts of incident and cumulative deaths at
