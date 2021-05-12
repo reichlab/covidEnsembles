@@ -1560,6 +1560,20 @@ get_imputed_ensemble_fits_and_predictions <- function(
     cols_to_keep <- which(col_index$model %in% models_to_keep)
     imputed_qfm_train <- imputed_qfm_train[, cols_to_keep]
     imputed_qfm_test <- imputed_qfm_test[, cols_to_keep]
+
+    # drop rows with no eligible models (maybe none the top models we selected had submissions for some location)
+    rows_to_keep <- apply(imputed_qfm_train, 1, function(qfm_row) any(!is.na(qfm_row))) %>%
+      which()
+    if (length(rows_to_keep) != nrow(imputed_qfm_train)) {
+      imputed_qfm_train <- imputed_qfm_train[rows_to_keep, ]
+      y_train <- y_train[rows_to_keep]
+    }
+
+    rows_to_keep <- apply(imputed_qfm_test, 1, function(qfm_row) any(!is.na(qfm_row))) %>%
+      which()
+    if (length(rows_to_keep) != nrow(imputed_qfm_test)) {
+      imputed_qfm_test <- imputed_qfm_test[rows_to_keep, ]
+    }
   }
 
   # fit ensembles and obtain predictions per group
