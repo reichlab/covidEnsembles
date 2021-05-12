@@ -256,7 +256,7 @@ calc_relative_wis <- function(y, qfm) {
     ind_baseline <- 1L
   }
   geom_mean_ratios <- exp(rowMeans(log(pairwise_ratios[, -ind_baseline]), na.rm = TRUE))
-  ratios_baseline2 <- geom_mean_ratios / geom_mean_ratios["COVIDhub-baseline"]
+  ratios_baseline2 <- geom_mean_ratios / geom_mean_ratios[ind_baseline]
 
   tab <- data.frame(
     model = names(geom_mean_ratios),
