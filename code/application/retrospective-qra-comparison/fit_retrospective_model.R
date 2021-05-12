@@ -168,14 +168,15 @@ if (top_models_arg == "all_models") {
 case_str <- paste0(
   "intercept_", as.character(intercept),
   "-combine_method_", combine_method,
-  "-missingness_", case_missingness,
+#  "-missingness_", case_missingness,
   "-quantile_groups_", quantile_group_str,
-  "-noncross_", noncross,
+#  "-noncross_", noncross,
   "-window_size_", window_size_arg,
-  "-top_models_", top_models_arg,
-  "-check_missingness_by_target_", check_missingness_by_target,
-  "-do_standard_checks_", do_standard_checks,
-  "-do_baseline_check_", do_baseline_check)
+  "-top_models_", top_models_arg#,
+#  "-check_missingness_by_target_", check_missingness_by_target,
+#  "-do_standard_checks_", do_standard_checks,
+#  "-do_baseline_check_", do_baseline_check
+  )
 
 # create folder where model fits should be saved
 fits_dir <- file.path(

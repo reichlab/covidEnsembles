@@ -58,17 +58,19 @@ if (run_setting == "midas_cluster_single_node") {
       lubridate::ymd(first_forecast_date) +
         seq(from = 0, length = num_forecast_weeks) * 7),
     intercept = c("FALSE"),
-    combine_method = "median",
+    combine_method = "convex_median",
 #    combine_method = c("convex", "convex_median"),
 #    quantile_group_str = c("per_quantile", "3_groups", "per_model"),
-    #quantile_group_str = c("3_groups"),
+#    quantile_group_str = c("3_groups"),
     quantile_group_str = c("per_model"),
     noncross = "sort",
 #    missingness = c("mean_impute"),
-#    missingness = "renormalize",
-    missingness = "none",
+    missingness = "renormalize",
+#    missingness = "none",
 #    window_size = c(as.character(3:10), "full_history"),
-    window_size = c(as.character(4), "full_history"),
+#    window_size = c(as.character(c(4, 8, 12)), "full_history"),
+    window_size = "full_history",
+#    top_models = "0",
     top_models = c("5", "10"),
     check_missingness_by_target = "TRUE",
     do_standard_checks = "FALSE",
@@ -99,6 +101,7 @@ if (run_setting == "midas_cluster_single_node") {
     noncross = "constrain",
     missingness = c("by_location_group"),
     window_size = "0",
+    top_models = "0",
     check_missingness_by_target = "FALSE",
     do_standard_checks = "FALSE",
     do_baseline_check = "FALSE"
@@ -123,14 +126,15 @@ if (run_setting == "midas_cluster_single_node") {
       case_str = paste0(
         "intercept_", as.character(intercept),
         "-combine_method_", combine_method,
-        "-missingness_", ifelse(missingness == "mean_impute", "impute", missingness),
+#        "-missingness_", ifelse(missingness == "mean_impute", "impute", missingness),
         "-quantile_groups_", quantile_group_str,
-	"-noncross_", noncross,
+#	"-noncross_", noncross,
         "-window_size_", window_size,
-        "-top_models_", top_models,
-        "-check_missingness_by_target_", check_missingness_by_target,
-        "-do_standard_checks_", do_standard_checks,
-        "-do_baseline_check_", do_baseline_check),
+        "-top_models_", top_models#,
+#        "-check_missingness_by_target_", check_missingness_by_target,
+#        "-do_standard_checks_", do_standard_checks,
+#        "-do_baseline_check_", do_baseline_check
+      ),
       spatial_resolution_path = dplyr::case_when(
         spatial_resolution == "all" ~ "",
         TRUE ~ spatial_resolution),
@@ -236,6 +240,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
   system(paste0("sbatch ", submit_slurm_script))
 } else if (run_setting == "mghpcc_cluster") {
   for(row_ind in seq_len(nrow(analysis_combinations))) {
+#  for(row_ind in seq_len(2)) {
     response_var <- analysis_combinations$response_var[row_ind]
     forecast_date <- analysis_combinations$forecast_date[row_ind]
     intercept <- analysis_combinations$intercept[row_ind]
@@ -244,6 +249,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
     noncross <- analysis_combinations$noncross[row_ind]
     missingness <- analysis_combinations$missingness[row_ind]
     window_size <- analysis_combinations$window_size[row_ind]
+    top_models <- analysis_combinations$top_models[row_ind]
     check_missingness_by_target <-
       analysis_combinations$check_missingness_by_target[row_ind]
     do_standard_checks <- analysis_combinations$do_standard_checks[row_ind]
@@ -255,13 +261,14 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
       "-", forecast_date,
       "-", as.character(intercept),
       "-", combine_method,
-      "-", ifelse(missingness == "mean_impute", "impute", missingness),
+#      "-", ifelse(missingness == "mean_impute", "impute", missingness),
       "-", quantile_group_str,
-      "-", noncross,
+#      "-", noncross,
       "-", window_size,
-      "-", check_missingness_by_target,
-      "-", do_standard_checks,
-      "-", do_baseline_check,
+      "-", top_models,
+#      "-", check_missingness_by_target,
+#      "-", do_standard_checks,
+#      "-", do_baseline_check,
       "-", spatial_resolution)
     
     filename <- paste0(
@@ -305,6 +312,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
         quantile_group_str, " ",
 	noncross, " ",
         window_size, " ",
+        top_models, " ",
         check_missingness_by_target, " ",
         do_standard_checks, " ",
         do_baseline_check, " ",
@@ -312,7 +320,7 @@ if (run_setting %in% c("local", "midas_cluster_single_node")) {
         "\' code/application/retrospective-qra-comparison/fit_retrospective_model.R ",
         output_path, "output-", response_var, "-", forecast_date, "-",
         intercept, "-", combine_method, "-", missingness, "-", quantile_group_str,
-        "-", noncross, "-", window_size, "-", check_missingness_by_target, "-",
+        "-", noncross, "-", window_size, "-", top_models, "-", check_missingness_by_target, "-",
         do_standard_checks, "-", do_baseline_check, "-", spatial_resolution,
         ".Rout"),
       file = filename, append = TRUE)

@@ -122,8 +122,6 @@ new_qra_fit <- function(
 #' @param quantile_groups number of quantile groups
 #' @param combine_method string specifying combination method;
 #' either "convex_mean" or "convex_median"
-#' @param bw_method bandwidth method, relevant only if combine_method is
-#' "convex_median"
 #' @param loss_trace numeric vector of loss trace per iteration of estimation
 #'
 #' @return qenspy_qra_fit object
@@ -136,7 +134,6 @@ new_qenspy_qra_fit <- function(
   quantile_levels,
   quantile_groups,
   combine_method,
-  bw_method = NULL,
   loss_trace = NULL
 ) {
   qra_fit <- structure(
@@ -147,7 +144,6 @@ new_qenspy_qra_fit <- function(
       quantile_levels = quantile_levels,
       quantile_groups = quantile_groups,
       combine_method = combine_method,
-      bw_method = bw_method,
       loss_trace = loss_trace
     ),
     class = 'qenspy_qra_fit'
@@ -223,7 +219,7 @@ extract_weights_qenspy_qra_fit <- function(qra_fit) {
   if (qra_fit$combine_method == "convex_mean") {
     qens_model <- qens$MeanQEns()
   } else if (qra_fit$combine_method == "convex_median") {
-    qens_model <- qens$MedianQEns(bw_method = qra_fit$bw_method)
+    qens_model <- qens$MedianQEns()
   } else {
     stop("combine_method must be convex_mean or convex_median")
   }
@@ -364,7 +360,7 @@ predict.qenspy_qra_fit <- function(qra_fit, qfm, sort_quantiles) {
   if (qra_fit$combine_method == "convex_mean") {
     qens_model <- qens$MeanQEns()
   } else if (qra_fit$combine_method == "convex_median") {
-    qens_model <- qens$MedianQEns(bw_method = qra_fit$bw_method)
+    qens_model <- qens$MedianQEns()
   } else {
     stop("combine_method must be convex_mean or convex_median")
   }
@@ -1095,11 +1091,10 @@ estimate_qra_qenspy <- function(
     qfm_train,
     y_train,
     combine_method,
-    bw_method = "silverman_weighted",
     quantile_groups,
     init_param_vec = NULL,
     optim_method = "adam",
-    num_iter = 500,
+    num_iter = 1000,
     learning_rate = 0.1,
     verbose = FALSE,
     partial_save_frequency,
@@ -1130,7 +1125,7 @@ estimate_qra_qenspy <- function(
   if (combine_method == "convex_mean") {
     qens_model <- qens$MeanQEns()
   } else if (combine_method == "convex_median") {
-    qens_model <- qens$MedianQEns(bw_method = bw_method)
+    qens_model <- qens$MedianQEns()
   }
 
   qens_model$fit(
@@ -1155,7 +1150,6 @@ estimate_qra_qenspy <- function(
     quantile_levels = quantiles,
     quantile_groups = quantile_groups,
     combine_method = combine_method,
-    bw_method = bw_method,
     loss_trace = qens_model$loss_trace
   )
 
