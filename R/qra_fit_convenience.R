@@ -720,7 +720,7 @@ get_ensemble_fit_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  combine_method = c('ew', 'convex', 'positive', 'unconstrained', 'median', 'convex_median'),
+  combine_method = c('ew', 'convex', 'positive', 'unconstrained', 'median', 'convex_median', 'rel_wis_weighted_median'),
   quantile_groups = NULL,
   noncross = "constrain",
   missingness = c('by_location_group', 'rescale', 'mean_impute'),
@@ -748,7 +748,7 @@ get_ensemble_fit_and_predictions <- function(
 
   combine_method <- match.arg(
     combine_method,
-    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median"),
+    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median", "rel_wis_weighted_median"),
     several.ok = FALSE)
 
   if(missingness == "by_location_group") {
@@ -853,7 +853,7 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  combine_method = c("ew", "convex", "positive", "unconstrained", "median", "convex_median"),
+  combine_method = c("ew", "convex", "positive", "unconstrained", "median", "convex_median", "rel_wis_weighted_median"),
   quantile_groups = NULL,
   noncross = "constrain",
   backend = "quantmod",
@@ -1269,7 +1269,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   forecast_week_end_date,
   window_size,
   intercept = FALSE,
-  combine_method = c('ew', 'median', 'convex', 'positive', 'unconstrained', 'convex_median'),
+  combine_method = c('ew', 'median', 'convex', 'positive', 'unconstrained', 'convex_median', 'rel_wis_weighted_median'),
   quantile_groups = NULL,
   noncross = "constrain",
   impute_method = 'mean',
@@ -1298,7 +1298,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
 
   combine_method <- match.arg(
     combine_method,
-    choices = c('ew', 'median', 'convex', 'positive', 'unconstrained', 'convex_median'),
+    choices = c('ew', 'median', 'convex', 'positive', 'unconstrained', 'convex_median', 'rel_wis_weighted_median'),
     several.ok = TRUE)
 
   # obtain model eligibility by location

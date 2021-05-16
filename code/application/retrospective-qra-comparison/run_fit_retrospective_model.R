@@ -12,7 +12,7 @@ if (is.na(run_setting)) {
   run_setting <- "mghpcc_cluster"
 #  stop("no run setting")
 #  run_setting <- "cluster"
-  #run_setting <- "local"
+  run_setting <- "local"
   #num_local_cores <- 16L
 }
 
@@ -58,20 +58,21 @@ if (run_setting == "midas_cluster_single_node") {
       lubridate::ymd(first_forecast_date) +
         seq(from = 0, length = num_forecast_weeks) * 7),
     intercept = c("FALSE"),
-    combine_method = "convex_median",
+    combine_method = "rel_wis_weighted_median",
+#    combine_method = "convex_median",
 #    combine_method = c("convex", "convex_median"),
 #    quantile_group_str = c("per_quantile", "3_groups", "per_model"),
 #    quantile_group_str = c("3_groups"),
     quantile_group_str = c("per_model"),
     noncross = "sort",
 #    missingness = c("mean_impute"),
-    missingness = "renormalize",
-#    missingness = "none",
+#    missingness = "renormalize",
+    missingness = "none",
 #    window_size = c(as.character(3:10), "full_history"),
-#    window_size = c(as.character(c(4, 8, 12)), "full_history"),
-    window_size = "full_history",
-#    top_models = "0",
-    top_models = c("5", "10"),
+    window_size = c(as.character(c(4, 8, 12)), "full_history"),
+#    window_size = "full_history",
+    top_models = "0",
+#    top_models = c("5", "10"),
     check_missingness_by_target = "TRUE",
     do_standard_checks = "FALSE",
     do_baseline_check = "FALSE"
