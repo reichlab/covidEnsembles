@@ -405,7 +405,8 @@ predict.weighted_median_qra_fit <- function(qra_fit, qfm, sort_quantiles = TRUE)
     for (i in seq_len(nrow(qfm))) {
       result_matrix[i, j] = matrixStats::weightedMedian(
         x = unclass(qfm)[i, col_inds],
-        w = params[j, ]
+        w = params[j, ],
+        na.rm = TRUE
       )
     }
   }
