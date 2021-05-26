@@ -1,6 +1,8 @@
 library(tidyverse)
 library(zeallot)
 library(covidData)
+library(here)
+setwd(here())
 
 # Location of main covid19-forecast-hub repo where component model submissions
 # can be found
@@ -12,7 +14,7 @@ plots_root <- "code/application/weekly-ensemble/plots/"
 # Figure out what day it is.
 # forecast_week_end_date is a saturday relative to which week-ahead targets are
 # defined. forecast_date is the monday of forecast submission
-forecast_date <- lubridate::ymd("2021-02-08")
+forecast_date <- Sys.Date()
 
 day_plots_root <- paste0(plots_root, forecast_date, '/')
 if(!file.exists(day_plots_root)) {
@@ -64,7 +66,17 @@ all_forecasts <- purrr::map_dfr(
     return(results)
   })
 
-  for(measure in c('deaths', 'cases')) {
+
+
+for(measure in c('deaths', 'cases', 'hospitalizations')) {
+  if (measure == "deaths") {
+    target_variable_short <- "death"
+  } else if (measure == "cases") {
+    target_variable_short <- "case"
+  } else if (measure == "hospitalizations") {
+    target_variable_short <- "hosp"
+  }
+
 #  for(measure in 'deaths') {
 #  for(measure in 'cases') {
     plot_path <- paste0(day_plots_root, 'forecast_comparison-', forecast_date, '-', measure, '.pdf')
@@ -91,6 +103,7 @@ all_forecasts <- purrr::map_dfr(
         horizon <- 4L
         types <- c('inc', 'cum')
         required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
+        num_obs_per_week <- 1
       } else if (measure == 'cases') {
         data <- dplyr::bind_rows(
           covidData::load_jhu_data(
@@ -113,12 +126,26 @@ all_forecasts <- purrr::map_dfr(
         horizon <- 8L
         types <- 'inc'
         required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
+        num_obs_per_week <- 1
+      } else if (measure == 'hospitalizations') {
+        data <- covidData::load_data(
+            as_of = as.character(tail(covidData::jhu_deaths_data$issue_date, 1)),
+            spatial_resolution = c('state', 'national'),
+            temporal_resolution = 'daily',
+            measure = measure) %>%
+          dplyr::left_join(fips_codes, by = 'location') %>%
+          dplyr::mutate(issue_date = as.character(tail(covidData::jhu_deaths_data$issue_date, 1)))
+
+        horizon <- 28L
+        types <- c('inc')
+        required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
+        num_obs_per_week <- 7
       }
 
       results <- all_forecasts
 
       location_batches <- results %>%
-        dplyr::filter(grepl(substr(measure, 1, nchar(measure) - 1), target)) %>%
+        dplyr::filter(grepl(target_variable_short, target)) %>%
         dplyr::distinct(location, location_name_with_state) %>%
         dplyr::arrange(nchar(location), location_name_with_state) %>%
         dplyr::mutate(
@@ -126,7 +153,7 @@ all_forecasts <- purrr::map_dfr(
           batch = rep(seq_len(ceiling(nrow(.)/30)), each = 30)[seq_len(nrow(.))]
         )
 
-      data <- data %>% group_by(location) %>% top_n(12, wt = date)
+      data <- data %>% group_by(location) %>% top_n(12 * num_obs_per_week, wt = date)
 
       made_plots <- FALSE
       pdf(plot_path, width=24, height=14)
@@ -137,7 +164,7 @@ all_forecasts <- purrr::map_dfr(
         plottable_predictions <- results %>%
           dplyr::filter(
             location_name_with_state %in% batch_locations,
-            grepl(substr(measure, 1, nchar(measure) - 1), target)) %>%
+            grepl(target_variable_short, target)) %>%
           dplyr::mutate(
             endpoint_type = ifelse(quantile < 0.5, 'lower', 'upper'),
             alpha = ifelse(
@@ -162,7 +189,7 @@ all_forecasts <- purrr::map_dfr(
             dplyr::filter(location_name_with_state %in% batch_locations) %>%
             filter(alpha != "1.000", grepl(UQ(type), target))
 
-          if(nrow(type_intervals) > 0) {
+          if (nrow(type_intervals) > 0) {
             made_plots <- TRUE
             p <- ggplot() +
               geom_ribbon(
@@ -175,13 +202,13 @@ all_forecasts <- purrr::map_dfr(
                 data = results %>% dplyr::filter(location_name_with_state %in% batch_locations) %>%
                   filter(quantile == 0.5,
                          grepl(UQ(type), target),
-                         grepl(substr(measure, 1, nchar(measure) - 1), target)),
+                         grepl(target_variable_short, target)),
                 mapping = aes(x = target_end_date, y = value, color = model)) +
               geom_point(
                 data = results %>% dplyr::filter(location_name_with_state %in% batch_locations) %>%
                   filter(quantile == 0.5,
                          grepl(UQ(type), target),
-                         grepl(substr(measure, 1, nchar(measure) - 1), target)),
+                         grepl(target_variable_short, target)),
                 mapping = aes(x = target_end_date, y = value, color = model, shape = model)) +
               geom_line(data=data %>%
                           dplyr::mutate(
@@ -214,4 +241,3 @@ all_forecasts <- purrr::map_dfr(
       }
     }
   }
-}
