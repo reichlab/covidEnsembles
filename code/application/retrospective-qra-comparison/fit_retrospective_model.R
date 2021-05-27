@@ -192,11 +192,13 @@ if (!dir.exists(fits_dir)) {
 }
 fit_filename <- paste0(
   fits_dir, "/",
-  response_var, "-", forecast_date, "-",
+  forecast_date, "-",
+  response_var, "-",
   case_str, ".rds")
 partial_save_filename <- paste0(
   fits_dir, "/",
-  response_var, "-", forecast_date, "-",
+  forecast_date, "-",
+  response_var, "-",
   case_str, ".pkl")
 loss_trace_filename <- paste0(
   fits_dir, "/",
@@ -213,7 +215,8 @@ if (!dir.exists(weights_dir)) {
 }
 weight_filename <- paste0(
   weights_dir, "/",
-  response_var, "-", forecast_date, "-",
+  forecast_date, "-",
+  response_var, "-",
   case_str, ".csv")
 
 # create folder where model forecasts should be saved
@@ -226,7 +229,8 @@ if (!dir.exists(forecasts_dir)) {
 }
 forecast_filename <- paste0(
   forecasts_dir, "/",
-  response_var, "-", forecast_date, "-",
+  forecast_date, "-",
+  response_var, "-",
   case_str, ".csv")
 
 
