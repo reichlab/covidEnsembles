@@ -249,7 +249,7 @@ new_median_qra_fit <- function(...) {
 
 
 
-#' Predict based on a quantile regression averaging fit
+#' Extract weights from a quantile regression averaging fit from qenspy
 #'
 #' @param qra_fit object of class qra_fit
 #'
@@ -714,7 +714,7 @@ estimate_qra <- function(
 ) {
   combine_method <- match.arg(
     combine_method,
-    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median", "rel_wis_weighted_median"))
+    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median", "rel_wis_weighted_median", "mean_weights_weighted_median"))
   backend <- match.arg(
     backend,
     choices = c("optim", "NlcOptim", "qra", "quantgen", "qenspy", "grid_search"))
@@ -722,17 +722,20 @@ estimate_qra <- function(
   if (backend == "qenspy") {
     combine_method <- match.arg(
       combine_method,
-      choices = c("convex", "convex_median"))
+      choices = c("convex", "convex_median", "mean_weights_weighted_median"))
     if (combine_method == "convex") {
-      combine_method <- "convex_mean"
+      combine_method <- qenspy_combine_method <- "convex_mean"
+    } else if (combine_method == "mean_weights_weighted_median") {
+      qenspy_combine_method <- "convex_mean"
     }
+
     if (noncross != "sort") {
       stop('For backend "qenspy", noncross method must be "sort"')
     }
     result <- estimate_qra_qenspy(
       qfm_train = qfm_train,
       y_train = y_train,
-      combine_method = combine_method,
+      combine_method = qenspy_combine_method,
       quantile_groups = quantile_groups,
       partial_save_frequency = partial_save_frequency,
       partial_save_filename = partial_save_filename,
@@ -750,7 +753,7 @@ estimate_qra <- function(
       quantile_groups = quantile_groups,
       noncross = noncross)
     col_index <- attr(qfm_train, "col_index")
-  } else if(backend == "qra") {
+  } else if (backend == "qra") {
     stop("backend = 'qra' is not yet supported")
     qra_data <-
       result <- qra:::qra_estimate_weights(
@@ -770,6 +773,30 @@ estimate_qra <- function(
         qra_model = combine_method,
         backend = backend)
     }
+  }
+
+  # convert to weighted median if combine method is mean_weights_weighted_median
+  if (combine_method == "mean_weights_weighted_median") {
+    if (backend == "qenspy") {
+      coefficients <- extract_weights_qenspy_qra_fit(result)
+      colnames(coefficients) <- c(
+        attr(qfm_train, "quantile_name_col"),
+        attr(qfm_train, "model_col"),
+        "beta"
+      )
+    } else {
+      stop("For mean_weights_weighted_median method, only backend qenspy is supported.")
+    }
+    # coefficients <- data.frame(
+    #   a = unique_models,
+    #   beta = weights,
+    #   stringsAsFactors = FALSE
+    # )
+    # colnames(coefficients)[1] <- model_col
+
+    result <- new_weighted_median_qra_fit(
+      parameters = list(coefficients = coefficients)
+    )
   }
 
   return(result)
@@ -827,7 +854,7 @@ estimate_qra_optimized <- function(
   backend = c('optim', 'NlcOptim', 'grid_search')
 ) {
   qra_model <- match.arg(qra_model, choices = c('convex_per_model', 'unconstrained_per_model',
-    'rescaled_convex_per_model', 'rel_wis_weighted_median'))
+    'rescaled_convex_per_model', 'rel_wis_weighted_median', 'mean_weights_weighted_median'))
   backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'grid_search'))
 
   if (backend %in% c('optim', 'NlcOptim')) {

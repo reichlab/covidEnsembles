@@ -748,10 +748,10 @@ get_ensemble_fit_and_predictions <- function(
 
   combine_method <- match.arg(
     combine_method,
-    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median", "rel_wis_weighted_median"),
+    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median", "rel_wis_weighted_median", "mean_weights_weighted_median"),
     several.ok = FALSE)
 
-  if(missingness == "by_location_group") {
+  if (missingness == "by_location_group") {
     results <- get_by_location_group_ensemble_fits_and_predictions(
       forecasts = forecasts,
       observed_by_location_target_end_date =
@@ -773,7 +773,7 @@ get_ensemble_fit_and_predictions <- function(
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility = return_eligibility,
       return_all = return_all)
-  } else if(missingness == "impute") {
+  } else if (missingness == "impute") {
     results <- get_imputed_ensemble_fits_and_predictions(
       forecasts = forecasts,
       observed_by_location_target_end_date =
@@ -1298,7 +1298,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
 
   combine_method <- match.arg(
     combine_method,
-    choices = c('ew', 'median', 'convex', 'positive', 'unconstrained', 'convex_median', 'rel_wis_weighted_median'),
+    choices = c('ew', 'median', 'convex', 'positive', 'unconstrained', 'convex_median', 'rel_wis_weighted_median', 'mean_weights_weighted_median'),
     several.ok = TRUE)
 
   # obtain model eligibility by location
