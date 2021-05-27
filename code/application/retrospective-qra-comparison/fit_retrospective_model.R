@@ -35,6 +35,7 @@ Sys.setenv(LANG = "en_US.UTF-8")
 #args <- c("local", "inc_death", "2020-10-05", "FALSE", "rel_wis_weighted_median", "none", "per_model", "sort", "4", "5", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "inc_death", "2021-03-08", "FALSE", "rel_wis_weighted_median", "none", "per_model", "sort", "full_history", "0", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "inc_death", "2021-04-26", "FALSE", "rel_wis_weighted_median", "none", "per_model", "sort", "full_history", "0", "TRUE", "FALSE", "FALSE", "state")
+#args <- c("local", "inc_death", "2021-04-26", "FALSE", "mean_weights_weighted_median", "none", "per_model", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state")
 
 args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
@@ -233,6 +234,7 @@ forecast_filename <- paste0(
   response_var, "-",
   case_str, ".csv")
 
+# debug(covidEnsembles::estimate_qra)
 
 tic <- Sys.time()
 if (!file.exists(forecast_filename)) {
@@ -284,7 +286,7 @@ if (!file.exists(forecast_filename)) {
   }
 
   # extract and save just the estimated weights in csv format
-  if (!(combine_method %in% c("ew", "mean", "median", "rel_wis_weighted_median"))) {
+  if (!(combine_method %in% c("ew", "mean", "median", "rel_wis_weighted_median", "mean_weights_weighted_median"))) {
     # save loss trace as a function of optimization iteration
     loss_trace <- results$location_groups$qra_fit[[1]]$loss_trace
     saveRDS(loss_trace, file = loss_trace_filename)
@@ -324,6 +326,34 @@ if (!file.exists(forecast_filename)) {
         #     )
         #   ) %>%
         #   dplyr::select(-join_field)
+      }
+    )
+    write_csv(estimated_weights, weight_filename)
+  } else if (combine_method == "mean_weights_weighted_median") {
+    estimated_weights <- purrr::pmap_dfr(
+      results$location_groups %>% dplyr::select(locations, qra_fit),
+      function(locations, qra_fit) {
+        weights <- qra_fit$coefficients
+
+        data.frame(
+          quantile = if ("quantile" %in% colnames(weights)) {
+              weights$quantile
+            } else {
+              rep(NA, nrow(weights))
+            },
+          model = weights$model,
+          weight = weights$beta, #[, 1],
+          join_field = "temp",
+          stringsAsFactors = FALSE
+        ) %>%
+          dplyr::left_join(
+            data.frame(
+              location = locations,
+              join_field = "temp",
+              stringsAsFactors = FALSE
+            )
+          ) %>%
+          dplyr::select(-join_field)
       }
     )
     write_csv(estimated_weights, weight_filename)
