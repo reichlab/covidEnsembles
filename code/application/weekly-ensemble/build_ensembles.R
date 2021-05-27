@@ -14,6 +14,10 @@ final_run <- TRUE
 # Where to find component model submissions
 submissions_root <- '../covid19-forecast-hub/data-processed/'
 
+# Parent dir of this which is the hub clone path used by
+# covidHubUtils::load_latest_forecasts for loading locally
+hub_repo_path <- '../covid19-forecast-hub/'
+
 # Where to save ensemble forecasts
 save_roots <- c('code/application/weekly-ensemble/forecasts/')
 for (root in save_roots) {
@@ -297,14 +301,17 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
   }
 
   c(model_eligibility, wide_model_eligibility, location_groups, component_forecasts) %<-%
-    build_covid_ensemble_from_local_files(
+    build_covid_ensemble(
+      hub = "US",
+      source = "local_hub_repo",
+      hub_repo_path = hub_repo_path,
       candidate_model_abbreviations_to_include =
         candidate_model_abbreviations_to_include,
       spatial_resolution = spatial_resolution,
       targets = targets,
       forecast_date = forecast_date,
       forecast_week_end_date = forecast_week_end_date,
-      horizon = horizon,
+      max_horizon = horizon,
       timezero_window_size = 6,
       window_size = 0,
       data_as_of_date = data_as_of_date,
@@ -313,7 +320,6 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       quantile_groups = rep(1, 23),
       missingness = 'by_location_group',
       backend = NA,
-      submissions_root = submissions_root,
       required_quantiles = required_quantiles,
       do_q10_check = do_q10_check,
       do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,

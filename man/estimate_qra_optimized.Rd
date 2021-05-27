@@ -7,9 +7,10 @@
 estimate_qra_optimized(
   qfm_train,
   y_train,
+  quantile_groups,
   qra_model = c("convex_per_model", "unconstrained_per_model",
-    "rescaled_convex_per_model"),
-  backend = c("optim", "NlcOptim")
+    "rescaled_convex_per_model", "rel_wis_weighted_median"),
+  backend = c("optim", "NlcOptim", "grid_search")
 )
 }
 \arguments{
@@ -22,7 +23,8 @@ component models}
 
 \item{backend}{implementation used for estimation; currently either
 'optim', using L-BFGS-B as provided by the optim function in R, or
-'NlcOptim', using NlcOptim::solnl}
+'NlcOptim', using NlcOptim::solnl, or 'grid_search', using
+covidEnsemble::grid_search}
 }
 \value{
 object of class qra_fit

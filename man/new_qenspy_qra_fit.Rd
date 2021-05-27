@@ -11,7 +11,7 @@ new_qenspy_qra_fit(
   quantile_levels,
   quantile_groups,
   combine_method,
-  bw_method = NULL
+  loss_trace = NULL
 )
 }
 \arguments{
@@ -28,8 +28,7 @@ new_qenspy_qra_fit(
 \item{combine_method}{string specifying combination method;
 either "convex_mean" or "convex_median"}
 
-\item{bw_method}{bandwidth method, relevant only if combine_method is
-"convex_median"}
+\item{loss_trace}{numeric vector of loss trace per iteration of estimation}
 }
 \value{
 qenspy_qra_fit object
