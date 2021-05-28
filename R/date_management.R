@@ -2,7 +2,7 @@
 #' offset a specified number of epidemic week from a specified date
 #'
 #' @param forecast_date vector of dates
-#' @param integer vector of week offsets.  must be either length 1 or the same
+#' @param week_offset integer vector of week offsets.  must be either length 1 or the same
 #'     length as timezero
 #' @param return_type character specifying return type as "date" or "character"
 #'

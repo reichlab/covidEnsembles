@@ -4,7 +4,7 @@
 \alias{wis_loss}
 \title{Calculate wis_loss as a function of parameters used to construct a qra model}
 \usage{
-wis_loss(par, model_constructor, qfm_train, y_train)
+wis_loss(par, model_constructor, qfm_train, y_train, ...)
 }
 \arguments{
 \item{par}{real-valued vector of parameters}
@@ -16,6 +16,8 @@ parameters and returns a model of class qra_fit}
 component models}
 
 \item{y_train}{numeric vector of responses for training set}
+
+\item{...}{arguments passed on to the model_constructor}
 }
 \value{
 scalar wis loss for given parameter values
