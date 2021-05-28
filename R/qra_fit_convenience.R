@@ -143,6 +143,10 @@ load_covid_forecasts_relative_horizon <- function(
   forecasts <- forecasts %>% dplyr::filter(
     quantile %in% required_quantiles | type == "point"
   ) %>% 
+  # within each combination of model, forecast_date, location, and target_end_date,
+  # if both a quantile and point forecast were provided, drop the point forecast; else, keep both.
+  # if the forecaster provided only a point forecast, convert it to a missing median
+  # this is done so that the forecast will appear in validation outputs
   dplyr::group_by(model, forecast_date, location, target_end_date) %>% 
   dplyr::filter(min_rank(match(type, c("quantile", "point")))==1) %>% 
   dplyr::ungroup() %>% 
