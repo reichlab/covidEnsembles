@@ -127,6 +127,7 @@ load_covid_forecasts_relative_horizon <- function(
       target_unadjusted, 
       return_type = "date"
     ),
+    # the effective horizon of the forecast, relative to the reference_date
     relative_horizon = covidEnsembles::calc_relative_horizon(
       reference_date, 
       target_end_date, 
