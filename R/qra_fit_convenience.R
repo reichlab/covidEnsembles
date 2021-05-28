@@ -208,8 +208,7 @@ load_covid_forecasts_relative_horizon <- function(
 #' @param forecast_week_end_date date relative to week-ahead or day-ahead
 #' targets are defined. For week ahead targets, a Saturday; for day ahead
 #' targets, a Monday.
-#' @param max_horizon maximum horizon relative to forecast_week_end_date and 
-#' analogous training reference dates for both training and prediction
+#' @param max_horizon maximum horizon for ensemble forecasts
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
 #' @param window_size size of window
