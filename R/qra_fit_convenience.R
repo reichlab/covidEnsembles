@@ -152,7 +152,7 @@ load_covid_forecasts_relative_horizon <- function(
   # if the forecaster provided only a point forecast, convert it to a missing median
   # this is done so that the forecast will appear in validation outputs
   dplyr::group_by(model, forecast_date, location, target_end_date) %>% 
-  dplyr::filter(min_rank(match(type, c("quantile", "point")))==1) %>% 
+  dplyr::filter(dplyr::min_rank(match(type, c("quantile", "point")))==1) %>% 
   dplyr::ungroup() %>% 
   dplyr::mutate(
     quantile = ifelse(type == "point", 0.5, quantile),
