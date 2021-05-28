@@ -120,6 +120,8 @@ load_covid_forecasts_relative_horizon <- function(
     )  %>% 
   dplyr::mutate(
     target_unadjusted = paste(horizon, temporal_resolution, "ahead", target_variable),
+    # the reference date relative to which a day-ahead or week-ahead target is defined
+    # for weekly targets, this is a Saturday; for daily targets, this is a Monday.
     reference_date = covidEnsembles::calc_forecast_week_end_date(
       forecast_date, 
       target_unadjusted, 
