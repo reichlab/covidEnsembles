@@ -106,7 +106,7 @@ load_covid_forecasts_relative_horizon <- function(
   # map monday_dates to `last_forecast_date` of `load_latest_forecasts`
   forecasts <- purrr::map_dfr(
     monday_dates, 
-  covidHubUtils::load_latest_forecasts,
+    covidHubUtils::load_latest_forecasts,
     models = model_abbrs,
     forecast_date_window_size = timezero_window_size,
     locations = locations,
