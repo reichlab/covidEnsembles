@@ -83,8 +83,9 @@ get_candidate_models <- function(
 #' @param locations character vector of locations; FIPS codes
 #' @param targets character vector of targets to retrieve, for example
 #' c('1 wk ahead cum death', '2 wk ahead cum death')
-#' @param max_horizon maximum horizon relative to forecast_week_end_date and 
-#' analogous training reference dates for both training and prediction
+#' @param max_horizon maximum horizon of forecasts to return, where horizon is relative to
+#' the reference dates for the forecasts (Saturdays for forecasts of weekly targets or Mondays for
+#' daily targets)
 #' @param required_quantiles numeric vector of quantiles component models are
 #' required to have submitted
 #'
