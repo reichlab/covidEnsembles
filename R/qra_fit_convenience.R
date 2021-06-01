@@ -96,6 +96,7 @@ load_covid_forecasts_relative_horizon <- function(
   hub = "US",
   source = "local_hub_repo",
   hub_repo_path,
+  data_processed_subpath = "data-processed/",
   monday_dates,
   model_abbrs,
   timezero_window_size,
@@ -115,6 +116,7 @@ load_covid_forecasts_relative_horizon <- function(
     types = c("point", "quantile"),
     source = source,
     hub_repo_path = hub_repo_path,
+    data_processed_subpath = data_processed_subpath,
     as_of = NULL,
     hub = hub,
     verbose = FALSE
