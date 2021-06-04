@@ -147,7 +147,9 @@ load_covid_forecasts_relative_horizon <- function(
   # forecasts -- this is done so those models will appear in the model
   # eligibility metadata
   forecasts <- forecasts %>% dplyr::filter(
-    quantile %in% required_quantiles | type == "point"
+    format(quantile, digits = 3, nsmall = 3) %in%
+      format(required_quantiles, digits = 3, nsmall = 3) |
+    type == "point"
   ) %>% 
   # within each combination of model, forecast_date, location, and target_end_date,
   # if both a quantile and point forecast were provided, drop the point forecast; else, keep both.
