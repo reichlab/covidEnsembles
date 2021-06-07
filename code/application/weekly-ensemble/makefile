@@ -14,7 +14,7 @@ PROCESSED = $(HUB)data-processed/
 TODAY_DATE = $(shell date +'%Y-%m-%d')
 
 # Define the full make, making plots and
-all: incvscum ensemble pull data
+all: comparative_plots incvscum ensemble pull data
 
 # Get the latest forecast files from the hub repository
 pull:
@@ -31,11 +31,15 @@ plots: pull data
 # Build the ensemble
 ensemble: pull data
 	Rscript build_ensembles.R
+	Rscript build_trained_ensembles.R
 
 # Compare one week ahead forecasts of incident and cumulative deaths at
 # national level
 incvscum: pull data
 	Rscript inc_vs_cum.R
+
+comparative_plots: ensemble
+	Rscript plot_median_vs_trained_ensemble_forecasts.R
 
 git_tag: pull
 	git -C $(HUB) tag -a $(TODAY_DATE)-COVIDhub-ensemble -m "$(TODAY_DATE)-COVIDhub-ensemble build inputs"
