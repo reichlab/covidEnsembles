@@ -57,6 +57,7 @@ tic <- Sys.time()
 for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 #for (response_var in c("inc_case", "inc_hosp")) {
 #for (response_var in c("cum_death", "inc_death", "inc_case")) {
+  print(response_var)
   if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
     do_sd_check <- FALSE
@@ -128,10 +129,6 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
     # date for which retrieved hospitalization truth data should be current
     data_as_of_date <- covidData:::available_issue_dates("hospitalizations") %>% max()
-
-    } else {
-      manual_eligibility_adjust <- NULL
-    }
   }
 
   combine_method <- 'rel_wis_weighted_median'
@@ -168,7 +165,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       top_models = top_models,
       sd_check_table_path = sd_check_table_path,
       sd_check_plot_path = sd_check_plot_path,
-      manual_eligibility_adjust = manual_eligibility_adjust,
+      manual_eligibility_adjust = NULL,
       return_eligibility = TRUE,
       return_all = TRUE
     )
