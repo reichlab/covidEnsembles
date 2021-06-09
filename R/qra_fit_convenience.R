@@ -267,6 +267,8 @@ build_covid_ensemble <- function(
   timezero_window_size = 1,
   window_size,
   data_as_of_date,
+  forecast_date_locations_drop = NULL,
+  target_end_date_locations_drop = NULL,
   intercept = FALSE,
   combine_method,
   quantile_groups,
@@ -297,6 +299,13 @@ build_covid_ensemble <- function(
       targets = targets,
       spatial_resolution = spatial_resolution
     )
+  if (!is.null(target_end_date_locations_drop)) {
+    observed_by_location_target_end_date <- dplyr::anti_join(
+      observed_by_location_target_end_date,
+      target_end_date_locations_drop,
+      by = c("location", "target_end_date")
+    )
+  }
 
   # Dates specifying mondays when forecasts were submitted that are relevant to
   # this analysis: forecast_date and the previous window_size weeks
