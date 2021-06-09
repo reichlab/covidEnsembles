@@ -187,6 +187,7 @@ case_str <- paste0(
 fits_dir <- file.path(
   "code/application/retrospective-qra-comparison/retrospective-fits",
   spatial_resolution_path,
+  response_var,
   case_str)
 if (!dir.exists(fits_dir)) {
   dir.create(fits_dir)
@@ -194,22 +195,21 @@ if (!dir.exists(fits_dir)) {
 fit_filename <- paste0(
   fits_dir, "/",
   forecast_date, "-",
-  response_var, "-",
   case_str, ".rds")
 partial_save_filename <- paste0(
   fits_dir, "/",
   forecast_date, "-",
-  response_var, "-",
   case_str, ".pkl")
 loss_trace_filename <- paste0(
   fits_dir, "/",
-  response_var, "-", forecast_date, "-",
+  forecast_date, "-",
   case_str, "_loss_trace.rds")
 
 # create folder where model weights should be saved
 weights_dir <- file.path(
   "code/application/retrospective-qra-comparison/retrospective-weights",
   spatial_resolution_path,
+  response_var,
   case_str)
 if (!dir.exists(weights_dir)) {
   dir.create(weights_dir)
@@ -217,13 +217,13 @@ if (!dir.exists(weights_dir)) {
 weight_filename <- paste0(
   weights_dir, "/",
   forecast_date, "-",
-  response_var, "-",
   case_str, ".csv")
 
 # create folder where model forecasts should be saved
 forecasts_dir <- file.path(
   "code/application/retrospective-qra-comparison/retrospective-forecasts",
   spatial_resolution_path,
+  response_var,
   case_str)
 if (!dir.exists(forecasts_dir)) {
   dir.create(forecasts_dir)
@@ -231,7 +231,6 @@ if (!dir.exists(forecasts_dir)) {
 forecast_filename <- paste0(
   forecasts_dir, "/",
   forecast_date, "-",
-  response_var, "-",
   case_str, ".csv")
 
 # debug(covidEnsembles::estimate_qra)
