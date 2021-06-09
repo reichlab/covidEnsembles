@@ -2,24 +2,33 @@
 % Please edit documentation in R/qra_fit_convenience.R
 \name{load_covid_forecasts_relative_horizon}
 \alias{load_covid_forecasts_relative_horizon}
-\title{Load forecasts from multiple models over multiple weeks, keep only the last
-forecast from each model each week, and adjust the targets for daily
-forecasts to be relative to the Monday on or after submission.}
+\title{Load multiple models' last forecasts from multiple weeks and
+adjust the targets for daily forecasts to be relative to the
+Monday on or after submission.}
 \usage{
 load_covid_forecasts_relative_horizon(
+  hub = "US",
+  source = "local_hub_repo",
+  hub_repo_path,
   monday_dates,
   model_abbrs,
   timezero_window_size,
   locations,
   targets,
-  horizon,
-  required_quantiles,
-  submissions_root,
-  include_null_point_forecasts = FALSE,
-  keep_last = TRUE
+  max_horizon,
+  required_quantiles
 )
 }
 \arguments{
+\item{hub}{character vector, where the first element indicates the hub
+from which to load forecasts. Possible options are "US" and "ECDC"}
+
+\item{source}{string specifying where forecasts will be loaded from: either
+"local_hub_repo" or "zoltar"}
+
+\item{hub_repo_path}{path to local clone of the reichlab/covid19-forecast-hub
+repository to be used when \code{source} is \code{local_hub_repo}}
+
 \item{monday_dates}{Date vector of Mondays that are submission deadlines}
 
 \item{model_abbrs}{Character vector of model abbreviations}
@@ -32,28 +41,17 @@ load_covid_forecasts_relative_horizon(
 \item{targets}{character vector of targets to retrieve, for example
 c('1 wk ahead cum death', '2 wk ahead cum death')}
 
-\item{horizon}{maximum horizon relative to the monday dates that should be
-retained}
+\item{max_horizon}{maximum horizon relative to forecast_week_end_date and
+analogous training reference dates for both training and prediction}
 
 \item{required_quantiles}{numeric vector of quantiles component models are
 required to have submitted}
-
-\item{submissions_root}{path to the data-processed folder of the
-covid19-forecast-hub repository}
-
-\item{include_null_point_forecasts}{boolean; if TRUE, quantile forecasts are
-augmented with NA point forecasts from all models that submitted point
-forecasts}
-
-\item{keep_last}{logical; if TRUE, keep only the last identified file
-within each week. if FALSE, keep all files.}
 }
 \value{
-data frame with columns model, timezero, location, target, quantile,
-value
+data frame with ensemble forecasts by location
 }
 \description{
-Load forecasts from multiple models over multiple weeks, keep only the last
-forecast from each model each week, and adjust the targets for daily
-forecasts to be relative to the Monday on or after submission.
+Load multiple models' last forecasts from multiple weeks and
+adjust the targets for daily forecasts to be relative to the
+Monday on or after submission.
 }

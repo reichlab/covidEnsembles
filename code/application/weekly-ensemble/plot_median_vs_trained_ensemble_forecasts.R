@@ -14,7 +14,7 @@ plots_root <- "code/application/weekly-ensemble/plots/"
 # Figure out what day it is.
 # forecast_week_end_date is a saturday relative to which week-ahead targets are
 # defined. forecast_date is the monday of forecast submission
-forecast_date <- Sys.Date()
+forecast_date <- Sys.Date() - 1
 
 day_plots_root <- paste0(plots_root, forecast_date, '/')
 if(!file.exists(day_plots_root)) {

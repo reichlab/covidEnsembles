@@ -23,13 +23,6 @@ load_retrospective_ensemble_forecasts <- function(
   all_forecasts <- purrr::map_dfr(
     spatial_scales,
     function(spatial_scale) {
-      # Path to forecasts to evaluate
-      submissions_root <- paste0(submissions_root, spatial_scale, "/")
-
-      # models to read in
-      model_abbrs <- list.dirs(submissions_root, full.names = FALSE)
-      model_abbrs <- model_abbrs[nchar(model_abbrs) > 0]
-
       if (is.null(response_vars)) {
         if (spatial_scale %in% c("national", "state_national")) {
           response_vars <- c("cum_death", "inc_death", "inc_case", "inc_hosp")
@@ -43,6 +36,14 @@ load_retrospective_ensemble_forecasts <- function(
       spatial_scale_forecasts <- purrr::map_dfr(
         response_vars,
         function(response_var) {
+          # Path to forecasts to evaluate
+          submissions_root <- paste0(submissions_root, spatial_scale, "/", response_var, "/")
+
+          # models to read in
+          model_abbrs <- list.dirs(submissions_root, full.names = FALSE)
+          model_abbrs <- model_abbrs[nchar(model_abbrs) > 0]
+
+          # details of forecasts to read in
           if (response_var %in% c("inc_death", "cum_death")) {
             required_quantiles <-
               c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
@@ -69,17 +70,19 @@ load_retrospective_ensemble_forecasts <- function(
 #            all_locations <- unique(observed_hosps$location)
           }
 
+          # load the forecasts
           load_covid_forecasts_relative_horizon(
+            hub = "US",
+            source = "local_hub_repo",
+            hub_repo_path = submissions_root,
+            data_processed_subpath = "",# paste0(response_var, "/"),
             monday_dates = forecast_dates,
             model_abbrs = model_abbrs,
             timezero_window_size = 6,
             locations = all_locations,
             targets = targets,
-            horizon = horizon,
-            required_quantiles = required_quantiles,
-            submissions_root = submissions_root,
-            include_null_point_forecasts = FALSE,
-            keep_last = FALSE
+            max_horizon = horizon,
+            required_quantiles = required_quantiles
           )
         }
       ) %>%

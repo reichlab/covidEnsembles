@@ -36,6 +36,8 @@ Sys.setenv(LANG = "en_US.UTF-8")
 #args <- c("local", "inc_death", "2021-03-08", "FALSE", "rel_wis_weighted_median", "none", "per_model", "sort", "full_history", "0", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "inc_death", "2021-04-26", "FALSE", "rel_wis_weighted_median", "none", "per_model", "sort", "full_history", "0", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "inc_death", "2021-04-26", "FALSE", "mean_weights_weighted_median", "none", "per_model", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state")
+#args <- c("cluster_single_node", "inc_death", "2021-04-05", "FALSE", "rel_wis_weighted_median", "none", "per_model", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state")
+#args <- c("local", "inc_death", "2021-04-05", "FALSE", "rel_wis_weighted_median", "renormalize", "per_model", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state", "TRUE")
 
 args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
@@ -55,11 +57,15 @@ if (run_setting %in% c("local", "cluster_single_node")) {
   do_standard_checks <- as.logical(args[12])
   do_baseline_check <- as.logical(args[13])
   spatial_resolution_arg <- args[14]
+  drop_anomalies <- as.logical(args[15])
 
   if (run_setting == "local") {
+    # used by covidHubUtils::load_latest_forecasts for loading locally
     submissions_root <- "~/research/epi/covid/covid19-forecast-hub/data-processed/"
+    hub_repo_path <- "~/research/epi/covid/covid19-forecast-hub/"
   } else {
     submissions_root <- "/project/uma_nicholas_reich/covid19-forecast-hub/data-processed/"
+    hub_repo_path <- "/project/uma_nicholas_reich/covid19-forecast-hub/"
     reticulate::use_python("/usr/bin/python3.8")
   }
 }
@@ -177,11 +183,12 @@ case_str <- paste0(
   "-quantile_groups_", quantile_group_str,
 #  "-noncross_", noncross,
   "-window_size_", window_size_arg,
-  "-top_models_", top_models_arg#,
+  "-top_models_", top_models_arg,
 #  "-check_missingness_by_target_", check_missingness_by_target,
 #  "-do_standard_checks_", do_standard_checks,
 #  "-do_baseline_check_", do_baseline_check
-  )
+  "-drop_anomalies_", drop_anomalies
+)
 
 # create folder where model fits should be saved
 fits_dir <- file.path(
@@ -235,22 +242,40 @@ forecast_filename <- paste0(
 
 # debug(covidEnsembles::estimate_qra)
 
+if (drop_anomalies) {
+  forecast_date_locations_drop <- NULL
+  target_end_date_locations_drop <-
+    readr::read_csv("code/application/retrospective-qra-comparison/data-anomalies/outliers-deaths.csv") %>%
+    dplyr::filter(issue_date == forecast_date - 1) %>%
+    dplyr::transmute(
+      location = location,
+      target_end_date = as.character(date))
+} else {
+  forecast_date_locations_drop <- NULL
+  target_end_date_locations_drop <- NULL
+}
+
 tic <- Sys.time()
 if (!file.exists(forecast_filename)) {
   do_q10_check <- do_nondecreasing_quantile_check <- do_standard_checks
 
   tictic <- Sys.time()
-  results <- build_covid_ensemble_from_local_files(
+  results <- build_covid_ensemble(
+    hub = "US",
+    source = "local_hub_repo",
+    hub_repo_path = hub_repo_path,
     candidate_model_abbreviations_to_include =
       candidate_model_abbreviations_to_include,
     spatial_resolution = spatial_resolution,
     targets = targets,
     forecast_date = forecast_date,
     forecast_week_end_date = forecast_week_end_date,
-    horizon = horizon,
+    max_horizon = horizon,
     timezero_window_size = 6,
     window_size = window_size,
     data_as_of_date = forecast_date - 1,
+    forecast_date_locations_drop = forecast_date_locations_drop,
+    target_end_date_locations_drop = target_end_date_locations_drop,
     intercept = intercept,
     combine_method = combine_method,
     quantile_groups = quantile_groups,
@@ -258,7 +283,6 @@ if (!file.exists(forecast_filename)) {
     missingness = missingness,
     impute_method = impute_method,
     backend = ifelse(combine_method == "rel_wis_weighted_median", "grid_search", "qenspy"),
-    submissions_root = submissions_root,
     required_quantiles = required_quantiles,
     check_missingness_by_target = check_missingness_by_target,
     do_q10_check = do_q10_check,

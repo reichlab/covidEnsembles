@@ -14,10 +14,10 @@ date_to_week_end_date(
 \arguments{
 \item{forecast_date}{vector of dates}
 
-\item{return_type}{character specifying return type as "date" or "character"}
-
-\item{integer}{vector of week offsets.  must be either length 1 or the same
+\item{week_offset}{integer vector of week offsets.  must be either length 1 or the same
 length as timezero}
+
+\item{return_type}{character specifying return type as "date" or "character"}
 }
 \value{
 vector of dates in 'yyyy-mm-dd' format
