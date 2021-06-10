@@ -77,6 +77,8 @@ get_candidate_models <- function(
 #' @param hub_repo_path path to local clone of the reichlab/covid19-forecast-hub
 #' repository to be used when `source` is `local_hub_repo`
 #' @param monday_dates Date vector of Mondays that are submission deadlines
+#' @param as_of "as_of" date passed to zoltar 
+#' Ignored if \code{source} is \code{"local_hub_repo"}. 
 #' @param model_abbrs Character vector of model abbreviations
 #' @param timezero_window_size The number of days back to go.  A window size of
 #' 0 will retrieve only forecasts submitted on the `last_timezero` date.
@@ -98,6 +100,7 @@ load_covid_forecasts_relative_horizon <- function(
   hub_repo_path,
   data_processed_subpath = "data-processed/",
   monday_dates,
+  as_of,
   model_abbrs,
   timezero_window_size,
   locations,
@@ -117,7 +120,7 @@ load_covid_forecasts_relative_horizon <- function(
     source = source,
     hub_repo_path = hub_repo_path,
     data_processed_subpath = data_processed_subpath,
-    as_of = NULL,
+    as_of = as_of,
     hub = hub,
     verbose = FALSE
     )  %>% 
@@ -209,6 +212,8 @@ load_covid_forecasts_relative_horizon <- function(
 #' @param targets character vector of targets to retrieve, for example
 #' c('1 wk ahead cum death', '2 wk ahead cum death')
 #' @param forecast_date the forecast date for the analysis, typically a Monday
+#' @param as_of "as_of" date passed to zoltar 
+#' Ignored if \code{source} is \code{"local_hub_repo"}. 
 #' @param forecast_week_end_date date relative to week-ahead or day-ahead
 #' targets are defined. For week ahead targets, a Saturday; for day ahead
 #' targets, a Monday.
@@ -262,6 +267,7 @@ build_covid_ensemble <- function(
   spatial_resolution,
   targets,
   forecast_date,
+  as_of,
   forecast_week_end_date,
   max_horizon,
   timezero_window_size = 1,
@@ -312,11 +318,16 @@ build_covid_ensemble <- function(
   monday_dates <- forecast_date +
     seq(from = -window_size, to = 0, by = 1) * 7
 
+  if (missing(as_of) & source == "zoltar") {
+    as_of <- paste0(forecast_date + 1, " 11:00:00 UTC")
+  }
+
   forecasts <- load_covid_forecasts_relative_horizon(
     hub = hub,
     source = source,
     hub_repo_path = hub_repo_path,
     monday_dates = monday_dates,
+    as_of = as_of,
     model_abbrs = candidate_model_abbreviations_to_include,
     timezero_window_size = timezero_window_size,
     locations = unique(observed_by_location_target_end_date$location),
