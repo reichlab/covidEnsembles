@@ -318,8 +318,12 @@ build_covid_ensemble <- function(
   monday_dates <- forecast_date +
     seq(from = -window_size, to = 0, by = 1) * 7
 
-  if (missing(as_of) & source == "zoltar") {
-    as_of <- paste0(forecast_date + 1, " 11:00:00 UTC")
+  if (missing(as_of)) {
+    if (source == "zoltar") {
+      as_of <- paste0(forecast_date + 1, " 11:00:00 UTC")
+    } else {
+      as_of <- NULL
+    }
   }
 
   forecasts <- load_covid_forecasts_relative_horizon(
