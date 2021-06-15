@@ -69,7 +69,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     forecast_week_end_date <- forecast_date - 2
 
     # date for which retrieved deaths truth data should be current
-    data_as_of_date <- covidData::jhu_deaths_data$issue_date %>% max()
+    data_as_of_date <- covidData::available_issue_dates("deaths") %>% max()
 
     # adjustments based on plots
     if (forecast_date == "2020-06-08") {
@@ -123,7 +123,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
     # date for which retrieved deaths truth data should be current
     # repeated from cum_death block for clarity
-    data_as_of_date <- covidData::jhu_deaths_data$issue_date %>% max()
+    data_as_of_date <- covidData::available_issue_dates("deaths") %>% max()
 
     # adjustments based on plots
     if (forecast_date == "2020-06-08") {
@@ -185,7 +185,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     forecast_week_end_date <- forecast_date - 2
 
     # date for which retrieved cases truth data should be current
-    data_as_of_date <- covidData::jhu_cases_data$issue_date %>% max()
+    data_as_of_date <- covidData::available_issue_dates("cases") %>% max()
 
     if (forecast_date == "2020-07-13") {
       manual_eligibility_adjust <- tidyr::expand_grid(
@@ -220,7 +220,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     forecast_week_end_date <- forecast_date
 
     # date for which retrieved hospitalization truth data should be current
-    data_as_of_date <- covidData::healthdata_hosp_data$issue_date %>% max()
+    data_as_of_date <- covidData::available_issue_dates("hospitalizations") %>% max()
 
     if (forecast_date == "2020-12-07") {
       manual_eligibility_adjust <- tidyr::expand_grid(
