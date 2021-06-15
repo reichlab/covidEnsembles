@@ -320,7 +320,7 @@ build_covid_ensemble <- function(
 
   if (missing(as_of)) {
     if (source == "zoltar") {
-      as_of <- paste0(forecast_date + 1, " 11:00:00 UTC")
+      as_of <- paste0(forecast_date + 1, " 23:59:59 UTC")
     } else {
       as_of <- NULL
     }
