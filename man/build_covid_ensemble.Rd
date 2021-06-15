@@ -12,11 +12,14 @@ build_covid_ensemble(
   spatial_resolution,
   targets,
   forecast_date,
+  as_of,
   forecast_week_end_date,
   max_horizon,
   timezero_window_size = 1,
   window_size,
   data_as_of_date,
+  forecast_date_locations_drop = NULL,
+  target_end_date_locations_drop = NULL,
   intercept = FALSE,
   combine_method,
   quantile_groups,
@@ -62,12 +65,14 @@ c('1 wk ahead cum death', '2 wk ahead cum death')}
 
 \item{forecast_date}{the forecast date for the analysis, typically a Monday}
 
+\item{as_of}{"as_of" date passed to zoltar
+Ignored if \code{source} is \code{"local_hub_repo"}.}
+
 \item{forecast_week_end_date}{date relative to week-ahead or day-ahead
 targets are defined. For week ahead targets, a Saturday; for day ahead
 targets, a Monday.}
 
-\item{max_horizon}{maximum horizon relative to forecast_week_end_date and
-analogous training reference dates for both training and prediction}
+\item{max_horizon}{maximum horizon for ensemble forecasts}
 
 \item{timezero_window_size}{The number of days back to go.  A window size of
 0 will retrieve only forecasts submitted on the \code{last_timezero} date.}
