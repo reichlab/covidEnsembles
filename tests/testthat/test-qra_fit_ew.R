@@ -24,7 +24,7 @@ test_that("fit_qra_ew works", {
 
   actual <- estimate_qra(
     qfm_train = forecast_matrix,
-    method = 'ew'
+    combine_method = 'ew'
   )
 
   expected <- structure(

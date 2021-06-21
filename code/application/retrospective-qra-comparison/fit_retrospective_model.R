@@ -38,6 +38,7 @@ Sys.setenv(LANG = "en_US.UTF-8")
 #args <- c("local", "inc_death", "2021-04-26", "FALSE", "mean_weights_weighted_median", "none", "per_model", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("cluster_single_node", "inc_death", "2021-04-05", "FALSE", "rel_wis_weighted_median", "none", "per_model", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "inc_death", "2021-04-05", "FALSE", "rel_wis_weighted_median", "renormalize", "per_model", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state", "TRUE")
+#args <- c("local", "inc_death", "2021-04-05", "FALSE", "rel_wis_weighted_median", "renormalize", "per_quantile", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state", "FALSE", "all")
 
 args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
@@ -58,6 +59,7 @@ if (run_setting %in% c("local", "cluster_single_node")) {
   do_baseline_check <- as.logical(args[13])
   spatial_resolution_arg <- args[14]
   drop_anomalies <- as.logical(args[15])
+  horizon_group <- args[16]
 
   if (run_setting == "local") {
     # used by covidHubUtils::load_latest_forecasts for loading locally
@@ -107,8 +109,13 @@ if (response_var %in% c("inc_death", "cum_death")) {
     spatial_resolution <- spatial_resolution_arg
   }
   temporal_resolution <- "wk"
-  horizon <- 4L
-  targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
+  if (horizon_group == "all") {
+    max_horizon <- 4L
+    targets <- paste0(1:max_horizon, " wk ahead ", gsub("_", " ", response_var))
+  } else {
+    max_horizon <- as.integer(horizon_group)
+    targets <- paste0(max_horizon, " wk ahead ", gsub("_", " ", response_var))
+  }
   forecast_week_end_date <- forecast_date - 2
   full_history_start <- lubridate::ymd("2020-06-22") - 7 * 10
 } else if (response_var == "inc_case") {
@@ -121,8 +128,13 @@ if (response_var %in% c("inc_death", "cum_death")) {
     spatial_resolution <- spatial_resolution_arg
   }
   temporal_resolution <- "wk"
-  horizon <- 4L
-  targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
+  if (horizon_group == "all") {
+    max_horizon <- 4L
+    targets <- paste0(1:max_horizon, " wk ahead ", gsub("_", " ", response_var))
+  } else {
+    max_horizon <- as.integer(horizon_group)
+    targets <- paste0(max_horizon, " wk ahead ", gsub("_", " ", response_var))
+  }
   forecast_week_end_date <- forecast_date - 2
   full_history_start <- lubridate::ymd("2020-09-14") - 7 * 10
 } else if (response_var == "inc_hosp") {
@@ -135,8 +147,12 @@ if (response_var %in% c("inc_death", "cum_death")) {
     spatial_resolution <- spatial_resolution_arg
   }
   temporal_resolution <- "day"
-  horizon <- 28L
-  targets <- paste0(1:(horizon + 6), " day ahead ", gsub("_", " ", response_var))
+  if (horizon_group == "all") {
+    max_horizon <- 28L
+    targets <- paste0(1:(max_horizon + 6), " day ahead ", gsub("_", " ", response_var))
+  } else {
+    stop("per horizon estimation is not currently supported for daily targets")
+  }
   forecast_week_end_date <- forecast_date
   full_history_start <- lubridate::ymd("2020-11-16") - 7 * 10
 }
@@ -177,7 +193,7 @@ if (top_models_arg == "all_models") {
 }
 
 case_str <- paste0(
-  "intercept_", as.character(intercept),
+#  "intercept_", as.character(intercept),
   "-combine_method_", combine_method,
 #  "-missingness_", case_missingness,
   "-quantile_groups_", quantile_group_str,
@@ -187,7 +203,8 @@ case_str <- paste0(
 #  "-check_missingness_by_target_", check_missingness_by_target,
 #  "-do_standard_checks_", do_standard_checks,
 #  "-do_baseline_check_", do_baseline_check
-  "-drop_anomalies_", drop_anomalies
+  "-drop_anomalies_", drop_anomalies,
+  "-horizon_group_", horizon_group
 )
 
 # create folder where model fits should be saved
@@ -270,7 +287,7 @@ if (!file.exists(forecast_filename)) {
     targets = targets,
     forecast_date = forecast_date,
     forecast_week_end_date = forecast_week_end_date,
-    max_horizon = horizon,
+    max_horizon = max_horizon,
     timezero_window_size = 6,
     window_size = window_size,
     data_as_of_date = forecast_date - 1,

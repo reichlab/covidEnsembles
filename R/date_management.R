@@ -147,7 +147,7 @@ calc_relative_horizon <- function(
   target_end_date,
   target) {
   days_per_target_time_unit <- ifelse(grepl("day", target), 1, 7)
-  return((target_end_date - forecast_week_end_date) / days_per_target_time_unit)
+  return(as.integer((target_end_date - forecast_week_end_date) / days_per_target_time_unit))
 }
 
 #' Calculate the effective target relative to the forecast_week_end_date

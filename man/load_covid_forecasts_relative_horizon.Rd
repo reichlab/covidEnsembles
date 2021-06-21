@@ -12,7 +12,7 @@ load_covid_forecasts_relative_horizon(
   hub_repo_path,
   data_processed_subpath = "data-processed/",
   monday_dates,
-  as_of,
+  as_of = NULL,
   model_abbrs,
   timezero_window_size,
   locations,

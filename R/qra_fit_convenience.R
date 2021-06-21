@@ -336,7 +336,7 @@ build_covid_ensemble <- function(
     timezero_window_size = timezero_window_size,
     locations = unique(observed_by_location_target_end_date$location),
     targets = targets,
-    max_horizon = horizon,
+    max_horizon = max_horizon,
     required_quantiles = required_quantiles
   )
 

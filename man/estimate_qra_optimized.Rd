@@ -19,6 +19,14 @@ component models}
 
 \item{y_train}{numeric vector of responses for training set}
 
+\item{quantile_groups}{Vector of group labels for quantiles, having the same
+length as the number of quantiles.  Common labels indicate that the ensemble
+weights for the corresponding quantile levels should be tied together.
+Default is rep(1,length(quantiles)), which means that a common set of
+ensemble weights should be used across all levels.  This is the argument
+\code{tau_groups} for \code{quantgen::quantile_ensemble}, and may only be supplied if
+\verb{backend = 'quantgen}}
+
 \item{qra_model}{quantile averaging model}
 
 \item{backend}{implementation used for estimation; currently either

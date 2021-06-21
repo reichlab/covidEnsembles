@@ -143,6 +143,25 @@ interval_score <- function(y, l, u, alpha) {
 }
 
 
+#' Calculate quantile scores for multiple quantile predictions at a single
+#' probability level tau
+#'
+#' @param y vector of observations from target distribution
+#' @param q predictive quantile values
+#' @param tau the probability level for the predictive quantile q
+#'
+#' @return vector of quantile scores separately for each element of q
+quantile_score <- function(y, q, tau) {
+  if(length(tau) > 1 || tau < 0.0 || tau > 1.0) {
+    stop("tau must be a single number between 0 and 1.")
+  }
+
+  score <- (as.numeric(y < q) - tau) * (q - y)
+
+  return(score)
+}
+
+
 #' Calculate quantile score, optionally including absolute error,
 #' for a representation of a distribution for a single model
 #'
@@ -161,26 +180,31 @@ wis <- function(y, qfm) {
     stop('Quantile levels must be unique.  Did you provide a quantile forecast matrix for a single model?')
   }
 
-  # if median is one of the quantiles, keep track of that
-  median_ind <- which(quantile_levels == 0.5)
+  # # if median is one of the quantiles, keep track of that
+  # median_ind <- which(quantile_levels == 0.5)
 
-  # determine number K of intervals to score, and
-  # initialize score to absolute error if median provided or 0 otherwise
-  if (length(median_ind) == 1) {
-    K <- (length(quantile_levels) - 1)/2
-    score <- 0.5 * abs(y - unclass(qfm)[, median_ind])
-  } else {
-    K <- length(quantile_levels) / 2
+  # # determine number K of intervals to score, and
+  # # initialize score to absolute error if median provided or 0 otherwise
+  # if (length(median_ind) == 1) {
+  #   K <- (length(quantile_levels) - 1)/2
+  #   score <- 0.5 * abs(y - unclass(qfm)[, median_ind])
+  # } else {
+  #   K <- length(quantile_levels) / 2
     score <- rep(0.0, length(y))
-  }
+  # }
 
   # interval scores for each interval
-  for(k in seq_len(K)) {
-    alpha <- 2*quantile_levels[k]
-    score <- score + interval_score(y, unclass(qfm)[, k], unclass(qfm)[, ncol(qfm)+1-k], alpha)
+  # for(k in seq_len(K)) {
+  #   alpha <- 2*quantile_levels[k]
+  #   score <- score + interval_score(y, unclass(qfm)[, k], unclass(qfm)[, ncol(qfm)+1-k], alpha)
+  # }
+
+  # score <- score / (K + length(median_ind)/2)
+  for(k in seq_along(quantile_levels)) {
+    score <- score + 2 * quantile_score(y, unclass(qfm)[, k], quantile_levels[k])
   }
 
-  score <- score / (K + length(median_ind)/2)
+  score <- score / length(quantile_levels)
 
   return(score)
 }
