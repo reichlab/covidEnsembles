@@ -11,7 +11,8 @@ grid_search_rel_wis_weighted_median(
   fn,
   model_constructor,
   qfm_train,
-  y_train
+  y_train,
+  quantile_groups
 )
 }
 \arguments{
@@ -26,6 +27,14 @@ returns a model of class qra_fit}
 component models}
 
 \item{y_train}{numeric vector of responses for training set}
+
+\item{quantile_groups}{Vector of group labels for quantiles, having the same
+length as the number of quantiles.  Common labels indicate that the ensemble
+weights for the corresponding quantile levels should be tied together.
+Default is rep(1,length(quantiles)), which means that a common set of
+ensemble weights should be used across all levels.  This is the argument
+\code{tau_groups} for \code{quantgen::quantile_ensemble}, and may only be supplied if
+\verb{backend = 'quantgen}}
 }
 \value{
 single parameter value with lowest function value

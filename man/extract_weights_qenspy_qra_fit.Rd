@@ -2,7 +2,7 @@
 % Please edit documentation in R/qra_fit.R
 \name{extract_weights_qenspy_qra_fit}
 \alias{extract_weights_qenspy_qra_fit}
-\title{Predict based on a quantile regression averaging fit}
+\title{Extract weights from a quantile regression averaging fit from qenspy}
 \usage{
 extract_weights_qenspy_qra_fit(qra_fit)
 }
@@ -13,5 +13,5 @@ extract_weights_qenspy_qra_fit(qra_fit)
 object of class QuantileForecastMatrix with quantile forecasts
 }
 \description{
-Predict based on a quantile regression averaging fit
+Extract weights from a quantile regression averaging fit from qenspy
 }

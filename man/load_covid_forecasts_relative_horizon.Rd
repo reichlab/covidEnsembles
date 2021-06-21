@@ -10,7 +10,9 @@ load_covid_forecasts_relative_horizon(
   hub = "US",
   source = "local_hub_repo",
   hub_repo_path,
+  data_processed_subpath = "data-processed/",
   monday_dates,
+  as_of = NULL,
   model_abbrs,
   timezero_window_size,
   locations,
@@ -31,6 +33,9 @@ repository to be used when \code{source} is \code{local_hub_repo}}
 
 \item{monday_dates}{Date vector of Mondays that are submission deadlines}
 
+\item{as_of}{"as_of" date passed to zoltar
+Ignored if \code{source} is \code{"local_hub_repo"}.}
+
 \item{model_abbrs}{Character vector of model abbreviations}
 
 \item{timezero_window_size}{The number of days back to go.  A window size of
@@ -41,8 +46,9 @@ repository to be used when \code{source} is \code{local_hub_repo}}
 \item{targets}{character vector of targets to retrieve, for example
 c('1 wk ahead cum death', '2 wk ahead cum death')}
 
-\item{max_horizon}{maximum horizon relative to forecast_week_end_date and
-analogous training reference dates for both training and prediction}
+\item{max_horizon}{maximum horizon of forecasts to return, where horizon is relative to
+the reference dates for the forecasts (Saturdays for forecasts of weekly targets or Mondays for
+daily targets)}
 
 \item{required_quantiles}{numeric vector of quantiles component models are
 required to have submitted}

@@ -837,6 +837,13 @@ estimate_qra_ew <- function(qfm_train, ...) {
 #' @param qfm_train QuantileForecastMatrix with training set predictions from
 #'    component models
 #' @param y_train numeric vector of responses for training set
+#' @param quantile_groups Vector of group labels for quantiles, having the same
+#' length as the number of quantiles.  Common labels indicate that the ensemble
+#' weights for the corresponding quantile levels should be tied together.
+#' Default is rep(1,length(quantiles)), which means that a common set of
+#' ensemble weights should be used across all levels.  This is the argument
+#' `tau_groups` for `quantgen::quantile_ensemble`, and may only be supplied if
+#' `backend = 'quantgen`
 #' @param qra_model quantile averaging model
 #' @param backend implementation used for estimation; currently either
 #'    'optim', using L-BFGS-B as provided by the optim function in R, or
@@ -873,50 +880,111 @@ estimate_qra_optimized <- function(
     ns='covidEnsembles'
   )
 
-  init_par <- init_par_constructor(qfm_train, y_train)
-  if (backend == 'optim') {
-    if (qra_model == 'rel_wis_weighted_median') {
-      optim_method <- 'SANN'
-    } else {
-      optim_method <- 'L-BFGS-B'
-    }
-    optim_output <- optim(
-      par=init_par,
-      fn=wis_loss,
-      model_constructor=model_constructor,
-      qfm_train=qfm_train,
-      y_train=y_train,
-      method=optim_method)
+  # do estimation separately for each quantile group, then recombine
+  col_index <- attr(qfm_train, 'col_index')
+  quantile_name_col <- attr(qfm_train, 'quantile_name_col')
+  quantiles <- sort(unique(col_index[[quantile_name_col]]))
+  model_fit_per_quantile_group <- purrr::map(
+    unique(quantile_groups),
+    function(quantile_group) {
+      # extract quantile levels for this group
+      quantile_group_quantiles <-
+        quantiles[which(quantile_groups == quantile_group)]
+      
+      # create a QFM with just the predictive quantiles for this group
+      col_inds <- which(col_index[[quantile_name_col]] %in%
+                        quantile_group_quantiles)
+      qg_qfm_train <- qfm_train[, col_inds]
 
-    if(optim_output$convergence != 0) {
-      warning('optim convergence non-zero; estimation may have failed!')
+      # do estimation for this quantile group
+      init_par <- init_par_constructor(qfm_train, y_train)
+      if (backend == 'optim') {
+        if (qra_model == 'rel_wis_weighted_median') {
+          optim_method <- 'SANN'
+        } else {
+          optim_method <- 'L-BFGS-B'
+        }
+        optim_output <- optim(
+          par=init_par,
+          fn=wis_loss,
+          model_constructor=model_constructor,
+          qfm_train=qg_qfm_train,
+          y_train=y_train,
+          method=optim_method)
+
+        if(optim_output$convergence != 0) {
+          warning('optim convergence non-zero; estimation may have failed!')
+        }
+      } else if (backend == 'NlcOptim') {
+        wis_loss_wrapper <- function(x) {
+          wis_loss(
+            x,
+            model_constructor=model_constructor,
+            qfm_train=qg_qfm_train,
+            y_train=y_train)
+        }
+        optim_output <- NlcOptim::solnl(
+          X=init_par,
+          objfun=wis_loss_wrapper
+        )
+      } else if (backend == 'grid_search') {
+        if (qra_model == 'rel_wis_weighted_median') {
+          optim_output <- grid_search_rel_wis_weighted_median(
+            par_grid=init_par,
+            fn=wis_loss,
+            model_constructor=model_constructor,
+            qfm_train=qg_qfm_train,
+            y_train=y_train)
+        } else {
+          stop('grid search backend is only available if model is rel_wis_weighted_median')
+        }
+      }
+
+      return(list(
+        quantile_levels = quantile_group_quantiles,
+        model_fit = model_constructor(optim_output$par, qg_qfm_train, y_train)
+      ))
+    })
+  
+  # assemble into a single fit
+  if (length(unique(quantile_groups)) == 1) {
+    return(model_fit_per_quantile_group[[1]]$model_fit)
+  } else {
+    # the following is specific to the `relative_wis_weighted_median` approach
+    # other weighted approaches are expected to be fit using other backends
+    # we could add support for other methods without too much effor though...
+    if (combine_method != "rel_wis_weighted_median") {
+      stop("For multiple quantile groups and optimization within R, must have combine_method = relative_wis_weighted_median")
     }
-  } else if (backend == 'NlcOptim') {
-    wis_loss_wrapper <- function(x) {
-      wis_loss(
-        x,
-        model_constructor=model_constructor,
-        qfm_train=qfm_train,
-        y_train=y_train)
-    }
-    optim_output <- NlcOptim::solnl(
-      X=init_par,
-      objfun=wis_loss_wrapper
+    combined_coefficients <- purrr::map_dfr(
+      model_fit_per_quantile_group,
+      function(model_fit) {
+        quantile_levels <- model_fit$quantile_levels
+        model_fit <- model_fit$model_fit
+        # get updated model fit coefficients table with all combinations of
+        # quantile level and model
+        new_coefficients <- model_fit$coefficients %>%
+          dplyr::mutate(join_field = "a") %>%
+          dplyr::full_join(
+            data.frame(
+              quantile = quantile_levels,
+              join_field = "a"
+            ),
+            by = "join_field"
+          ) %>%
+          dplyr::select(model, quantile, beta)
+        return(new_coefficients)
+      }
     )
-  } else if (backend == 'grid_search') {
-    if (qra_model == 'rel_wis_weighted_median') {
-      optim_output <- grid_search_rel_wis_weighted_median(
-        par_grid=init_par,
-        fn=wis_loss,
-        model_constructor=model_constructor,
-        qfm_train=qfm_train,
-        y_train=y_train)
-    } else {
-      stop('grid search backend is only available if model is rel_wis_weighted_median')
-    }
+    combined_par <- sapply(
+      model_fit_per_quantile_group,
+      function(model_fit) { model_fit$model_fit$par }
+    )
+    combined_model_fit <- model_fit_per_quantile_group[[1]]$model_fit
+    combined_model_fit$coefficients <- combined_coefficients
+    combined_model_fit$par <- combined_par
+    return(combined_model_fit)
   }
-
-  return(model_constructor(optim_output$par, qfm_train, y_train))
 }
 
 
