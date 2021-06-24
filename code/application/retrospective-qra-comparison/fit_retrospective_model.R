@@ -1,6 +1,9 @@
 library(covidData)
 library(covidEnsembles)
-library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(purrr)
 library(zeallot)
 library(gridExtra)
 library(yaml)
@@ -39,6 +42,7 @@ Sys.setenv(LANG = "en_US.UTF-8")
 #args <- c("cluster_single_node", "inc_death", "2021-04-05", "FALSE", "rel_wis_weighted_median", "none", "per_model", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state")
 #args <- c("local", "inc_death", "2021-04-05", "FALSE", "rel_wis_weighted_median", "renormalize", "per_model", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state", "TRUE")
 #args <- c("local", "inc_death", "2021-04-05", "FALSE", "rel_wis_weighted_median", "renormalize", "per_quantile", "sort", "4", "0", "TRUE", "FALSE", "FALSE", "state", "FALSE", "all")
+#args <- c("cluster_single_node", "inc_death", "2020-07-27", "FALSE", "convex", "renormalize", "per_model", "sort", "12", "0", "TRUE", "FALSE", "FALSE", "state", "FALSE", "all")
 
 args <- commandArgs(trailingOnly = TRUE)
 run_setting <- args[1]
@@ -194,7 +198,7 @@ if (top_models_arg == "all_models") {
 
 case_str <- paste0(
 #  "intercept_", as.character(intercept),
-  "-combine_method_", combine_method,
+  "combine_method_", combine_method,
 #  "-missingness_", case_missingness,
   "-quantile_groups_", quantile_group_str,
 #  "-noncross_", noncross,
@@ -279,8 +283,8 @@ if (!file.exists(forecast_filename)) {
   tictic <- Sys.time()
   results <- build_covid_ensemble(
     hub = "US",
-    source = "local_hub_repo",
-    hub_repo_path = hub_repo_path,
+    source = "zoltar",
+#    hub_repo_path = hub_repo_path,
     candidate_model_abbreviations_to_include =
       candidate_model_abbreviations_to_include,
     spatial_resolution = spatial_resolution,
