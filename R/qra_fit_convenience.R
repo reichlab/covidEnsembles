@@ -1373,7 +1373,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
       }) %>%
       which()
     if (length(train_row_inds_to_keep) < nrow(qfm_train)) {
-      qfm_train <- qfm_train[which(train_row_inds_to_keep), ]
+      qfm_train <- qfm_train[train_row_inds_to_keep, ]
     }
   } else {
     train_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
