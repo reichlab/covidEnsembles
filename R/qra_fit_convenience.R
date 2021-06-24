@@ -1362,6 +1362,19 @@ get_imputed_ensemble_fits_and_predictions <- function(
     cols_to_keep <- which(col_index$model %in% models_to_keep)
     qfm_train <- qfm_train[, cols_to_keep]
     qfm_test <- qfm_test[, cols_to_keep]
+
+    # finally, one last clean up of the training set to drop rows with no available models
+    # this is relevant because we just dropped some models that were missing in the test set
+    train_row_inds_to_keep <- apply(
+      qfm_train,
+      1,
+      function(x) {
+        !all(is.na(x))
+      }) %>%
+      which()
+    if (length(train_row_inds_to_keep) < nrow(qfm_train)) {
+      qfm_train <- qfm_train[which(train_row_inds_to_keep), ]
+    }
   } else {
     train_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
     test_row_inds <- which(substr(row_index$target, 1, 4) == '1 wk')
