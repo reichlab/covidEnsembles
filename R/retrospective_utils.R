@@ -272,6 +272,14 @@ parse_model_case <- function(model_abbr) {
         return(data.frame(
           estimation_grouping = substr(case_part, 18, nc)
         ))
+      } else if (substr(case_part, 1, min(nc, 14)) == "drop_anomalies") {
+        return(data.frame(
+          drop_anomalies = substr(case_part, 16, nc)
+        ))
+      } else if (substr(case_part, 1, min(nc, 13)) == "horizon_group") {
+        return(data.frame(
+          horizon_group = substr(case_part, 15, nc)
+        ))
       } else {
         message(paste0("Unsupported case part: ", case_part))
       }
