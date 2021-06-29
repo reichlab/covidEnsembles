@@ -6,5 +6,9 @@ covidEnsembles.Rproj
 .Rbuildignore
 .Rhistory
 code/application/weekly-ensemble/*.pdf
+code/application/weekly-ensemble/forecasts/
+code/application/weekly-ensemble/exclusion-outputs/
+code/application/weekly-ensemble/plots/
+code/application/weekly-ensemble/inc-vs-cum/
 run*.out
 run*.err
