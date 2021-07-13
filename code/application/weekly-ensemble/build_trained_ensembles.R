@@ -14,6 +14,10 @@ final_run <- TRUE
 # Where to find component model submissions
 submissions_root <- '../covid19-forecast-hub/data-processed/'
 
+# Parent dir of this which is the hub clone path used by
+# covidHubUtils::load_latest_forecasts for loading locally
+hub_repo_path <- '../covid19-forecast-hub/'
+
 # Where to save ensemble forecasts
 save_roots <- c('code/application/weekly-ensemble/forecasts/')
 for (root in save_roots) {
@@ -133,14 +137,17 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
   combine_method <- 'rel_wis_weighted_median'
   for (spatial_resolution in spatial_resolutions) {
-    results <- build_covid_ensemble_from_local_files(
+    results <- build_covid_ensemble(
+      hub = "US",
+      source = "local_hub_repo",
+      hub_repo_path = hub_repo_path,
       candidate_model_abbreviations_to_include =
         candidate_model_abbreviations_to_include,
       spatial_resolution = spatial_resolution,
       targets = targets,
       forecast_date = forecast_date,
       forecast_week_end_date = forecast_week_end_date,
-      horizon = horizon,
+      max_horizon = horizon,
       timezero_window_size = 6,
       window_size = window_size,
       data_as_of_date = data_as_of_date,
@@ -154,7 +161,6 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         combine_method == "rel_wis_weighted_median",
         "grid_search",
         "qenspy"),
-      submissions_root = submissions_root,
       required_quantiles = required_quantiles,
       check_missingness_by_target = TRUE,
       do_q10_check = FALSE,
