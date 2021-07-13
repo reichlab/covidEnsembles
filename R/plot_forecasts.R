@@ -60,14 +60,14 @@ plot_forecasts_single_model <- function(
               dplyr::left_join(covidData::fips_codes, by = "location") %>%
               dplyr::mutate(issue_date = as.character(forecast_date - 1)),
             covidData::load_jhu_data(
-              as_of = as.character(tail(covidData::jhu_deaths_data$issue_date, 1)),
+              as_of = as.character(covidData::available_issue_dates("deaths") %>% max()),
               spatial_resolution = c("state", "national"),
               temporal_resolution = "weekly",
               measure = measure) %>%
               dplyr::left_join(covidData::fips_codes, by = "location") %>%
               dplyr::mutate(
-                issue_date = covidData::jhu_deaths_data$issue_date %>%
-                  tail(1) %>%
+                issue_date = covidData::available_issue_dates("deaths") %>%
+                  max() %>%
                   as.character()
               )
           )
@@ -89,14 +89,14 @@ plot_forecasts_single_model <- function(
               dplyr::left_join(fips_codes, by = "location") %>%
               dplyr::mutate(issue_date = as.character(forecast_date - 1)),
             covidData::load_jhu_data(
-              as_of = as.character(tail(covidData::jhu_cases_data$issue_date, 1)),
+              as_of = as.character(covidData::available_issue_dates("cases") %>% max()),
               spatial_resolution = c("county", "state", "national"),
               temporal_resolution = "weekly",
               measure = measure) %>%
               dplyr::left_join(fips_codes, by = "location") %>%
               dplyr::mutate(
-                issue_date = covidData::jhu_cases_data$issue_date %>%
-                  tail(1) %>%
+                issue_date = covidData::available_issue_dates("cases") %>%
+                  max() %>%
                   as.character()
               )
           )
@@ -119,14 +119,14 @@ plot_forecasts_single_model <- function(
               dplyr::left_join(fips_codes, by = "location") %>%
               dplyr::mutate(issue_date = as.character(forecast_date - 1)),
             covidData::load_healthdata_data(
-              as_of = as.character(tail(covidData::healthdata_hosp_data$issue_date, 1)),
+              as_of = as.character(covidData::available_issue_dates("hospitalizations") %>% max()),
               spatial_resolution = c("county", "state", "national"),
               temporal_resolution = "daily",
               measure = measure) %>%
               dplyr::left_join(fips_codes, by = "location") %>%
               mutate(
-                issue_date = covidData::healthdata_hosp_data$issue_date %>%
-                  tail(1) %>%
+                issue_date = covidData::available_issue_dates("hospitalizations") %>%
+                  max() %>%
                   as.character()
               )
           )
