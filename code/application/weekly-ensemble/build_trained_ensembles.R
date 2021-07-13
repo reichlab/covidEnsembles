@@ -64,7 +64,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
   print(response_var)
   if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
-    do_sd_check <- FALSE
+    do_sd_check <- "exclude_none"
     required_quantiles <-
       c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolutions <- c("state", "national")
@@ -82,7 +82,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     data_as_of_date <- covidData:::available_issue_dates("deaths") %>% max()
   } else if (response_var == 'inc_death') {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-    do_sd_check <- FALSE
+    do_sd_check <- "exclude_none"
     required_quantiles <-
       c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolutions <- c("state", "national")
@@ -101,7 +101,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     data_as_of_date <- covidData:::available_issue_dates("deaths") %>% max()
   } else if (response_var == "inc_case") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-    do_sd_check <- FALSE
+    do_sd_check <- "exclude_none"
     required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
     spatial_resolutions <- c('county', 'state', 'national')
     temporal_resolution <- "wk"
@@ -118,7 +118,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     data_as_of_date <- covidData:::available_issue_dates("cases") %>% max()
   } else if (response_var == "inc_hosp") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-    do_sd_check <- TRUE
+    do_sd_check <- "exclude_none"
     required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolutions <- c("state", "national")
     temporal_resolution <- "day"
@@ -166,7 +166,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       do_q10_check = FALSE,
       do_nondecreasing_quantile_check = FALSE,
       do_baseline_check = FALSE,
-      do_sd_check = FALSE, # implement CDC exclusion requests
+      do_sd_check = do_sd_check, # implement CDC exclusion requests
       baseline_tol = 1.0,
       top_models = top_models,
       sd_check_table_path = sd_check_table_path,
