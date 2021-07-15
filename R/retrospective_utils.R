@@ -268,6 +268,10 @@ parse_model_case <- function(model_abbr) {
         return(data.frame(
           do_baseline_check = substr(case_part, 19, nc)
         ))
+      } else if (substr(case_part, 1, min(nc, 11)) == "do_sd_check") {
+        return(data.frame(
+          do_sd_check = substr(case_part, 13, nc)
+        ))
       } else if (substr(case_part, 1, min(nc, 16)) == "estimation_scale") {
         return(data.frame(
           estimation_grouping = substr(case_part, 18, nc)
