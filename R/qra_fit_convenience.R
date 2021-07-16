@@ -341,9 +341,11 @@ build_covid_ensemble <- function(
   )
   if (!is.null(forecast_date_locations_drop)) {
     forecasts <- dplyr::anti_join(
-      forecasts,
-      forecast_date_locations_drop,
-      by = c("location", "forecast_date")
+      forecasts %>%
+        dplyr::mutate(forecast_week_end_date = as.character(forecast_week_end_date)),
+      forecast_date_locations_drop %>%
+        dplyr::mutate(forecast_week_end_date = as.character(forecast_week_end_date)),
+      by = c("location", "forecast_week_end_date")
     )
   }
 
