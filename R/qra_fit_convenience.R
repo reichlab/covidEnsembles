@@ -339,6 +339,13 @@ build_covid_ensemble <- function(
     max_horizon = max_horizon,
     required_quantiles = required_quantiles
   )
+  if (!is.null(forecast_date_locations_drop)) {
+    forecasts <- dplyr::anti_join(
+      forecasts,
+      forecast_date_locations_drop,
+      by = c("location", "forecast_date")
+    )
+  }
 
   # obtain ensemble fit(s)
   results <- get_ensemble_fit_and_predictions(
