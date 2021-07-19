@@ -14,9 +14,12 @@
 #'   model, and quantile probability level
 #' @param do_baseline_check logical; if TRUE, check condition that WIS for model
 #'   is within specified tolerance of WIS for baseline
-#' @param do_sd_check logical; if TRUE, check condition that mean of next (7) predicted
-#'   medians is not more than (4) sample standard deviations below the mean of the last
-#'   (14) observations
+#' @param do_sd_check character: "exclude_none" to keep all forecasts,
+#'   "exclude_below" to exclude low forecasts, "exclude_above" to exclude high
+#'   forecasts, or "exclude_both" to exclude both low and high forecasts.
+#'   exclusions are based on a check of whether the mean of the next (7) predicted
+#'   medians is not more than (4) sample standard deviations abov or below the
+#'   mean of the last (14) observations
 #' @param window_size non-negative integer number of historic weeks that
 #'   are examined for forecast missingness; 0 is appropriate for equal weight
 #'   ensembles where no historical data is required.  If two past weeks of
@@ -41,13 +44,20 @@ calc_model_eligibility_for_ensemble <- function(
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
   do_baseline_check = FALSE,
-  do_sd_check = FALSE,
+  do_sd_check = "exclude_none",
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,
   window_size = 0,
   decrease_tol = 1.0,
   baseline_tol = 1.2
 ) {
+  # validate do_sd_check argument
+  match.arg(do_sd_check,
+    choices = c("exclude_none",
+                "exclude_below",
+                "exclude_above",
+                "exclude_both"))
+
   # subset to rows representing forecasts within window_size
   row_index <- attr(qfm, 'row_index')
   if(window_size+1 > length(unique(row_index$forecast_week_end_date))) {
@@ -110,12 +120,14 @@ calc_model_eligibility_for_ensemble <- function(
     eligibility$baseline_eligibility <- 'NA'
   } 
 
-  if(do_sd_check) {
+  if(do_sd_check != "exclude_none") {
     sd_check <- calc_sd_check(
       qfm,
       observed_by_location_target_end_date,
       sd_check_table_path = sd_check_table_path,
-      sd_check_plot_path = sd_check_plot_path
+      sd_check_plot_path = sd_check_plot_path,
+      exclude_below = (do_sd_check %in% c("exclude_below", "exclude_both")),
+      exclude_above = (do_sd_check %in% c("exclude_above", "exclude_both"))
     )
 
     # combine eligibility check results

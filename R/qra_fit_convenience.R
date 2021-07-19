@@ -110,7 +110,7 @@ load_covid_forecasts_relative_horizon <- function(
 ) {
   # map monday_dates to `last_forecast_date` of `load_latest_forecasts`
   forecasts <- purrr::map_dfr(
-    monday_dates, 
+    monday_dates,
     covidHubUtils::load_latest_forecasts,
     models = model_abbrs,
     forecast_date_window_size = timezero_window_size,
@@ -123,7 +123,7 @@ load_covid_forecasts_relative_horizon <- function(
     as_of = as_of,
     hub = hub,
     verbose = FALSE
-    )  %>% 
+    ) %>%
   dplyr::mutate(
     target_unadjusted = paste(horizon, temporal_resolution, "ahead", target_variable),
     # the reference date relative to which a day-ahead or week-ahead target is defined
@@ -339,153 +339,15 @@ build_covid_ensemble <- function(
     max_horizon = max_horizon,
     required_quantiles = required_quantiles
   )
-
-  # obtain ensemble fit(s)
-  results <- get_ensemble_fit_and_predictions(
-    forecasts=forecasts,
-    observed_by_location_target_end_date=observed_by_location_target_end_date,
-    forecast_week_end_date=forecast_week_end_date,
-    window_size=window_size,
-    intercept=intercept,
-    combine_method=combine_method,
-    quantile_groups=quantile_groups,
-    noncross = noncross,
-    missingness=missingness,
-    impute_method=impute_method,
-    backend=backend,
-    check_missingness_by_target = check_missingness_by_target,
-    do_q10_check = do_q10_check,
-    do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
-    do_baseline_check = do_baseline_check,
-    do_sd_check = do_sd_check,
-    sd_check_table_path = sd_check_table_path,
-    sd_check_plot_path = sd_check_plot_path,
-    baseline_tol = baseline_tol,
-    top_models = top_models,
-    manual_eligibility_adjust = manual_eligibility_adjust,
-    return_eligibility = return_eligibility,
-    return_all = return_all,
-    partial_save_frequency = partial_save_frequency,
-    partial_save_filename = partial_save_filename)
-
-  # return
-  return(c(
-    results,
-    list(forecasts = forecasts)
-  ))
-}
-
-#' Read in covid forecasts from local files and fit one ensemble
-#'
-#' @param candidate_model_abbreviations_to_include List of model abbreviations
-#' for models that may be included in ensemble forecast
-#' @param targets character vector of targets to retrieve, for example
-#' c('1 wk ahead cum death', '2 wk ahead cum death')
-#' @param forecast_date the forecast date for the analysis, typically a Monday
-#' @param forecast_week_end_date date relative to week-ahead or day-ahead
-#' targets are defined. For week ahead targets, a Saturday; for day ahead
-#' targets, a Monday.
-#' @param timezero_window_size The number of days back to go.  A window size of
-#' 0 will retrieve only forecasts submitted on the `last_timezero` date.
-#' @param window_size size of window
-#' @param data_as_of_date date for which observations should be current
-#' @param intercept logical specifying whether an intercept is included
-#' @param combine_method character specifying the approach to model
-#' combination: "equal", "convex", "positive", "unconstrained", "median",
-#' or "convex_median".
-#' The first four form a linear combination of quantiles across component
-#' models with varying levels of restrictions on the combination coefficients.
-#' "median" takes the median across models at each quantile level, and
-#' "convex_median" uses a weighted median with convext constraints on weights
-#' @param quantile_groups Vector of group labels for quantiles, having the same
-#' length as the number of quantiles.  Common labels indicate that the ensemble
-#' weights for the corresponding quantile levels should be tied together.
-#' Default is rep(1,length(quantiles)), which means that a common set of
-#' ensemble weights should be used across all levels.  This is the argument
-#' `tau_groups` for `quantmod::quantile_ensemble`, and may only be supplied if
-#' `backend = 'quantmod`
-#' @param noncross string specifying approach to handling quantile noncrossing:
-#' one of "constrain" or "sort". "constrain" means estimation is done subject
-#' to constraints ruling out quantile crossing.  "sort" means no such
-#' constraints are imposed during estimation, but the resulting forecasts are
-#' sorted.
-#' @param missingness character specifying approach to handling missing
-#' forecasts: 'by_location_group', 'rescale', or 'impute'
-#' @param impute_method character string specifying method for imputing missing
-#' forecasts; either 'mean' for mean imputation or 'none' for no imputation
-#' @param backend back end used for optimization.
-#' @param submissions_root path to the data-processed folder of the
-#' covid19-forecast-hub repository
-#' @param required_quantiles numeric vector of quantiles component models are
-#' required to have submitted
-#' @param check_missingness_by_target if TRUE, record missingness for every
-#' combination of model, location, forecast week, and target; if FALSE, record
-#' missingness only for each model and location
-#' @param do_q10_check if TRUE, do q10 check
-#' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
-#' @param return_eligibility if TRUE, return model eligibility
-#'
-#' @return data frame with ensemble forecasts by location
-#'
-#' @export
-build_covid_ensemble_from_local_files <- function(
-  candidate_model_abbreviations_to_include,
-  spatial_resolution,
-  targets,
-  forecast_date,
-  forecast_week_end_date,
-  horizon,
-  timezero_window_size = 1,
-  window_size,
-  data_as_of_date,
-  intercept=FALSE,
-  combine_method,
-  quantile_groups,
-  noncross = "constrain",
-  missingness,
-  impute_method,
-  backend,
-  submissions_root,
-  required_quantiles,
-  check_missingness_by_target,
-  do_q10_check,
-  do_nondecreasing_quantile_check,
-  do_baseline_check,
-  do_sd_check,
-  sd_check_table_path = NULL,
-  sd_check_plot_path = NULL,
-  baseline_tol = 1.2,
-  top_models = 0,
-  manual_eligibility_adjust,
-  return_eligibility = TRUE,
-  return_all = TRUE,
-  partial_save_frequency,
-  partial_save_filename
-) {
-  # Get observed values ("truth" in Zoltar's parlance)
-  observed_by_location_target_end_date <-
-    get_observed_by_location_target_end_date(
-      as_of = as.character(data_as_of_date),
-      targets = targets,
-      spatial_resolution = spatial_resolution
+  if (!is.null(forecast_date_locations_drop)) {
+    forecasts <- dplyr::anti_join(
+      forecasts %>%
+        dplyr::mutate(forecast_week_end_date = as.character(forecast_week_end_date)),
+      forecast_date_locations_drop %>%
+        dplyr::mutate(forecast_week_end_date = as.character(forecast_week_end_date)),
+      by = c("location", "forecast_week_end_date")
     )
-
-  # Dates specifying mondays when forecasts were submitted that are relevant to
-  # this analysis: forecast_date and the previous window_size weeks
-  monday_dates <- forecast_date +
-    seq(from = -window_size, to = 0, by = 1) * 7
-
-  forecasts <- load_covid_forecasts_relative_horizon_old(
-    monday_dates = monday_dates,
-    model_abbrs = candidate_model_abbreviations_to_include,
-    timezero_window_size = timezero_window_size,
-    locations = unique(observed_by_location_target_end_date$location),
-    targets = targets,
-    horizon = horizon,
-    required_quantiles = required_quantiles,
-    submissions_root =submissions_root,
-    include_null_point_forecasts = TRUE
-  )
+  }
 
   # obtain ensemble fit(s)
   results <- get_ensemble_fit_and_predictions(

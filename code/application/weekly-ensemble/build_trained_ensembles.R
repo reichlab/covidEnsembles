@@ -14,6 +14,10 @@ final_run <- TRUE
 # Where to find component model submissions
 submissions_root <- '../covid19-forecast-hub/data-processed/'
 
+# Parent dir of this which is the hub clone path used by
+# covidHubUtils::load_latest_forecasts for loading locally
+hub_repo_path <- '../covid19-forecast-hub/'
+
 # Where to save ensemble forecasts
 save_roots <- c('code/application/weekly-ensemble/forecasts/')
 for (root in save_roots) {
@@ -60,7 +64,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
   print(response_var)
   if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
-    do_sd_check <- FALSE
+    do_sd_check <- "exclude_none"
     required_quantiles <-
       c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolutions <- c("state", "national")
@@ -78,7 +82,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     data_as_of_date <- covidData:::available_issue_dates("deaths") %>% max()
   } else if (response_var == 'inc_death') {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-    do_sd_check <- FALSE
+    do_sd_check <- "exclude_none"
     required_quantiles <-
       c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolutions <- c("state", "national")
@@ -97,7 +101,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     data_as_of_date <- covidData:::available_issue_dates("deaths") %>% max()
   } else if (response_var == "inc_case") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-    do_sd_check <- FALSE
+    do_sd_check <- "exclude_none"
     required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
     spatial_resolutions <- c('county', 'state', 'national')
     temporal_resolution <- "wk"
@@ -114,7 +118,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     data_as_of_date <- covidData:::available_issue_dates("cases") %>% max()
   } else if (response_var == "inc_hosp") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-    do_sd_check <- TRUE
+    do_sd_check <- "exclude_none"
     required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolutions <- c("state", "national")
     temporal_resolution <- "day"
@@ -133,14 +137,17 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
   combine_method <- 'rel_wis_weighted_median'
   for (spatial_resolution in spatial_resolutions) {
-    results <- build_covid_ensemble_from_local_files(
+    results <- build_covid_ensemble(
+      hub = "US",
+      source = "local_hub_repo",
+      hub_repo_path = hub_repo_path,
       candidate_model_abbreviations_to_include =
         candidate_model_abbreviations_to_include,
       spatial_resolution = spatial_resolution,
       targets = targets,
       forecast_date = forecast_date,
       forecast_week_end_date = forecast_week_end_date,
-      horizon = horizon,
+      max_horizon = horizon,
       timezero_window_size = 6,
       window_size = window_size,
       data_as_of_date = data_as_of_date,
@@ -154,13 +161,12 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         combine_method == "rel_wis_weighted_median",
         "grid_search",
         "qenspy"),
-      submissions_root = submissions_root,
       required_quantiles = required_quantiles,
       check_missingness_by_target = TRUE,
       do_q10_check = FALSE,
       do_nondecreasing_quantile_check = FALSE,
       do_baseline_check = FALSE,
-      do_sd_check = FALSE, # implement CDC exclusion requests
+      do_sd_check = do_sd_check, # implement CDC exclusion requests
       baseline_tol = 1.0,
       top_models = top_models,
       sd_check_table_path = sd_check_table_path,
