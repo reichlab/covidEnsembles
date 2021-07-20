@@ -211,7 +211,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   } else if (response_var == "inc_hosp") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
-    do_sd_check <- "exclude_both"
+    do_sd_check <- "exclude_none"
     required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolution <- c("state", "national")
     temporal_resolution <- "day"
