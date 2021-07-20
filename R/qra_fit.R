@@ -297,7 +297,7 @@ extract_weights_qenspy_qra_fit <- function(qra_fit) {
 #' @return object of class QuantileForecastMatrix with quantile forecasts
 #'
 #' @export
-predict.qra_fit <- function(qra_fit, qfm, sort_quantiles) {
+predict.qra_fit <- function(qra_fit, qfm, sort_quantiles = TRUE) {
   # construct sparse matrix representing model weights across quantiles
   ## pull out parameter values
   row_index <- attr(qfm, 'row_index')
@@ -507,7 +507,7 @@ predict.qenspy_qra_fit <- function(qra_fit, qfm, sort_quantiles) {
 }
 
 
-#' Predict based on a quantile regression averaging fit
+#' Predict based on a rescaled quantile regression averaging fit
 #'
 #' @param qra_fit_rescalable object of class qra_fit_rescalable
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
@@ -519,94 +519,55 @@ predict.qenspy_qra_fit <- function(qra_fit, qfm, sort_quantiles) {
 #' @return object of class QuantileForecastMatrix with quantile forecasts
 #'
 #' @export
-predict.rescaled_qra_fit <- function(qra_fit, qfm, sort_quantiles, ...) {
-  # construct sparse matrix representing model weights across quantiles
+predict.rescaled_qra_fit <- function(qra_fit, qfm, sort_quantiles = TRUE, ...) {
+  # construct matrix representing model weights across quantiles
   ## pull out parameter values
+  row_index <- attr(qfm, 'row_index')
   col_index <- attr(qfm, 'col_index')
-  model_id_name <- attr(qfm, 'model_col')
-  eligbility_by_row <- purrr::map_dfr(
-    seq_len(nrow(qfm)),
-    function(row_ind) {
-      purrr::map_dfr(
-        unique(col_index[[model_id_name]]),
-        function(model_id) {
-          col_inds <- which(col_index[[model_id_name]] == model_id)
+  unique_models <- unique(col_index[[attr(qfm, 'model_col')]])
+  unique_quantiles <- unique(col_index[[attr(qfm, 'quantile_name_col')]])
 
-          result <- attr(qfm, 'row_index')[row_ind, ]
-          result[[model_id_name]] <- model_id
-          result[['eligible']] <- !any(is.na(qfm[row_ind, col_inds]))
+  if(attr(qfm, 'quantile_name_col') %in% names(qra_fit$coefficients)) {
+    params <- qra_fit$coefficients$beta
+  } else {
+    params <- rep(qra_fit$coefficients$beta, each = length(unique_quantiles))
+  }
 
-          return(result)
-        }
+  ## Convert to matrix where each column is one model, each row one quantile
+  dim(params) <- c(length(unique_quantiles), length(unique_models))
+
+  # for each quantile level and row, calculate weighted median
+  result_matrix <- matrix(NA, nrow = nrow(qfm), ncol = length(unique_quantiles))
+  for (j in seq_along(unique_quantiles)) {
+    col_inds <- which(col_index[[attr(qfm, 'quantile_name_col')]] == unique_quantiles[j])
+    for (i in seq_len(nrow(qfm))) {
+      result_matrix[i, j] = weighted.mean(
+        x = unclass(qfm)[i, col_inds],
+        w = params[j, ],
+        na.rm = TRUE
       )
     }
-  )
+  }
 
-  # convert model eligibility to wide format logical with human readable names
-  wide_model_eligibility <- eligbility_by_row %>%
-    pivot_wider(names_from='model', values_from='eligible')
-
-  # group locations by which models are included per row
-  row_groups <- wide_model_eligibility %>%
-    dplyr::mutate(row_num = dplyr::row_number()) %>%
-    group_by_if(is.logical) %>%
-    summarize(
-      rows = list(row_num)#,
-#      ids = list(.[, c('location', 'forecast_week_end_date', 'target')])
-    ) %>%
-    ungroup()
-
-  # predict separately for each row group
-  all_preds <- purrr::map(
-    seq_len(nrow(row_groups)),
-    function(i) {
-      temp <- row_groups %>% slice(i) %>% select(-rows)#, -ids)
-      models <- colnames(temp)[which(as.matrix(temp))]
-      col_inds <- which(col_index[[model_id_name]] %in% models)
-
-      reduced_qfm <- qfm[row_groups$rows[[i]], col_inds]
-
-      reduced_coefficients <- qra_fit$coefficients[
-        qra_fit$coefficients[[1]] %in% models, , drop = FALSE
-      ]
-
-      reduced_qra_fit <- new_qra_fit(
-        parameters = list(coefficients=reduced_coefficients,
-                          intercept=qra_fit$intercept),
-        convex = TRUE
-      )
-
-      return(predict(reduced_qra_fit, reduced_qfm, sort_quantiles = sort_quantiles))
-    }
-  )
-
-  # assemble into full matrix of results, arrange by original row
-  combined_row_index <- purrr::map_dfr(
-    all_preds,
-    function(pred_qfm) {
-      attr(pred_qfm, 'row_index')
-    })
-
-  col_index <- attr(all_preds[[1]], 'col_index')
-
-  combined_fm <- do.call(
-    rbind,
-    purrr::map(all_preds, unclass)
-  )
-
-  # sorting
-  row_idx <- sort(unlist(row_groups$rows), index.return = TRUE)$ix
-  combined_row_index <- combined_row_index[row_idx, , drop = FALSE]
-  combined_fm <- combined_fm[row_idx, , drop = FALSE]
+  # Create QuantileForecastMatrix with result
+  model_col <- attr(qfm, 'model_col')
+  new_col_index <- col_index[
+    col_index[[model_col]] == col_index[[model_col]][1], ]
+  new_col_index[[model_col]] <- 'qra'
 
   result_qfm <- new_QuantileForecastMatrix(
-    qfm = combined_fm,
-    row_index=combined_row_index,
-    col_index=col_index,
-    model_col=attr(all_preds[[1]], 'model_col'),
-    quantile_name_col=attr(all_preds[[1]], 'quantile_name_col'),
-    quantile_value_col=attr(all_preds[[1]], 'quantile_value_col')
+    qfm = result_matrix,
+    row_index=row_index,
+    col_index=new_col_index,
+    model_col=attr(qfm, 'model_col'),
+    quantile_name_col=attr(qfm, 'quantile_name_col'),
+    quantile_value_col=attr(qfm, 'quantile_value_col')
   )
+
+  # sort predictive quantiles if requested
+  if (sort_quantiles) {
+    result_qfm <- sort(result_qfm)
+  }
 
   return(result_qfm)
 }
@@ -714,7 +675,9 @@ estimate_qra <- function(
 ) {
   combine_method <- match.arg(
     combine_method,
-    choices = c("ew", "convex", "positive", "unconstrained", "median", "convex_median", "rel_wis_weighted_median", "mean_weights_weighted_median"))
+    choices = c("ew", "convex", "positive", "unconstrained", "median",
+      "convex_median", "rel_wis_weighted_median", "rel_wis_weighted_mean",
+      "mean_weights_weighted_median"))
   backend <- match.arg(
     backend,
     choices = c("optim", "NlcOptim", "qra", "quantgen", "qenspy", "grid_search"))
@@ -860,8 +823,10 @@ estimate_qra_optimized <- function(
   qra_model = c('convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model', 'rel_wis_weighted_median'),
   backend = c('optim', 'NlcOptim', 'grid_search')
 ) {
-  qra_model <- match.arg(qra_model, choices = c('convex_per_model', 'unconstrained_per_model',
-    'rescaled_convex_per_model', 'rel_wis_weighted_median', 'mean_weights_weighted_median'))
+  qra_model <- match.arg(qra_model, choices = c('convex_per_model',
+    'unconstrained_per_model', 'rescaled_convex_per_model',
+    'rel_wis_weighted_median', 'rel_wis_weighted_mean',
+    'mean_weights_weighted_median'))
   backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'grid_search'))
 
   if (backend %in% c('optim', 'NlcOptim')) {
@@ -928,8 +893,8 @@ estimate_qra_optimized <- function(
           objfun=wis_loss_wrapper
         )
       } else if (backend == 'grid_search') {
-        if (qra_model == 'rel_wis_weighted_median') {
-          optim_output <- grid_search_rel_wis_weighted_median(
+        if (qra_model %in% c('rel_wis_weighted_median', 'rel_wis_weighted_mean')) {
+          optim_output <- grid_search_rel_wis_weights(
             par_grid=init_par,
             fn=wis_loss,
             model_constructor=model_constructor,
@@ -952,7 +917,7 @@ estimate_qra_optimized <- function(
   } else {
     # the following is specific to the `relative_wis_weighted_median` approach
     # other weighted approaches are expected to be fit using other backends
-    # we could add support for other methods without too much effor though...
+    # we could add support for other methods without too much effort though...
     if (combine_method != "rel_wis_weighted_median") {
       stop("For multiple quantile groups and optimization within R, must have combine_method = relative_wis_weighted_median")
     }
@@ -1001,7 +966,7 @@ estimate_qra_optimized <- function(
 #' @param y_train numeric vector of responses for training set
 #' 
 #' @return single parameter value with lowest function value
-grid_search_rel_wis_weighted_median <- function(
+grid_search_rel_wis_weights <- function(
   par_grid,
   fn,
   model_constructor,
@@ -1222,7 +1187,7 @@ par_grid_constructor_rel_wis_weighted_median <- function(qfm_train, ...) {
 }
 
 
-#' Model constructor for unconstrained_per_model approach
+#' Model constructor for rel_wis_weighted_median approach
 #'
 #' @param par vector of real numbers
 #' @param qfm_train object of class QuantileForecastMatrix
@@ -1252,6 +1217,71 @@ model_constructor_rel_wis_weighted_median <- function(par, qfm_train, y_train, r
 
   qra_fit <- new_weighted_median_qra_fit(
     parameters = list(coefficients = coefficients, par = par)
+  )
+
+  return(qra_fit)
+}
+
+
+#' Initial parameter constructor for rel_wis_weighted_mean approach
+#'
+#' @param qfm_train QuantileForecastMatrix with training set predictions from
+#'    component models
+#' @param ... mop up other arguments that are ignored
+#'
+#' @return vector of real-valued initial values for parameters
+init_par_constructor_rel_wis_weighted_mean <- function(qfm_train, ...) {
+  return(0.0)
+}
+
+
+#' Parameter search grid constructor for rel_wis_weighted_mean approach
+#'
+#' @param qfm_train QuantileForecastMatrix with training set predictions from
+#'    component models
+#' @param ... mop up other arguments that are ignored
+#'
+#' @return vector of real-valued initial values for parameters
+par_grid_constructor_rel_wis_weighted_mean <- function(qfm_train, ...) {
+  return(seq(from = 0.0, to = 20.0, by = 0.1))
+}
+
+
+#' Model constructor for rel_wis_weighted_mean approach
+#'
+#' @param par vector of real numbers
+#' @param qfm_train object of class QuantileForecastMatrix
+#'
+#' @return object of class qra_fit
+#'
+#' @export
+model_constructor_rel_wis_weighted_mean <- function(par, qfm_train, y_train, rel_wis = calc_relative_wis(y_train, qfm_train)) {
+  col_index <- attr(qfm_train, 'col_index')
+  model_col <- attr(qfm_train, 'model_col')
+  unique_models <- unique(col_index[[model_col]])
+
+  rel_wis_vec <- data.frame(model = unique_models) %>%
+    dplyr::left_join(rel_wis, by = 'model') %>%
+    dplyr::pull(rel_wis)
+  weights <- softmax_matrix_rows(
+    matrix(-1 * par * rel_wis_vec, nrow = 1)
+  )
+  dim(weights) <- prod(dim(weights))
+
+  coefficients <- data.frame(
+    a = unique_models,
+    beta = weights,
+    stringsAsFactors = FALSE
+  )
+  colnames(coefficients)[1] <- model_col
+
+  intercept <- data.frame(beta = 0.0, stringsAsFactors = FALSE)
+  qra_fit <- new_rescaled_qra_fit(
+    parameters = list(
+      coefficients = coefficients,
+      intercept = intercept,
+      par = par),
+    convex = TRUE
   )
 
   return(qra_fit)
