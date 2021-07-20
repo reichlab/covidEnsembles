@@ -11,7 +11,7 @@ get_by_location_group_ensemble_fits_and_predictions(
   window_size,
   intercept = FALSE,
   combine_method = c("ew", "convex", "positive", "unconstrained", "median",
-    "convex_median", "rel_wis_weighted_median"),
+    "convex_median", "rel_wis_weighted_median", "rel_wis_weighted_mean"),
   quantile_groups = NULL,
   noncross = "constrain",
   backend = "quantmod",
