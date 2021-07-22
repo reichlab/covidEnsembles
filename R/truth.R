@@ -1,11 +1,11 @@
 #' get observed cases and/or deaths
 #'
-#' @param as_of character date with format 'yyyy-mm-dd'; 
+#' @param as_of character date with format 'yyyy-mm-dd';
 #' indicates date for which retrieved truth data should be current
 #' @param targets character vector of targets to retrieve, for example
 #' c('1 wk ahead cum death', '2 wk ahead cum death')
 #' @param spatial_resolution character vector specifying spatial unit types to
-#' include: 'county', 'state' and/or 'national'
+#' include: 'county', 'state', 'national', and/or 'euro_countries'
 #'
 #' @return data frame with columns location, base_target, target_end_date, and
 #' observed
@@ -31,6 +31,8 @@ get_observed_by_location_target_end_date <- function(
 
   if (identical(spatial_resolution, "state_no_territories")) {
     effective_spatial_resolution <- "state"
+  } else if (identical(spatial_resolution, "euro_countries")) {
+    effective_spatial_resolution <- "national"
   } else {
     effective_spatial_resolution <- spatial_resolution
   }
@@ -53,7 +55,11 @@ get_observed_by_location_target_end_date <- function(
           as_of = as_of,
           spatial_resolution = effective_spatial_resolution,
           temporal_resolution = temporal_resolution,
-          measure = measure
+          measure = measure,
+          geography = ifelse(
+            spatial_resolution == "euro_countries",
+            "global",
+            "US")
         ) %>%
           tidyr::pivot_longer(
             cols = c('cum', 'inc'),
@@ -75,6 +81,13 @@ get_observed_by_location_target_end_date <- function(
     observed_by_location_target_end_date <-
       observed_by_location_target_end_date %>%
         dplyr::filter(location <= "56")
+  } else if (identical(spatial_resolution, "euro_countries")) {
+    euro_hub_locations <- c("BE", "BG", "CZ", "DK", "DE", "EE", "IE", "GR",
+      "ES", "FR", "HR", "IT", "CY", "LV", "LT", "LU", "HU", "MT", "NL", "AT",
+      "PL", "PT", "RO", "SI", "SK", "FI", "SE", "GB", "IS", "LI", "NO", "CH")
+    observed_by_location_target_end_date <-
+      observed_by_location_target_end_date %>%
+        dplyr::filter(location %in% euro_hub_locations)
   }
 
   return(observed_by_location_target_end_date)

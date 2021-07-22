@@ -168,6 +168,12 @@ load_covid_forecasts_relative_horizon <- function(
 
   # Patch code to be eliminated as rest of covidEnsembles becomes
   # better aligned with covidHubUtils
+  if (!("full_location_name" %in% colnames(forecasts))) {
+    forecasts$full_location_name <- forecasts$location_name
+  }
+  if (!("abbreviation" %in% colnames(forecasts))) {
+    forecasts$abbreviation <- forecasts$location
+  }
   forecasts <- forecasts %>% dplyr::transmute(
     model = model,
     timezero = forecast_date,
@@ -1318,9 +1324,15 @@ get_imputed_ensemble_fits_and_predictions <- function(
   # fit ensembles and obtain predictions per group
   if (combine_method == 'ew') {
     # no y_train given - no training is done for equal weights
-    qra_fit <- estimate_qra(
-      qfm_train = imputed_qfm_train,
-      combine_method = 'ew')
+    # qra_fit <- estimate_qra(
+    #   qfm_train = imputed_qfm_train,
+    #   combine_method = 'ew')
+    col_index <- attr(imputed_qfm_train, 'col_index')
+    model_col <- attr(imputed_qfm_train, 'model_col')
+    num_models <- length(unique(col_index[[model_col]]))
+    qra_fit <- model_constructor_rescaled_convex_per_model(
+      par = rep(1 / num_models, num_models),
+      qfm_train = imputed_qfm_train)
   } else if(combine_method == 'median') {
     qra_fit <- new_median_qra_fit(imputed_qfm_train)
   } else {
