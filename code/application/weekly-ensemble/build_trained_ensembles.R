@@ -224,60 +224,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         )
     )
 
-    # this code would need some adjustment to extract metadata -- commented out for now
-    # reformat model weights and eligibility for output
-    # if (missingness == "impute") {
-    #   qfm_test <- location_groups$imputed_qfm_test[[1]]
-    #   row_index <- attr(qfm_test, 'row_index')
-    #   col_index <- attr(qfm_test, 'col_index')
-    #   component_models <- unique(col_index$model)
-
-    #   model_weights <- purrr::map_dfr(
-    #     unique(row_index$location),
-    #     function(loc) {
-    #       rows <- which(row_index$location == loc)
-    #       qfm_loc <- qfm_test[rows, ]
-    #       purrr::map_dfr(
-    #         component_models,
-    #         function(cm) {
-    #           cols <- which(col_index$model == cm)
-    #           qfm_cm <- qfm_loc[, cols]
-    #           data.frame(location = loc, model = cm, weight = any(!is.na(unclass(qfm_cm))))
-    #         }
-    #       )
-    #     }
-    #   ) %>%
-    #     dplyr::filter(weight) %>%
-    #     dplyr::mutate(weight = 1)
-    # } else if(missingness == "by_location_group") {
-    #   model_weights <- location_groups %>%
-    #     dplyr::select(-qfm_train, -qfm_test, -y_train, -qra_fit, -qra_forecast) %>%
-    #     tidyr::unnest(locations) %>%
-    #     dplyr::mutate_if(is.logical, as.numeric)
-    #   model_weights <- purrr::pmap_dfr(
-    #     location_groups %>% select(locations, qra_fit),
-    #     function(locations, qra_fit) {
-    #       temp <- qra_fit$coefficients %>%
-    #         tidyr::pivot_wider(names_from = 'model', values_from = 'beta')
-      
-    #       return(purrr::map_dfr(
-    #         locations,
-    #         function(location) {
-    #           temp %>%
-    #             mutate(location = location)
-    #         }
-    #       ))
-    #     }
-    #   )
-    #   model_weights <- bind_cols(
-    #     model_weights %>%
-    #       select(location) %>%
-    #       left_join(fips_codes, by = 'location'),
-    #     model_weights %>% select(-location)
-    #   ) %>%
-    #     arrange(location)
-    #   model_weights[is.na(model_weights)] <- 0.0
-    # }
+    model_weights <- location_groups$qra_fit[[1]]$coefficients
 
     if(response_var == 'cum_death' && spatial_resolution == spatial_resolutions[1]) {
       all_formatted_ensemble_predictions <- formatted_ensemble_predictions
@@ -299,21 +246,14 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         )
 
         # not saving metadata for now
-        # save_dir <- paste0(root, "trained_ensemble-metadata/")
-        # if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
-        # write_csv(model_eligibility,
-        #   paste0(save_dir,
-        #     formatted_ensemble_predictions$forecast_date[1],
-        #     '-',
-        #     response_var,
-        #     '-model-eligibility.csv'))
-
-        # write_csv(model_weights,
-        #   paste0(save_dir,
-        #     formatted_ensemble_predictions$forecast_date[1],
-        #     '-',
-        #     response_var,
-        #     '-model-weights.csv'))
+        save_dir <- paste0(root, "trained_ensemble-metadata/")
+        if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
+        write_csv(model_weights,
+          paste0(save_dir,
+            formatted_ensemble_predictions$forecast_date[1],
+            '-',
+            response_var,
+            '-model-weights.csv'))
       }
     }
   }
