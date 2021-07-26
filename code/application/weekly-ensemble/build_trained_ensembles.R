@@ -61,6 +61,9 @@ tic <- Sys.time()
 for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 #for (response_var in c("inc_case", "inc_hosp")) {
 #for (response_var in c("cum_death", "inc_death", "inc_case")) {
+  # reset model_weights to NULL
+  model_weights <- NULL
+
   print(response_var)
   if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
@@ -224,7 +227,17 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         )
     )
 
-    model_weights <- location_groups$qra_fit[[1]]$coefficients
+    model_weights <- dplyr::bind_rows(
+      model_weights,
+      location_groups$qra_fit[[1]]$coefficients %>%
+        tidyr::pivot_wider(names_from = "model", values_from = "beta") %>%
+        dplyr::full_join(
+          data.frame(locations = location_groups$locations[[1]], stringsAsFactors = FALSE),
+          by = character()
+        )
+    )
+    model_weights <- dplyr::relocate(model_weights, locations, .after = dplyr::last_col())
+    model_weights[is.na(model_weights)] <- 0.0
 
     if(response_var == 'cum_death' && spatial_resolution == spatial_resolutions[1]) {
       all_formatted_ensemble_predictions <- formatted_ensemble_predictions
