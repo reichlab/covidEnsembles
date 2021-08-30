@@ -1,0 +1,133 @@
+---
+title: "Ensemble Weights"
+author: "Estee Cramer"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(plotly)
+```
+
+
+```{r}
+#function to read in all csv files with weights 
+read_plus <- function(flnm) {
+    read_csv(flnm) %>% 
+        mutate(filename = flnm)
+}
+
+#read in files and add column with filenames 
+library(tidyselect)
+all_rows <-
+    list.files(path = "../../../../covid19-forecast-hub/trained_ensemble-metadata", pattern = "*.csv", 
+               full.names = T) %>% 
+    map_df(~read_plus(.)) 
+
+#add columns for targets, dates, and rename locations
+df_locations <- all_rows %>% 
+  filter(locations %in% c("01", "US")) %>%
+  mutate(target = case_when(
+    grepl( "cum_death", filename) ~ "cum death",
+    grepl("inc_death", filename) ~ "inc death",
+    grepl("inc_case",filename) ~ "inc case",
+    grepl("inc_hosp",filename) ~ "inc hosp")) %>%
+  mutate(date = as.Date(str_extract(filename, "[0-9]{4}-[0-9]{2}-[0-9]{2}"), format="%Y-%m-%d"),
+         locations = fct_recode(locations, "State" = "01")) 
+
+#convert dataframe to long format
+df_long <- df_locations %>%
+  select(-filename) %>%
+  pivot_longer(!c(locations, target, date), names_to = "Model", values_to = "Weight") %>% 
+  filter(!is.na(Weight))
+```
+
+
+```{r}
+plotly_barplot <- function(target_var, loc_var, title_var) {
+  df_long %>% 
+  filter(target == target_var) %>%
+  filter(locations == loc_var) %>%
+  arrange(date) %>%
+  plot_ly(
+    x = ~date, 
+    y = ~Weight, 
+    color= ~Model,
+    type = 'bar',
+           hoverinfo = 'text',
+        text = ~paste('</br> Location: ', locations,
+                      '</br> Model: ', Model,
+                      '</br> Weight: ', round(Weight,4))) %>%
+  layout(
+    title = title_var,
+    xaxis = list(
+        type = 'date',
+        tickformat = "%d %B %Y"),
+    showLegend = FALSE)
+} 
+```
+
+
+
+```{r}
+hosp_state <- plotly_barplot(target_var = "inc hosp",
+                            loc_var = "State",
+                            title_var = "Incident Hospitalizations") 
+
+hosp_US <- plotly_barplot(target_var = "inc hosp",
+                            loc_var = "US",
+                            title_var = "Incident Hospitalizations") 
+
+subplot(hosp_state, hosp_US, shareY = T) %>% layout(barmode = 'stack') %>% layout(annotations = list(
+ list(x = 0.2 , y = 1.0, text = "State", showarrow = F, xref='paper', yref='paper'),
+  list(x = 0.8 , y = 1.0, text = "US", showarrow = F, xref='paper', yref='paper'))
+)
+```
+
+```{r}
+case_state <- plotly_barplot(target_var = "inc case",
+                            loc_var = "State",
+                            title_var = "Incident Cases") 
+
+case_US <- plotly_barplot(target_var = "inc case",
+                            loc_var = "US",
+                            title_var = "Incident Cases") 
+
+subplot(case_state, case_US, shareY = T) %>% layout(barmode = 'stack') %>% layout(annotations = list(
+ list(x = 0.2 , y = 1.0, text = "State", showarrow = F, xref='paper', yref='paper'),
+  list(x = 0.8 , y = 1.0, text = "US", showarrow = F, xref='paper', yref='paper')))
+```
+
+
+```{r}
+inc_state <- plotly_barplot(target_var = "inc death",
+                            loc_var = "State",
+                            title_var = "Incident Deaths") 
+
+inc_US <- plotly_barplot(target_var = "inc death",
+                            loc_var = "US",
+                            title_var = "Incident Deaths") 
+
+subplot(inc_state, inc_US, shareY = T) %>% layout(barmode = 'stack') %>% layout(barmode = 'stack') %>% layout(annotations = list(list(x = 0.2 , y = 1.0, text = "State", showarrow = F, xref='paper', yref='paper'),
+  list(x = 0.8 , y = 1.0, text = "US", showarrow = F, xref='paper', yref='paper')))
+```
+
+
+```{r}
+cum_state <- plotly_barplot(target_var = "cum death",
+                            loc_var = "State",
+                            title_var = "Cumulative Deaths") 
+
+cum_US <- plotly_barplot(target_var = "cum death",
+                            loc_var = "US",
+                            title_var = "Cumulative Deaths") 
+
+subplot(cum_state, cum_US, shareY = T) %>% layout(barmode = 'stack') %>% layout(annotations = list(
+ list(x = 0.2 , y = 1.0, text = "State", showarrow = F, xref='paper', yref='paper'),
+  list(x = 0.8 , y = 1.0, text = "US", showarrow = F, xref='paper', yref='paper')))
+```
