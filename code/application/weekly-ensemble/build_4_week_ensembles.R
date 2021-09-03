@@ -28,7 +28,7 @@ for (root in save_roots) {
 }
 
 # Where to save plots
-plots_root <- 'code/application/weekly-ensemble/plots/COVIDhub-ensemble/'
+plots_root <- 'code/application/weekly-ensemble/plots/COVIDhub-4_week_ensemble/'
 if (!file.exists(plots_root)) dir.create(plots_root, recursive = TRUE)
 
 # Where to save hospitalization exclusion tables
@@ -180,7 +180,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
     spatial_resolution <- c('county', 'state', 'national')
     temporal_resolution <- "wk"
-    horizon <- 2L
+    horizon <- 4L
     targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date - 2
 
@@ -419,15 +419,15 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
   for(root in save_roots) {
     if(final_run) {
-      save_dir <- paste0(root, 'data-processed/COVIDhub-ensemble/')
+      save_dir <- paste0(root, 'data-processed/COVIDhub-4_week_ensemble/')
       if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
       write_csv(all_formatted_ensemble_predictions %>% select(-location_name),
                 paste0(save_dir,
                        formatted_ensemble_predictions$forecast_date[1],
-                       '-COVIDhub-ensemble.csv')
+                       '-COVIDhub-4_week_ensemble.csv')
       )
 
-      save_dir <- paste0(root, "ensemble-metadata/")
+      save_dir <- paste0(root, "4_week_ensemble-metadata/")
       if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
       write_csv(model_eligibility,
         paste0(save_dir,
@@ -451,8 +451,6 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 for (response_var in c("inc_death", "cum_death", "inc_case", "inc_hosp")) {
   if (response_var == "inc_hosp") {
     targets <- paste0(1:28, " day ahead inc hosp")
-  } else if(response_var == "inc_case") {
-    targets <- paste0(1:2, ' wk ahead inc case')
   } else {
     targets <- paste0(1:4, ' wk ahead ', gsub("_", " ", response_var))
   }
@@ -465,7 +463,7 @@ for (response_var in c("inc_death", "cum_death", "inc_case", "inc_hosp")) {
   )
   all_models <- unique(all_forecasts$model)
 
-  save_dir <- paste0(root, "ensemble-metadata/")
+  save_dir <- paste0(root, "4_week_ensemble-metadata/")
   eligibility <- read_csv(paste0(save_dir,
     forecast_date,
     '-',
@@ -493,6 +491,6 @@ plot_forecasts_single_model(
   submissions_root = paste0(root, "data-processed/"),
   plots_root = plots_root,
   forecast_date = forecast_date,
-  model_abbrs = "COVIDhub-ensemble",
+  model_abbrs = "COVIDhub-4_week_ensemble",
   target_variables = c("cases", "deaths", "hospitalizations")
 )

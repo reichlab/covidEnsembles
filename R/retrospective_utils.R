@@ -17,7 +17,7 @@ load_retrospective_ensemble_forecasts <- function(
   submissions_root,
   forecast_dates,
   all_locations,
-  spatial_scales = c("national", "state", "state_national", "county"),
+  spatial_scales = c("national", "state", "state_national", "county", "euro_countries"),
   response_vars = NULL
 ) {
   all_forecasts <- purrr::map_dfr(
@@ -30,6 +30,8 @@ load_retrospective_ensemble_forecasts <- function(
           response_vars <- c("cum_death", "inc_death", "inc_case", "inc_hosp")
         } else if (spatial_scale == "county") {
           response_vars <- "inc_case"
+        } else if (spatial_scale == "euro_countries") {
+          response_vars <- c("inc_case", "inc_death")
         }
       }
 
@@ -72,7 +74,7 @@ load_retrospective_ensemble_forecasts <- function(
 
           # load the forecasts
           load_covid_forecasts_relative_horizon(
-            hub = "US",
+            hub = ifelse(spatial_scale == "euro_countries", "ECDC", "US"),
             source = "local_hub_repo",
             hub_repo_path = submissions_root,
             data_processed_subpath = "",# paste0(response_var, "/"),
@@ -161,19 +163,34 @@ calc_retrospective_ensemble_scores <- function(
   }
 
   # load observed data
+  euro_hub_locations <- c("BE", "BG", "CZ", "DK", "DE", "EE", "IE", "GR",
+      "ES", "FR", "HR", "IT", "CY", "LV", "LT", "LU", "HU", "MT", "NL", "AT",
+      "PL", "PT", "RO", "SI", "SK", "FI", "SE", "GB", "IS", "LI", "NO", "CH")
+
   observed <- get_observed_by_location_target_end_date(
     as_of = truth_as_of,
     targets = all_targets,
     spatial_resolution = purrr::map(
-      spatial_scales,
-      function(ss) {
-        strsplit(ss, "_")
-      }) %>%
+        spatial_scales,
+        function(ss) {
+          if (ss == "state_national") {
+            return(list("state", "national"))
+          } else {
+            return(ss)
+          }
+        }) %>%
       unlist() %>%
       unique()
   ) %>%
     dplyr::left_join(
-      covidData::fips_codes, by = "location"
+      dplyr::bind_rows(
+        covidData::fips_codes %>%
+          dplyr::select(location, location_name, abbreviation),
+        covidData::global_locations %>%
+          dplyr::filter(location %in% euro_hub_locations) %>%
+          dplyr::mutate(abbreviation = location)
+      ),
+      by = "location"
     ) %>%
     dplyr::transmute(
       model = "Observed Data (JHU)",
