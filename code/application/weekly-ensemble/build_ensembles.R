@@ -180,7 +180,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     required_quantiles <- c(0.025, 0.100, 0.250, 0.500, 0.750, 0.900, 0.975)
     spatial_resolution <- c('county', 'state', 'national')
     temporal_resolution <- "wk"
-    horizon <- 2L
+    horizon <- 1L
     targets <- paste0(1:horizon, " wk ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date - 2
 
@@ -215,7 +215,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     required_quantiles <- c(0.01, 0.025, seq(0.05, 0.95, by = 0.05), 0.975, 0.99)
     spatial_resolution <- c("state", "national")
     temporal_resolution <- "day"
-    horizon <- 28L
+    horizon <- 14L
     targets <- paste0(1:(horizon + 6), " day ahead ", gsub("_", " ", response_var))
     forecast_week_end_date <- forecast_date
 
@@ -450,9 +450,9 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 # eligibility metadata file
 for (response_var in c("inc_death", "cum_death", "inc_case", "inc_hosp")) {
   if (response_var == "inc_hosp") {
-    targets <- paste0(1:28, " day ahead inc hosp")
+    targets <- paste0(1:14, " day ahead inc hosp")
   } else if(response_var == "inc_case") {
-    targets <- paste0(1:2, ' wk ahead inc case')
+    targets <- paste0(1, ' wk ahead inc case')
   } else {
     targets <- paste0(1:4, ' wk ahead ', gsub("_", " ", response_var))
   }

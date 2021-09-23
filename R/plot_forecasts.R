@@ -184,8 +184,36 @@ plot_forecasts_single_model <- function(
             type_intervals <- plottable_predictions %>%
               dplyr::filter(location_name_with_state %in% batch_locations) %>%
               filter(alpha != "1.000", grepl(UQ(type), target))
+            forecast_date_intervals <- type_intervals %>%
+              tidyr::separate(target,
+                into = c("horizon", "temporal_resolution", "ahead", "type", "target_variable"),
+                remove = FALSE, extra = "merge"
+              ) %>%
+              covidHubUtils::align_forecasts() %>%
+              dplyr::distinct(forecast_date, reference_date, temporal_resolution, target_variable, location, type, alpha) %>%
+              dplyr::left_join(
+                data %>% group_by(location) %>% slice_max(date, n = 1),
+                by = "location"
+              ) %>%
+              dplyr::transmute(
+                forecast_date,
+                target = paste("0", temporal_resolution, "ahead", type, target_variable),
+                target_end_date = reference_date,
+                location,
+                lower = ifelse(type == "inc", inc, cum),
+                upper = ifelse(type == "inc", inc, cum),
+                type = "quantile",
+                alpha,
+                location_name,
+                location_name_with_state,
+                abbreviation
+              )
+            type_intervals <- dplyr::bind_rows(
+              forecast_date_intervals,
+              type_intervals
+            )
 
-            if(nrow(type_intervals) > 0) {
+            if (nrow(type_intervals) > 0) {
               made_plots <- TRUE
               p <- ggplot() +
                 geom_ribbon(
