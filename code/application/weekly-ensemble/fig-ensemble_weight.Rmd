@@ -25,7 +25,7 @@ read_plus <- function(flnm) {
 #read in files and add column with filenames 
 library(tidyselect)
 all_rows <-
-    list.files(path = "../../../../covid19-forecast-hub/trained_ensemble-metadata", pattern = "*.csv", 
+    list.files(path = "forecasts/trained_ensemble-metadata", pattern = "*.csv", 
                full.names = T) %>% 
     map_df(~read_plus(.)) 
 

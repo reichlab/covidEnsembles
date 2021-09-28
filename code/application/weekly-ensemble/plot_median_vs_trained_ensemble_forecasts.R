@@ -24,8 +24,11 @@ if(!file.exists(day_plots_root)) {
 submission_dates <- forecast_date + seq(from = -6, to = 0)
 
 # List of models to plot
-model_abbrs <- list.dirs(submissions_root, full.names = FALSE)
-model_abbrs <- model_abbrs[nchar(model_abbrs) > 0]
+# model_abbrs <- list.dirs(submissions_root, full.names = FALSE)
+# model_abbrs <- model_abbrs[nchar(model_abbrs) > 0]
+
+# Get 2 week out of plot
+model_abbrs <-  c("COVIDhub-4_week_ensemble", "COVIDhub-trained_ensemble")
 
 all_forecasts <- purrr::map_dfr(
   model_abbrs,
