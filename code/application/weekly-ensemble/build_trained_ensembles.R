@@ -248,6 +248,22 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       )
     }
 
+    if (!exists("thetas")) {
+      thetas <- tibble(
+        forecast_date = forecast_date,
+        response_var = response_var,
+        spatial_resolution = spatial_resolution,
+        theta = round(location_groups$qra_fit[[1]]$par,1)
+      )
+    } else {
+      thetas <- thetas %>% dplyr::add_row(
+        forecast_date = forecast_date,  
+        response_var = response_var,
+        spatial_resolution = spatial_resolution,
+        theta = round(location_groups$qra_fit[[1]]$par,1)
+      )
+    }
+
     for(root in save_roots) {
       if(final_run) {
         save_dir <- paste0(root, 'data-processed/COVIDhub-trained_ensemble/')
@@ -272,6 +288,12 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
   }
 }
 toc <- Sys.time()
+print(toc-tic)
+
+save_dir <- paste0(root, "trained_ensemble-metadata/")
+if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
+
+write_csv(thetas, paste0(save_dir, 'thetas.csv'), append = TRUE)
 
 # make plots of ensemble submission
 plot_forecasts_single_model(

@@ -27,6 +27,7 @@ library(tidyselect)
 all_rows <-
     list.files(path = "forecasts/trained_ensemble-metadata", pattern = "*.csv", 
                full.names = T) %>% 
+    discard(grepl("thetas.csv",.)) %>% 
     map_df(~read_plus(.)) 
 
 #add columns for targets, dates, and rename locations
