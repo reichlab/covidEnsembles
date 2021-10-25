@@ -905,9 +905,15 @@ estimate_qra_optimized <- function(
         }
       }
 
+      model_fit = model_constructor(optim_output$par, qg_qfm_train, y_train)
+      if (backend == 'grid_search') {
+        model_fit['losses'] <- optim_output['losses']
+        model_fit['rel_wis'] <- optim_output['rel_wis']
+      }
+
       return(list(
         quantile_levels = quantile_group_quantiles,
-        model_fit = model_constructor(optim_output$par, qg_qfm_train, y_train)
+        model_fit = model_fit
       ))
     })
   
@@ -974,17 +980,43 @@ grid_search_rel_wis_weights <- function(
   y_train) {
   rel_wis <- calc_relative_wis(y_train, qfm_train)
 
-  loss_by_par <- purrr::map_dbl(
+  loss_by_par <- furrr::future_map_dbl(
     par_grid,
     fn,
     model_constructor = model_constructor,
     qfm_train = qfm_train,
     y_train = y_train,
-    rel_wis = rel_wis)
+    rel_wis = rel_wis,
+    .progress = TRUE)
 
   min_ind <- which.min(loss_by_par)
 
-  return(list(par = par_grid[min_ind]))
+  num_exts <- 0
+  while (
+    (loss_by_par[length(par_grid)] - loss_by_par[min_ind] < .2*(loss_by_par[1] - loss_by_par[min_ind])) &
+    num_exts < 6
+  ) {
+    num_exts <- num_exts + 1
+    ext_grid <- par_grid[length(par_grid)] + (1:50)*min(diff(par_grid))
+    par_grid <- c(par_grid, ext_grid)
+    loss_by_par_ext <- furrr::future_map_dbl(
+      ext_grid,
+      fn,
+      model_constructor = model_constructor,
+      qfm_train = qfm_train,
+      y_train = y_train,
+      rel_wis = rel_wis,
+      .progress = TRUE)
+    loss_by_par <- c(loss_by_par, loss_by_par_ext)
+    min_ind <- which.min(loss_by_par)
+  }
+
+  return(list(
+    par = par_grid[min_ind],
+    losses = tibble(theta = par_grid, loss = loss_by_par),
+    rel_wis = as_tibble(rel_wis)
+    )
+  )
 }
 
 

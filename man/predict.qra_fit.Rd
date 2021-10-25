@@ -4,7 +4,7 @@
 \alias{predict.qra_fit}
 \title{Predict based on a quantile regression averaging fit}
 \usage{
-\method{predict}{qra_fit}(qra_fit, qfm, sort_quantiles)
+\method{predict}{qra_fit}(qra_fit, qfm, sort_quantiles = TRUE)
 }
 \arguments{
 \item{qra_fit}{object of class qra_fit}

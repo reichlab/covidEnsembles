@@ -6,8 +6,13 @@ library(covidData)
 library(googledrive)
 library(yaml)
 library(here)
+library(tictoc)
+library(furrr)  
+`%<-%` <- zeallot::`%<-%`
 options(error = recover)
 setwd(here())
+ncores <- future::availableCores()
+future::plan(multisession, workers = ncores - 1)
 
 final_run <- TRUE
 
@@ -57,7 +62,7 @@ candidate_model_abbreviations_to_include <-
 # even if we are delayed and create it Tuesday morning.
 forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
 
-tic <- Sys.time()
+tic(msg = "all targets")
 for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 #for (response_var in c("inc_case", "inc_hosp")) {
 #for (response_var in c("cum_death", "inc_death", "inc_case")) {
@@ -140,6 +145,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
   combine_method <- 'rel_wis_weighted_median'
   for (spatial_resolution in spatial_resolutions) {
+    tic(msg = paste(response_var, spatial_resolution))
     results <- build_covid_ensemble(
       hub = "US",
       source = "local_hub_repo",
@@ -178,6 +184,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       return_eligibility = TRUE,
       return_all = TRUE
     )
+    toc()
 
     if (missingness == "impute") {
       c(model_eligibility, wide_model_eligibility, location_groups,
@@ -253,14 +260,18 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
         forecast_date = forecast_date,
         response_var = response_var,
         spatial_resolution = spatial_resolution,
-        theta = round(location_groups$qra_fit[[1]]$par,1)
+        theta = round(location_groups$qra_fit[[1]]$par,1),
+        losses = list(location_groups$qra_fit[[1]]$losses),
+        rel_wis = list(location_groups$qra_fit[[1]]$rel_wis)
       )
     } else {
       thetas <- thetas %>% dplyr::add_row(
         forecast_date = forecast_date,  
         response_var = response_var,
         spatial_resolution = spatial_resolution,
-        theta = round(location_groups$qra_fit[[1]]$par,1)
+        theta = round(location_groups$qra_fit[[1]]$par,1),
+        losses = list(location_groups$qra_fit[[1]]$losses),
+        rel_wis = list(location_groups$qra_fit[[1]]$rel_wis)
       )
     }
 
@@ -287,13 +298,16 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   }
 }
-toc <- Sys.time()
-print(toc-tic)
+toc()
 
-save_dir <- paste0(root, "trained_ensemble-metadata/")
-if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
+save(thetas, file = paste0('code/application/weekly-ensemble/thetas-', forecast_date))
 
-write_csv(thetas, paste0(save_dir, 'thetas.csv'), append = TRUE)
+if (final_run) {
+  write_csv(
+    thetas %>% dplyr::select(-c(losses, rel_wis)), 
+    paste0(root, "trained_ensemble-metadata/thetas.csv"), append = TRUE
+  )
+}
 
 # make plots of ensemble submission
 plot_forecasts_single_model(

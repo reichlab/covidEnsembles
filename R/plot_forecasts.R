@@ -190,7 +190,10 @@ plot_forecasts_single_model <- function(
                 remove = FALSE, extra = "merge"
               ) %>%
               covidHubUtils::align_forecasts() %>%
-              dplyr::distinct(forecast_date, reference_date, temporal_resolution, target_variable, location, type, alpha) %>%
+              dplyr::distinct(forecast_date, reference_date, 
+                temporal_resolution, target_variable,
+                location, type, alpha,
+                location_name_with_state, abbreviation) %>%
               dplyr::left_join(
                 data %>% group_by(location) %>% slice_max(date, n = 1),
                 by = "location"

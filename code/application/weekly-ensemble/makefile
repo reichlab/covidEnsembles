@@ -31,6 +31,7 @@ plots: pull data
 # Build the ensemble
 ensemble: pull data
 	Rscript build_ensembles.R
+	Rscript build_4_week_ensembles.R
 	Rscript build_trained_ensembles.R
 
 # Compare one week ahead forecasts of incident and cumulative deaths at
