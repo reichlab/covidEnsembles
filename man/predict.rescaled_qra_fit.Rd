@@ -2,9 +2,9 @@
 % Please edit documentation in R/qra_fit.R
 \name{predict.rescaled_qra_fit}
 \alias{predict.rescaled_qra_fit}
-\title{Predict based on a quantile regression averaging fit}
+\title{Predict based on a rescaled quantile regression averaging fit}
 \usage{
-\method{predict}{rescaled_qra_fit}(qra_fit, qfm, sort_quantiles, ...)
+\method{predict}{rescaled_qra_fit}(qra_fit, qfm, sort_quantiles = TRUE, ...)
 }
 \arguments{
 \item{qfm}{matrix of model forecasts of class QuantileForecastMatrix}
@@ -21,5 +21,5 @@ returned.}
 object of class QuantileForecastMatrix with quantile forecasts
 }
 \description{
-Predict based on a quantile regression averaging fit
+Predict based on a rescaled quantile regression averaging fit
 }

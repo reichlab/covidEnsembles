@@ -8,7 +8,7 @@ load_retrospective_ensemble_forecasts(
   submissions_root,
   forecast_dates,
   all_locations,
-  spatial_scales = c("national", "state", "state_national", "county"),
+  spatial_scales = c("national", "state", "state_national", "county", "euro_countries"),
   response_vars = NULL
 )
 }

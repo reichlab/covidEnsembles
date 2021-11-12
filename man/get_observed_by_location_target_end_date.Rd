@@ -14,7 +14,7 @@ indicates date for which retrieved truth data should be current}
 c('1 wk ahead cum death', '2 wk ahead cum death')}
 
 \item{spatial_resolution}{character vector specifying spatial unit types to
-include: 'county', 'state' and/or 'national'}
+include: 'county', 'state', 'national', and/or 'euro_countries'}
 }
 \value{
 data frame with columns location, base_target, target_end_date, and
