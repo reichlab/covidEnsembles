@@ -11,6 +11,10 @@ setwd(here())
 
 final_run <- TRUE
 
+# Set of targets for which we'll use the trained ensemble; we will just copy
+# forecasts and metadata for these targets from the COVIDhub-trained_ensemble
+trained_response_vars <- c("inc_death", "cum_death")
+
 # Where to find component model submissions
 submissions_root <- '../covid19-forecast-hub/data-processed/'
 
@@ -56,7 +60,6 @@ candidate_model_abbreviations_to_include <-
 forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
 
 for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
-#for (response_var in c("cum_death", "inc_death", "inc_case")) {
   if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
     do_sd_check <- "exclude_none"
@@ -294,121 +297,122 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
           message = "Mean daily median forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
         ) %>%
         dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
-        dplyr::select(model, location, message)        
+        dplyr::select(model, location, message)
     } else {
       manual_eligibility_adjust <- NULL
     }
   }
 
-  c(model_eligibility, wide_model_eligibility, location_groups, component_forecasts) %<-%
-    build_covid_ensemble(
-      hub = "US",
-      source = "local_hub_repo",
-      hub_repo_path = hub_repo_path,
-      candidate_model_abbreviations_to_include =
-        candidate_model_abbreviations_to_include,
-      spatial_resolution = spatial_resolution,
-      targets = targets,
-      forecast_date = forecast_date,
-      forecast_week_end_date = forecast_week_end_date,
-      max_horizon = horizon,
-      timezero_window_size = 6,
-      window_size = 0,
-      data_as_of_date = data_as_of_date,
-      intercept = FALSE,
-      combine_method = 'median',
-      quantile_groups = rep(1, 23),
-      missingness = 'by_location_group',
-      backend = NA,
-      required_quantiles = required_quantiles,
-      do_q10_check = do_q10_check,
-      do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
-      do_baseline_check = FALSE,
-      do_sd_check = do_sd_check, # implement CDC exclusion requests
-      sd_check_table_path = sd_check_table_path,
-      sd_check_plot_path = sd_check_plot_path,
-      manual_eligibility_adjust = manual_eligibility_adjust,
-      return_eligibility = TRUE,
-      return_all = TRUE
+  if (response_var %in% trained_response_vars) {
+    # get predictions from COVIDhub-trained_ensemble outputs
+    trained_save_dir <- paste0(root, 'data-processed/COVIDhub-trained_ensemble/')
+    trained_predictions <- read_csv(
+      paste0(trained_save_dir,
+             forecast_date,
+             '-COVIDhub-trained_ensemble.csv'),
+      col_types = cols(
+        forecast_date = col_date(format = ""),
+        target = col_character(),
+        target_end_date = col_character(),
+        location = col_character(),
+        type = col_character(),
+        quantile = col_double(),
+        value = col_double()
+      )
     )
+    formatted_ensemble_predictions <- trained_predictions %>%
+      dplyr::filter(grepl(gsub("_", " ", response_var), target)) %>%
+      dplyr::mutate(location_name = NA_character_)
+  } else {
+    # get predictions and metadata from a new fit
+    c(model_eligibility, wide_model_eligibility, location_groups, component_forecasts) %<-%
+      build_covid_ensemble(
+        hub = "US",
+        source = "local_hub_repo",
+        hub_repo_path = hub_repo_path,
+        candidate_model_abbreviations_to_include =
+          candidate_model_abbreviations_to_include,
+        spatial_resolution = spatial_resolution,
+        targets = targets,
+        forecast_date = forecast_date,
+        forecast_week_end_date = forecast_week_end_date,
+        max_horizon = horizon,
+        timezero_window_size = 6,
+        window_size = 0,
+        data_as_of_date = data_as_of_date,
+        intercept = FALSE,
+        combine_method = 'median',
+        quantile_groups = rep(1, 23),
+        missingness = 'by_location_group',
+        backend = NA,
+        required_quantiles = required_quantiles,
+        do_q10_check = do_q10_check,
+        do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
+        do_baseline_check = FALSE,
+        do_sd_check = do_sd_check, # implement CDC exclusion requests
+        sd_check_table_path = sd_check_table_path,
+        sd_check_plot_path = sd_check_plot_path,
+        manual_eligibility_adjust = manual_eligibility_adjust,
+        return_eligibility = TRUE,
+        return_all = TRUE
+      )
 
-  # subset ensemble forecasts to only locations where more than 1
-  # component model contributed.
-  model_counts <- apply(
-    location_groups %>% select_if(is.logical),
-    1,
-    sum)
-  location_groups <- location_groups[model_counts > 1, ]
-  ensemble_predictions <- bind_rows(location_groups[['qra_forecast']])
+    # subset ensemble forecasts to only locations where more than 1
+    # component model contributed.
+    model_counts <- apply(
+      location_groups %>% select_if(is.logical),
+      1,
+      sum)
+    location_groups <- location_groups[model_counts > 1, ]
+    ensemble_predictions <- bind_rows(location_groups[['qra_forecast']])
 
-  # save the results in required format
-  formatted_ensemble_predictions <- ensemble_predictions %>%
-    left_join(
-      fips_codes,# %>% select(location, location_name = location_abbreviation),
-      by='location') %>%
-    dplyr::transmute(
-      forecast_date = UQ(forecast_date),
-      target = target,
-      target_end_date = as.character(
-          lubridate::ymd(forecast_week_end_date) +
-            as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
-              ifelse(grepl("day", target), 1, 7)
-        ),
-      location = location,
-      location_name = location_name,
-      type = 'quantile',
-      quantile = quantile,
-      value = ifelse(
-        quantile < 0.5,
-        floor(value),
-        ifelse(
-          quantile == 0.5,
-          round(value),
-          ceiling(value)
+    # save the results in required format
+    formatted_ensemble_predictions <- ensemble_predictions %>%
+      left_join(
+        fips_codes,# %>% select(location, location_name = location_abbreviation),
+        by='location') %>%
+      dplyr::transmute(
+        forecast_date = UQ(forecast_date),
+        target = target,
+        target_end_date = as.character(
+            lubridate::ymd(forecast_week_end_date) +
+              as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
+                ifelse(grepl("day", target), 1, 7)
+          ),
+        location = location,
+        location_name = location_name,
+        type = 'quantile',
+        quantile = quantile,
+        value = ifelse(
+          quantile < 0.5,
+          floor(value),
+          ifelse(
+            quantile == 0.5,
+            round(value),
+            ceiling(value)
+          )
         )
       )
+
+    formatted_ensemble_predictions <- bind_rows(
+      formatted_ensemble_predictions,
+      formatted_ensemble_predictions %>%
+        filter(format(quantile, digits=3, nsmall=3) == '0.500') %>%
+        mutate(
+          type='point',
+          quantile=NA_real_
+        )
     )
 
-  formatted_ensemble_predictions <- bind_rows(
-    formatted_ensemble_predictions,
-    formatted_ensemble_predictions %>%
-      filter(format(quantile, digits=3, nsmall=3) == '0.500') %>%
-      mutate(
-        type='point',
-        quantile=NA_real_
-      )
-  )
+    # reformat model weights and eligibility for output
+    model_weights <- location_groups %>%
+      dplyr::select(-qfm_train, -qfm_test, -y_train, -qra_fit, -qra_forecast) %>%
+      tidyr::unnest(locations) %>%
+      dplyr::mutate_if(is.logical, as.numeric)
+  }
 
-  # reformat model weights and eligibility for output
-  model_weights <- location_groups %>%
-    dplyr::select(-qfm_train, -qfm_test, -y_train, -qra_fit, -qra_forecast) %>%
-    tidyr::unnest(locations) %>%
-    dplyr::mutate_if(is.logical, as.numeric)
-  # model_weights <- purrr::pmap_dfr(
-  #   location_groups %>% select(locations, qra_fit),
-  #   function(locations, qra_fit) {
-  #     temp <- qra_fit$coefficients %>%
-  #       tidyr::pivot_wider(names_from = 'model', values_from = 'beta')
-  #
-  #     return(purrr::map_dfr(
-  #       locations,
-  #       function(location) {
-  #         temp %>%
-  #           mutate(location = location)
-  #       }
-  #     ))
-  #   }
-  # )
-  # model_weights <- bind_cols(
-  #   model_weights %>%
-  #     select(location) %>%
-  #     left_join(fips_codes, by = 'location'),
-  #   model_weights %>% select(-location)
-  # ) %>%
-  #   arrange(location)
-  # model_weights[is.na(model_weights)] <- 0.0
-
-  if(response_var == 'cum_death') {
+  # add predictions for response_var to all_formatted_ensemble_predictions
+  if (response_var == 'cum_death') {
     all_formatted_ensemble_predictions <- formatted_ensemble_predictions
   } else {
     all_formatted_ensemble_predictions <- bind_rows(
@@ -429,19 +433,38 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
       save_dir <- paste0(root, "ensemble-metadata/")
       if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
-      write_csv(model_eligibility,
-        paste0(save_dir,
-          formatted_ensemble_predictions$forecast_date[1],
-          '-',
-          response_var,
-          '-model-eligibility.csv'))
 
-      write_csv(model_weights,
-        paste0(save_dir,
-          formatted_ensemble_predictions$forecast_date[1],
+      eligibility_path <- paste0(save_dir,
+        formatted_ensemble_predictions$forecast_date[1],
+        '-',
+        response_var,
+        '-model-eligibility.csv')
+      weights_path <- paste0(save_dir,
+        formatted_ensemble_predictions$forecast_date[1],
+        '-',
+        response_var,
+        '-model-weights.csv')
+
+      if (response_var %in% trained_response_vars) {
+        # copy metadata and weights files from trained ensemble outputs
+        trained_save_dir <- paste0(root, "trained_ensemble-metadata/")
+        trained_eligibility_path <- paste0(trained_save_dir,
+          forecast_date,
           '-',
           response_var,
-          '-model-weights.csv'))
+          '-model-eligibility.csv')
+        trained_weights_path <- paste0(trained_save_dir,
+          forecast_date,
+          '-',
+          response_var,
+          '-model-weights.csv')
+        file.copy(from = trained_eligibility_path, to = eligibility_path)
+        file.copy(from = trained_weights_path, to = weights_path)
+      } else {
+        # save 
+        write_csv(model_eligibility, eligibility_path)
+        write_csv(model_weights, weights_path)
+      }
     }
   }
 }
