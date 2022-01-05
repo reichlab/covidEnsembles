@@ -1,4 +1,7 @@
+library(tidyverse)
+library(covidEnsembles)
 library(ggpubr)
+library(here)
 
 plot_losses <- function(
   forecast_date,
@@ -44,8 +47,8 @@ plot_losses <- function(
   return(p)
 }
 
-load(file = paste0(
-  "code/application/weekly-ensemble/thetas-", 
+load(file = paste0(here(),
+  "/code/application/weekly-ensemble/thetas-", 
   lubridate::floor_date(Sys.Date(), unit = "week") + 1))
 
 thetas <- thetas %>%
@@ -63,6 +66,7 @@ thetas <- thetas %>%
 all <- ggarrange(plotlist = thetas$plots, ncol = 2, nrow = 5)
 ggexport(all, 
          filename = paste0(
-           "code/application/weekly-ensemble/plots/loss_plot_",
+          here(),
+           "/code/application/weekly-ensemble/plots/loss_plot_",
            thetas$forecast_date[1],".pdf"), width=18, height=24)
  
