@@ -10,7 +10,8 @@ estimate_qra_optimized(
   quantile_groups,
   qra_model = c("convex_per_model", "unconstrained_per_model",
     "rescaled_convex_per_model", "rel_wis_weighted_median"),
-  backend = c("optim", "NlcOptim", "grid_search")
+  backend = c("optim", "NlcOptim", "grid_search"),
+  max_weight = NULL
 )
 }
 \arguments{
@@ -33,6 +34,10 @@ ensemble weights should be used across all levels.  This is the argument
 'optim', using L-BFGS-B as provided by the optim function in R, or
 'NlcOptim', using NlcOptim::solnl, or 'grid_search', using
 covidEnsemble::grid_search}
+
+\item{max_weight}{numeric value for maximum weight. Ignored unless qra_model
+is rel_wis_weighted_median or rel_wis_weighted mean and backend is
+grid_search}
 }
 \value{
 object of class qra_fit

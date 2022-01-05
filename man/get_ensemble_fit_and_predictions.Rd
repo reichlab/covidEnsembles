@@ -26,6 +26,7 @@ get_ensemble_fit_and_predictions(
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,
   baseline_tol = 1.2,
+  max_weight = NULL,
   top_models = 0,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
@@ -85,6 +86,10 @@ missingness only for each model and location}
 \item{do_q10_check}{if TRUE, do q10 check}
 
 \item{do_nondecreasing_quantile_check}{if TRUE, do nondecreasing quantile check}
+
+\item{max_weight}{numeric value for maximum weight. Ignored unless qra_model
+is rel_wis_weighted_median or rel_wis_weighted mean and backend is
+grid_search}
 
 \item{manual_eligibility_adjust}{character vector of model abbreviations for
 models eliminated based on visual inspection}
