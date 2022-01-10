@@ -656,6 +656,9 @@ predict.median_qra_fit <- function(qra_fit, qfm, ...) {
 #'    'optim', using L-BFGS-B as provided by the optim function in R;
 #'    'NlcOptim', using NlcOptim::solnl; or 'quantgen', using
 #'    quantgen::quantile_ensemble
+#' @param max_weight numeric value for maximum weight. Ignored unless qra_model
+#' is rel_wis_weighted_median or rel_wis_weighted mean and backend is
+#' grid_search
 #'
 #' @return object of class qra_fit
 #'
@@ -669,6 +672,7 @@ estimate_qra <- function(
   quantile_groups = NULL,
   noncross = "constrain",
   backend = 'optim',
+  max_weight = NULL,
   partial_save_frequency,
   partial_save_filename,
   ...
@@ -734,7 +738,8 @@ estimate_qra <- function(
         y_train = y_train,
         quantile_groups = quantile_groups,
         qra_model = combine_method,
-        backend = backend)
+        backend = backend,
+        max_weight = max_weight)
     }
   }
 
@@ -812,6 +817,9 @@ estimate_qra_ew <- function(qfm_train, ...) {
 #'    'optim', using L-BFGS-B as provided by the optim function in R, or
 #'    'NlcOptim', using NlcOptim::solnl, or 'grid_search', using
 #'    covidEnsemble::grid_search
+#' @param max_weight numeric value for maximum weight. Ignored unless qra_model
+#' is rel_wis_weighted_median or rel_wis_weighted mean and backend is
+#' grid_search
 #'
 #' @return object of class qra_fit
 #'
@@ -821,13 +829,22 @@ estimate_qra_optimized <- function(
   y_train,
   quantile_groups,
   qra_model = c('convex_per_model', 'unconstrained_per_model', 'rescaled_convex_per_model', 'rel_wis_weighted_median'),
-  backend = c('optim', 'NlcOptim', 'grid_search')
+  backend = c('optim', 'NlcOptim', 'grid_search'),
+  max_weight = NULL
 ) {
   qra_model <- match.arg(qra_model, choices = c('convex_per_model',
     'unconstrained_per_model', 'rescaled_convex_per_model',
     'rel_wis_weighted_median', 'rel_wis_weighted_mean',
     'mean_weights_weighted_median'))
   backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'grid_search'))
+
+  if (!is.null(max_weight) &&
+      !(backend == "grid_search" &
+        qra_model %in% c("rel_wis_weighted_median", "rel_wis_weighted_mean"))) {
+    warning("In estimate_qra_optimized, ignoring max_weight argument since ",
+      "it's not the case that backend is grid_search and qra_model is one of ",
+      "rel_wis_weighted_median or rel_wis_weighted_mean.")
+  }
 
   if (backend %in% c('optim', 'NlcOptim')) {
     init_par_constructor <- getFromNamespace(
@@ -895,11 +912,12 @@ estimate_qra_optimized <- function(
       } else if (backend == 'grid_search') {
         if (qra_model %in% c('rel_wis_weighted_median', 'rel_wis_weighted_mean')) {
           optim_output <- grid_search_rel_wis_weights(
-            par_grid=init_par,
-            fn=wis_loss,
-            model_constructor=model_constructor,
-            qfm_train=qg_qfm_train,
-            y_train=y_train)
+            par_grid = init_par,
+            fn = wis_loss_rel_wis_weights,
+            model_constructor = model_constructor,
+            qfm_train = qg_qfm_train,
+            y_train = y_train,
+            max_weight = max_weight)
         } else {
           stop('grid search backend is only available if model is rel_wis_weighted_median')
         }
@@ -970,6 +988,7 @@ estimate_qra_optimized <- function(
 #' @param qfm_train QuantileForecastMatrix with training set predictions from
 #'    component models
 #' @param y_train numeric vector of responses for training set
+#' @param max_weight numeric value for maximum weight
 #' 
 #' @return single parameter value with lowest function value
 grid_search_rel_wis_weights <- function(
@@ -977,7 +996,8 @@ grid_search_rel_wis_weights <- function(
   fn,
   model_constructor,
   qfm_train,
-  y_train) {
+  y_train,
+  max_weight) {
   rel_wis <- calc_relative_wis(y_train, qfm_train)
 
   loss_by_par <- furrr::future_map_dbl(
@@ -987,6 +1007,7 @@ grid_search_rel_wis_weights <- function(
     qfm_train = qfm_train,
     y_train = y_train,
     rel_wis = rel_wis,
+    max_weight = max_weight,
     .progress = TRUE)
 
   min_ind <- which.min(loss_by_par)
@@ -1006,6 +1027,7 @@ grid_search_rel_wis_weights <- function(
       qfm_train = qfm_train,
       y_train = y_train,
       rel_wis = rel_wis,
+      max_weight = max_weight,
       .progress = TRUE)
     loss_by_par <- c(loss_by_par, loss_by_par_ext)
     min_ind <- which.min(loss_by_par)
@@ -1033,6 +1055,39 @@ grid_search_rel_wis_weights <- function(
 #' @return scalar wis loss for given parameter values
 wis_loss <- function(par, model_constructor, qfm_train, y_train, ...) {
   qra_model <- model_constructor(par, qfm_train, y_train, ...)
+  qfm_aggregated <- predict(qra_model, qfm_train)
+  return(sum(covidEnsembles::wis(y_train, qfm_aggregated)))
+}
+
+
+#' Calculate wis_loss as a function of parameters used to construct a
+#' relative WIS weighted qra model. This method is specific to the
+#' relative WIS weighted mean and median methods, and allows for a
+#' maximum weight; an infinite loss is returned if the largest weight
+#' is greater than this value.
+#'
+#' @param par real-valued vector of parameters
+#' @param model_constructor a function that accepts a real-valued vector of
+#'    parameters and returns a model of class qra_fit
+#' @param qfm_train QuantileForecastMatrix with training set predictions from
+#'    component models
+#' @param y_train numeric vector of responses for training set
+#' @param max_weight numeric value for maximum weight. Defaults to 1
+#' @param ... arguments passed on to the model_constructor
+#'
+#' @return scalar wis loss for given parameter values
+wis_loss_rel_wis_weights <- function(par, model_constructor,
+                                     qfm_train, y_train,
+                                     max_weight = 1.0, ...) {
+  if (is.null(max_weight)) {
+    max_weight <- Inf
+  }
+  qra_model <- model_constructor(par, qfm_train, y_train, ...)
+  max_est_weight <- max(qra_model$coefficients$beta)
+  if (max_est_weight > max_weight) {
+    # weight limit is exceeded
+    return(Inf)
+  }
   qfm_aggregated <- predict(qra_model, qfm_train)
   return(sum(covidEnsembles::wis(y_train, qfm_aggregated)))
 }

@@ -27,6 +27,7 @@ get_imputed_ensemble_fits_and_predictions(
   sd_check_plot_path = NULL,
   baseline_tol = 1.2,
   top_models = 0,
+  max_weight = NULL,
   manual_eligibility_adjust,
   return_all = FALSE,
   return_eligibility = TRUE,
@@ -94,6 +95,9 @@ missingness only for each model and location}
 \item{sd_check_table_path}{where to save hospitalization sd check table results}
 
 \item{sd_check_plot_path}{where to save hospitalization sd check plot results}
+
+\item{max_weight}{numeric value for maximum weight. Ignored unless combine_method
+is rel_wis_weighted_median or rel_wis_weighted mean and backend is grid_search}
 
 \item{return_all}{if TRUE, return all quantities; if FALSE, return only some
 useful summaries}

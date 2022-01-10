@@ -11,7 +11,8 @@ grid_search_rel_wis_weights(
   fn,
   model_constructor,
   qfm_train,
-  y_train
+  y_train,
+  max_weight
 )
 }
 \arguments{
@@ -26,6 +27,8 @@ returns a model of class qra_fit}
 component models}
 
 \item{y_train}{numeric vector of responses for training set}
+
+\item{max_weight}{numeric value for maximum weight}
 }
 \value{
 single parameter value with lowest function value

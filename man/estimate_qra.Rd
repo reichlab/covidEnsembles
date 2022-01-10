@@ -13,6 +13,7 @@ estimate_qra(
   quantile_groups = NULL,
   noncross = "constrain",
   backend = "optim",
+  max_weight = NULL,
   partial_save_frequency,
   partial_save_filename,
   ...
@@ -51,6 +52,10 @@ sorted.}
 'optim', using L-BFGS-B as provided by the optim function in R;
 'NlcOptim', using NlcOptim::solnl; or 'quantgen', using
 quantgen::quantile_ensemble}
+
+\item{max_weight}{numeric value for maximum weight. Ignored unless qra_model
+is rel_wis_weighted_median or rel_wis_weighted mean and backend is
+grid_search}
 }
 \value{
 object of class qra_fit

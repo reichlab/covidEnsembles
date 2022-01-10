@@ -261,6 +261,9 @@ load_covid_forecasts_relative_horizon <- function(
 #' @param do_q10_check if TRUE, do q10 check
 #' @param do_nondecreasing_quantile_check if TRUE, do nondecreasing quantile check
 #' @param return_eligibility if TRUE, return model eligibility
+#' @param max_weight numeric value for maximum weight. Ignored unless qra_model
+#' is rel_wis_weighted_median or rel_wis_weighted mean and backend is
+#' grid_search
 #'
 #' @return data frame with ensemble forecasts by location
 #'
@@ -297,6 +300,7 @@ build_covid_ensemble <- function(
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,
   baseline_tol = 1.2,
+  max_weight = NULL,
   top_models = 0,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
@@ -376,6 +380,7 @@ build_covid_ensemble <- function(
     sd_check_table_path = sd_check_table_path,
     sd_check_plot_path = sd_check_plot_path,
     baseline_tol = baseline_tol,
+    max_weight = max_weight,
     top_models = top_models,
     manual_eligibility_adjust = manual_eligibility_adjust,
     return_eligibility = return_eligibility,
@@ -433,6 +438,9 @@ build_covid_ensemble <- function(
 #' @param manual_eligibility_adjust character vector of model abbreviations for
 #' models eliminated based on visual inspection
 #' @param return_eligibility if TRUE, return model eligibility
+#' @param max_weight numeric value for maximum weight. Ignored unless qra_model
+#' is rel_wis_weighted_median or rel_wis_weighted mean and backend is
+#' grid_search
 #' @param return_all if TRUE, return model fits
 #'
 #' @return tibble or data frame with ensemble fits and results
@@ -460,6 +468,7 @@ get_ensemble_fit_and_predictions <- function(
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,  
   baseline_tol = 1.2,
+  max_weight = NULL,
   top_models=0,
   manual_eligibility_adjust,
   return_eligibility = TRUE,
@@ -522,6 +531,7 @@ get_ensemble_fit_and_predictions <- function(
       sd_check_table_path = sd_check_table_path,
       sd_check_plot_path = sd_check_plot_path, 
       baseline_tol = baseline_tol,
+      max_weight = max_weight,
       top_models=top_models,
       manual_eligibility_adjust = manual_eligibility_adjust,
       return_eligibility = return_eligibility,
@@ -776,7 +786,8 @@ get_by_location_group_ensemble_fits_and_predictions <- function(
           combine_method = combine_method,
           quantile_groups = quantile_groups,
           noncross = noncross,
-          backend = backend)
+          backend = backend,
+          max_weight = max_weight)
       })
   }
 
@@ -985,6 +996,8 @@ impute_missing_per_quantile <- function(
 #' @param do_sd_check if TRUE, do sd quantile check (for hospitalization forecasts)
 #' @param sd_check_table_path where to save hospitalization sd check table results
 #' @param sd_check_plot_path where to save hospitalization sd check plot results
+#' @param max_weight numeric value for maximum weight. Ignored unless combine_method
+#' is rel_wis_weighted_median or rel_wis_weighted mean and backend is grid_search
 #' @param return_all if TRUE, return all quantities; if FALSE, return only some
 #' useful summaries
 #' @param return_eligibility if TRUE, return model eligibility
@@ -1015,6 +1028,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
   sd_check_plot_path = NULL,
   baseline_tol = 1.2,
   top_models=0,
+  max_weight = NULL,
   manual_eligibility_adjust,
   return_all=FALSE,
   return_eligibility = TRUE,
@@ -1345,6 +1359,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
       quantile_groups = quantile_groups,
       noncross = noncross,
       backend = backend,
+      max_weight = max_weight,
       partial_save_frequency = partial_save_frequency,
       partial_save_filename = partial_save_filename)
   }

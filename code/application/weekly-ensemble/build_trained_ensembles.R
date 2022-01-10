@@ -51,6 +51,7 @@ candidate_model_abbreviations_to_include <- get_candidate_models(
 
 # Drop other ensemble models
 excluded_ensembles <- c("JHUAPL-SLPHospEns", "FDANIHASU-Sweight",
+  "COVIDhub_CDC-ensemble", "COVIDhub-ensemble", "COVIDhub-4_week_ensemble",
   "COVIDhub-trained_ensemble", "KITmetricslab-select_ensemble")
 candidate_model_abbreviations_to_include <-
   candidate_model_abbreviations_to_include[
@@ -177,6 +178,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       do_baseline_check = FALSE,
       do_sd_check = do_sd_check, # implement CDC exclusion requests
       baseline_tol = 1.0,
+      max_weight = 1.0,
       top_models = top_models,
       sd_check_table_path = sd_check_table_path,
       sd_check_plot_path = sd_check_plot_path,
