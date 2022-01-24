@@ -7,6 +7,7 @@ plot_losses <- function(
   forecast_date,
   response_var,
   spatial_resolution,
+  theta,
   losses, 
   rel_wis
   ) {
@@ -16,10 +17,11 @@ plot_losses <- function(
   wts <- softmax_matrix_rows(-outer(losses$theta, rw))
   
   dat <- bind_cols(losses, as_tibble(wts)) %>%
-    pivot_longer(-c(theta, loss))
+    pivot_longer(-c(theta, loss)) %>% 
+    mutate(loss = ifelse(is.finite(loss), loss, NA))
   
-  M <- max(losses$loss)
-  m <- min(losses$loss)
+  M <- max(dat$loss, na.rm = TRUE)
+  m <- min(dat$loss, na.rm = TRUE)
   normfun <- function(x) {
     .5 + .8 * ((x - m) / (M - m) - .5)
   }
@@ -34,16 +36,23 @@ plot_losses <- function(
       aes(y = value, fill = name),
       stat = "identity",
       alpha = .6,
-      width = 20 / 200
+      width = 20 / 200,
+      position = position_fill()
     ) +
     geom_line(aes(y = normfun(loss))) +
+    geom_vline(xintercept = theta, alpha = .3) +
     scale_y_continuous(
-      labels = normfun_inv, name = "WIS Loss",
-      position = "right")+
+      labels = normfun_inv,
+      breaks = normfun(pretty(dat$loss)),
+      name = "WIS Loss",
+      expand = expansion(0,0),
+      position = "right") +
+    scale_x_continuous(expand = expansion(0,0)) +
     labs(fill = "") +
     theme(legend.position="left") +
     guides(fill = guide_legend(label.position = "left")) +
-    ggtitle(paste(forecast_date, response_var, spatial_resolution))
+    ggtitle(paste(forecast_date, response_var, spatial_resolution)) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
   return(p)
 }
 
@@ -57,16 +66,17 @@ thetas <- thetas %>%
       forecast_date,
       response_var,
       spatial_resolution,
+      theta,
       losses,
       rel_wis
     ),
     plot_losses
   )) 
 
-all <- ggarrange(plotlist = thetas$plots, ncol = 2, nrow = 5)
+all <- ggarrange(plotlist = thetas$plots, ncol = 2, nrow = 5, align = "hv")
 ggexport(all, 
          filename = paste0(
           here(),
            "/code/application/weekly-ensemble/plots/loss_plot_",
-           thetas$forecast_date[1],".pdf"), width=18, height=24)
+           thetas$forecast_date[1],".pdf"), width=14, height=18)
  
