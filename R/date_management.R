@@ -172,3 +172,115 @@ calc_relative_target <- function(
     substr(target, regexpr(" ", target, fixed = TRUE), nchar(target))
   )
 }
+
+## Below are some target parsing functions from Aaron Gerding
+
+parse_target <- function(target) {
+  v <- unlist(stringr::str_split(target, " "))
+  if (length(v) != 5) {
+    stop("Target does not contain 5 words")
+  }
+  targ <- list()
+
+  targ$horizon <- as.integer(v[1])
+  if (is.na(targ$horizon)) {
+    stop("Invalid horizon")
+  }
+
+  targ$time_scale <- v[2]  
+  if (!(targ$time_scale  %in% c("wk", "day"))) {
+    stop("Invalid time scale")
+  }
+
+  if (v[3] != "ahead") {
+    stop("Third word is not 'ahead'")
+  }
+
+  targ$response_var <- stringr::str_c(v[4], v[5], sep = " ")
+  if (!(targ$response_var %in% c("cum death", "inc death", "inc case", "inc hosp"))) {
+    stop("Invalid response variable")
+  }
+
+  return(targ)
+}
+
+targ_horizon_tsp <- function(target) {
+  purrr::map(target, parse_target) %>% 
+  purrr::map(
+    function(targ_elem) {
+      if (targ_elem$time_scale == "wk") {
+        tsp <- lubridate::weeks(targ_elem$horizon)
+      } else {
+        tsp <- lubridate::days(targ_elem$horizon)
+      }
+      return(tsp)
+    }
+  ) %>% do.call(c,.)
+}
+
+targ_horizon_num <- function(
+  target, 
+  ref_time_scale
+) {
+  if (missing(ref_time_scale)) {
+    return(
+      purrr::map(target, parse_target) %>% 
+      purrr::map_dbl("horizon")
+    )
+  } 
+
+  ref_time_scale <- purrr::map(
+    ref_time_scale, 
+    match.arg, 
+    choices = c("wk", "week", "weeks", "day", "days")
+  )
+
+  targ_horizon_tsp(target) %>% 
+  purrr::map2_dbl(
+    ref_time_scale,
+    function(tsp, ref_time_scale) {
+      if (grepl("w", ref_time_scale)) {
+        hzn <- lubridate::time_length(tsp, unit = "weeks")
+      } else {
+        hzn <- lubridate::time_length(tsp, unit = "days")
+      }
+      return(hzn)
+    }
+  )
+}
+
+targ_time_scale_chr <- function(target) {
+  purrr::map(target, parse_target) %>% 
+  purrr::map_chr("time_scale")
+}
+
+targ_time_scale_days <- function(target) {
+  targ_time_scale_chr(target) %>% 
+  purrr::map_dbl(~ifelse(. == "wk", 7, 1))
+}
+
+targ_time_scale_tsp <- function(target) {
+  purrr::map(target, parse_target) %>% 
+  purrr::map(
+    function(targ_elem) {
+      if (targ_elem$time_scale == "wk") {
+        tsp <- lubridate::weeks(1)
+      } else {
+        tsp <- lubridate::days(1)
+      }
+      return(tsp)
+    }
+  ) %>% do.call(c,.)
+}
+
+targ_response_var <- function(target) {
+  purrr::map(target, parse_target) %>% 
+  purrr::map_chr("response_var")
+}
+
+targ_base <- function(target) {
+  purrr::map(target, parse_target) %>% 
+  purrr::map_chr( 
+    ~stringr::str_c(.$time_scale, "ahead", .$response_var, sep = " ")
+  )
+}
