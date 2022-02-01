@@ -12,3 +12,4 @@ code/application/weekly-ensemble/plots/
 code/application/weekly-ensemble/inc-vs-cum/
 run*.out
 run*.err
+*.RData

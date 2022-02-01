@@ -151,7 +151,9 @@ for(measure in c('deaths', 'cases', 'hospitalizations')) {
       location_batches <- results %>%
         dplyr::filter(grepl(target_variable_short, target)) %>%
         dplyr::distinct(location, location_name_with_state) %>%
-        dplyr::arrange(nchar(location), location_name_with_state) %>%
+        dplyr::arrange(nchar(location), 
+            sub(pattern = ".*,\\s", "", location_name_with_state),
+            location_name_with_state) %>%
         dplyr::mutate(
           location_name = factor(location_name_with_state, levels = location_name_with_state),
           batch = rep(seq_len(ceiling(nrow(.)/30)), each = 30)[seq_len(nrow(.))]
