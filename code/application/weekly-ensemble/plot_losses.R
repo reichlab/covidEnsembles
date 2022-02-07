@@ -56,7 +56,7 @@ plot_losses <- function(
   return(p)
 }
 
-load(file = paste0(here(),
+thetas <- readRDS(file = paste0(here(),
   "/code/application/weekly-ensemble/thetas-", 
   lubridate::floor_date(Sys.Date(), unit = "week") + 1))
 
