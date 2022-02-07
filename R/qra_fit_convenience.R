@@ -308,20 +308,6 @@ build_covid_ensemble <- function(
   partial_save_frequency,
   partial_save_filename
 ) {
-  # Get observed values ("truth" in Zoltar's parlance)
-  observed_by_location_target_end_date <-
-    get_observed_by_location_target_end_date(
-      as_of = as.character(data_as_of_date),
-      targets = targets,
-      spatial_resolution = spatial_resolution
-    )
-  if (!is.null(target_end_date_locations_drop)) {
-    observed_by_location_target_end_date <- dplyr::anti_join(
-      observed_by_location_target_end_date,
-      target_end_date_locations_drop,
-      by = c("location", "target_end_date")
-    )
-  }
 
   # Dates specifying mondays when forecasts were submitted that are relevant to
   # this analysis: forecast_date and the previous window_size weeks
@@ -336,6 +322,46 @@ build_covid_ensemble <- function(
     }
   }
 
+  # Determine locations according to spatial_resolution and hub
+  spatial_resolution <- match.arg(
+    spatial_resolution, 
+    choices = c("county", "state", "national", "state_national", "state_no_territories", "euro_countries"),
+    several.ok = TRUE
+  )
+  hub <- match.arg(hub, choices = c("US", "ECDC"))
+
+  all_locations <- c()
+
+  for (sr in spatial_resolution) {
+    if (hub == "US") {
+      locations <- covidHubUtils::hub_locations
+      if (sr == "county") {
+        locations <- locations %>% dplyr::filter(geo_type == "county") 
+      } else if (sr == "state") {
+        locations <- locations %>% dplyr::filter(geo_type == "state", fips != "US") 
+      } else if (sr == "national") {
+        locations <- locations %>% dplyr::filter(fips == "US") 
+      } else if (sr == "state_national") {
+        locations <- locations %>% dplyr::filter(geo_type == "state") 
+      } else if (sr == "state_no_territories") {
+        locations <- locations %>% dplyr::filter(geo_type == "state", fips <= "56", fips != "US")
+      } else {
+        stop("Undefined spatial resolution for US hub")
+      }
+      locations <- locations %>% dplyr::pull(fips)
+    }
+
+    if (hub == "ECDC") {
+      if (sr %in% c("euro_countries", "national")) {
+        locations <- covidHubUtils::hub_locations_ecdc$location
+      } else {
+        stop("Undefined spatial resolution for ECDC hub")
+      }
+    }
+    all_locations <- c(all_locations, locations)
+  }
+
+  # load forecasts for those locations
   forecasts <- load_covid_forecasts_relative_horizon(
     hub = hub,
     source = source,
@@ -344,7 +370,7 @@ build_covid_ensemble <- function(
     as_of = as_of,
     model_abbrs = candidate_model_abbreviations_to_include,
     timezero_window_size = timezero_window_size,
-    locations = unique(observed_by_location_target_end_date$location),
+    locations = all_locations,
     targets = targets,
     max_horizon = max_horizon,
     required_quantiles = required_quantiles
@@ -356,6 +382,23 @@ build_covid_ensemble <- function(
       forecast_date_locations_drop %>%
         dplyr::mutate(forecast_week_end_date = as.character(forecast_week_end_date)),
       by = c("location", "forecast_week_end_date")
+    )
+  }
+
+  # Get observed values ("truth" in Zoltar's parlance)
+  # ... for locations having forecasts.
+  observed_by_location_target_end_date <-
+    get_observed_by_location_target_end_date(
+      as_of = as.character(data_as_of_date),
+      targets = targets,
+      spatial_resolution = spatial_resolution,
+      locations = unique(forecasts$location)
+    )
+  if (!is.null(target_end_date_locations_drop)) {
+    observed_by_location_target_end_date <- dplyr::anti_join(
+      observed_by_location_target_end_date,
+      target_end_date_locations_drop,
+      by = c("location", "target_end_date")
     )
   }
 

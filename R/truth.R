@@ -6,6 +6,10 @@
 #' c('1 wk ahead cum death', '2 wk ahead cum death')
 #' @param spatial_resolution character vector specifying spatial unit types to
 #' include: 'county', 'state', 'national', and/or 'euro_countries'
+#' @param locations character vector of location codes to be passed to \code{covidData::load_forecasts}. 
+#' Default to NULL.
+#' For US locations, this should be a list of FIPS code or 'US'
+#' For ECDC locations, this should be a list of location name abbreviation.
 #'
 #' @return data frame with columns location, base_target, target_end_date, and
 #' observed
@@ -14,7 +18,8 @@
 get_observed_by_location_target_end_date <- function(
   as_of,
   targets,
-  spatial_resolution
+  spatial_resolution,
+  locations = NULL
 ) {
   types_and_measures <- purrr::map_dfr(
     targets,
@@ -53,6 +58,7 @@ get_observed_by_location_target_end_date <- function(
 
         covidData::load_data(
           as_of = as_of,
+          location_code = locations,
           spatial_resolution = effective_spatial_resolution,
           temporal_resolution = temporal_resolution,
           measure = measure,
