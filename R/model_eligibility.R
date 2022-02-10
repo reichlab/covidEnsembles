@@ -182,7 +182,8 @@ calc_model_eligibility_for_ensemble <- function(
     model_col = "model",
     id_cols = c("location", "forecast_week_end_date", "target"),
     quantile_name_col = "quantile",
-    quantile_value_col = "value")
+    quantile_value_col = "value",
+    drop_missing_id_levels = TRUE)
 
   # train/test split
   c(qfm_train, qfm_test) %<-%
@@ -212,6 +213,11 @@ calc_model_eligibility_for_ensemble <- function(
                      by = c("location", model_id_name))
 
   # summarize results per (location, model) pair
+  # eligibility <- eligibility %>%
+  #   dplyr::group_by(location, model) %>%
+  #   dplyr::summarize(
+
+  #   )
 
   return(eligibility)
 }
@@ -1031,6 +1037,8 @@ drop_ineligible_forecasts <- function(forecasts, eligibility) {
 
   return(forecasts)
 }
+
+
 
 
 
