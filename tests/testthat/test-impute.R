@@ -1,5 +1,6 @@
 context("imputing missing forecasts") 
 library(covidEnsembles)
+library(dplyr)
 
 test_that("impute_missing_per_quantile method='mean' works", {
   forecast_matrix <- matrix(1:30, nrow = 5, ncol = 6)

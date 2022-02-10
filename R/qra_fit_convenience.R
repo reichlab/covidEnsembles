@@ -1423,27 +1423,37 @@ train_test_split <- function(forecast_matrix,
                              window_size) {
   col_index <- attr(forecast_matrix, 'col_index')
   row_index <- attr(forecast_matrix, 'row_index')
+  horizon <- as.integer(substr(row_index$target, 1, regexpr(" ", row_index$target, fixed = TRUE) - 1))
+  temporal_unit_days <- ifelse(grepl("day", row_index$target), 1, 7)
+
   if (window_size >= 1) {
-    # this should call a function that's tested
     target_end_date <- row_index %>%
       dplyr::mutate(
         target_end_date = as.character(
           lubridate::ymd(forecast_week_end_date) +
-            as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
-              ifelse(grepl("day", target), 1, 7)
+            horizon * temporal_unit_days
         ),
       ) %>%
       pull(target_end_date)
 
-    train_row_inds <- which(target_end_date <= forecast_week_end_date)
-    test_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
+    first_train_forecast_week_end_date <- as.Date(forecast_week_end_date) -
+      window_size * 7
+    train_row_inds <- which(
+      (target_end_date <= forecast_week_end_date) &
+      (as.Date(row_index[['forecast_week_end_date']]) >= first_train_forecast_week_end_date))
+    test_row_inds <- which(as.character(row_index[['forecast_week_end_date']]) == as.character(forecast_week_end_date))
 
     # training set and test set QuantileForecastMatrix
     qfm_train <- forecast_matrix[train_row_inds, ]
     qfm_test <- forecast_matrix[test_row_inds, ]
   } else {
-    train_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
-    test_row_inds <- which(substr(row_index$target, 1, 4) == '1 wk')
+    train_row_inds <- which(
+      as.character(row_index[['forecast_week_end_date']]) == as.character(forecast_week_end_date) &
+      (horizon == 1L)
+    )
+    test_row_inds <- which(
+      as.character(row_index[['forecast_week_end_date']]) == as.character(forecast_week_end_date)
+    )
   }
 
   # training set and test set QuantileForecastMatrix
