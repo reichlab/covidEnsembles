@@ -307,12 +307,15 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 }
 toc()
 
-save(thetas, file = paste0('code/application/weekly-ensemble/thetas-', forecast_date))
+saveRDS(thetas, file = paste0('code/application/weekly-ensemble/thetas-', forecast_date))
 
 if (final_run) {
   write_csv(
-    thetas %>% dplyr::select(-c(losses, rel_wis)), 
-    paste0(root, "trained_ensemble-metadata/thetas.csv"), append = TRUE
+    dplyr::bind_rows(
+      read_csv(file = file.path(hub_repo_path, "trained_ensemble-metadata/thetas.csv")),
+      thetas %>% dplyr::select(-c(losses, rel_wis))
+    ),
+    file = paste0(root, "trained_ensemble-metadata/thetas.csv")
   )
 }
 

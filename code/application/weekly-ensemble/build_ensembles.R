@@ -447,18 +447,13 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
       if (response_var %in% trained_response_vars) {
         # copy metadata and weights files from trained ensemble outputs
+        # Note: eligibility files are not currently being produced for trained
         trained_save_dir <- paste0(root, "trained_ensemble-metadata/")
-        trained_eligibility_path <- paste0(trained_save_dir,
-          forecast_date,
-          '-',
-          response_var,
-          '-model-eligibility.csv')
         trained_weights_path <- paste0(trained_save_dir,
           forecast_date,
           '-',
           response_var,
           '-model-weights.csv')
-        file.copy(from = trained_eligibility_path, to = eligibility_path)
         file.copy(from = trained_weights_path, to = weights_path)
       } else {
         # save 
@@ -471,7 +466,9 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
 # Check that all models that had any submission for each target are in the
 # eligibility metadata file
-for (response_var in c("inc_death", "cum_death", "inc_case", "inc_hosp")) {
+# Note that inc and cum death are now not checked since trained ensemble eligibility 
+# files are not produced
+for (response_var in c("inc_case", "inc_hosp")) {
   if (response_var == "inc_hosp") {
     targets <- paste0(1:14, " day ahead inc hosp")
   } else if(response_var == "inc_case") {
@@ -512,10 +509,12 @@ for (response_var in c("inc_death", "cum_death", "inc_case", "inc_hosp")) {
 }
 
 # make plots of ensemble submission
-plot_forecasts_single_model(
+# suppressing messages to prevent terminal from being flooded by ggplot's "one observation group"
+# messages caused by geom_ribbon only covering one week ahead for inc cases
+suppressMessages(plot_forecasts_single_model(
   submissions_root = paste0(root, "data-processed/"),
   plots_root = plots_root,
   forecast_date = forecast_date,
   model_abbrs = "COVIDhub-ensemble",
   target_variables = c("cases", "deaths", "hospitalizations")
-)
+))

@@ -57,7 +57,7 @@ comparative_plots: ensemble_main
 
 # for each ensemble, copy files to fork, push to fork origin, and create pr to upstream
 main_pr: 
-	git -C $(FHUB) switch main && \
+	(git -C $(FHUB) checkout main || git -C $(FHUB) checkout -b main) && \
 	cp forecasts/ensemble-metadata/$(TODAY_DATE)* $(FHUB)/ensemble-metadata/ && \
 	cp forecasts/data-processed/COVIDhub-ensemble/$(TODAY_DATE)-COVIDhub-ensemble.csv \
 	$(FHUB)/data-processed/COVIDhub-ensemble/ && \
@@ -68,7 +68,7 @@ main_pr:
 	gh pr create --title "$(TODAY_DATE) ensemble" --body "Main Ensemble, COVID19 Forecast Hub"
 
 trained_pr: 
-	git -C $(FHUB) switch trained && \
+	(git -C $(FHUB) checkout trained || git -C $(FHUB) checkout -b trained) && \
 	cp forecasts/trained_ensemble-metadata/$(TODAY_DATE)* $(FHUB)/trained_ensemble-metadata/ && \
 	cp forecasts/trained_ensemble-metadata/thetas.csv $(FHUB)/trained_ensemble-metadata/thetas.csv && \
 	cp forecasts/data-processed/COVIDhub-trained_ensemble/$(TODAY_DATE)-COVIDhub-trained_ensemble.csv \
@@ -80,7 +80,7 @@ trained_pr:
 	gh pr create --title "$(TODAY_DATE) trained ensemble" --body "Trained Ensemble, COVID19 Forecast Hub"
 
 4wk_pr: 
-	git -C $(FHUB) switch 4wk && \
+	(git -C $(FHUB) checkout 4wk || git -C $(FHUB) checkout -b 4wk) && \
 	cp forecasts/4_week_ensemble-metadata/$(TODAY_DATE)* $(FHUB)/4_week_ensemble-metadata/ && \
 	cp forecasts/data-processed/COVIDhub-4_week_ensemble/$(TODAY_DATE)-COVIDhub-4_week_ensemble.csv \
 	$(FHUB)/data-processed/COVIDhub-4_week_ensemble/ && \
