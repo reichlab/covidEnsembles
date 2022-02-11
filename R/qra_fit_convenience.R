@@ -358,7 +358,7 @@ build_covid_ensemble <- function(
     } else {
       stop("Unknown hub specification")
     }
-    all_locations <- c(all_locations, locations)
+    all_locations <- unique(c(all_locations, locations))
   }
 
   # load forecasts for those locations
