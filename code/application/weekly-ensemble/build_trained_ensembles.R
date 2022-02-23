@@ -146,11 +146,11 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
 
   combine_method <- 'rel_wis_weighted_median'
   for (spatial_resolution in spatial_resolutions) {
-    if (spatial_resolution == "national" & response_var %in% c("cum_death", "inc_death")) {
-      max_weight = 0.3
-    } else {
-      max_weight = 1.0
-    }
+    # if (spatial_resolution == "national" & response_var %in% c("cum_death", "inc_death")) {
+    #   max_weight = 0.3
+    # } else {
+    #   max_weight = 1.0
+    # }
     tic(msg = paste(response_var, spatial_resolution))
     results <- build_covid_ensemble(
       hub = "US",
@@ -183,7 +183,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
       do_baseline_check = FALSE,
       do_sd_check = do_sd_check, # implement CDC exclusion requests
       baseline_tol = 1.0,
-      max_weight = max_weight,
+      max_weight = 0.3,
       top_models = top_models,
       sd_check_table_path = sd_check_table_path,
       sd_check_plot_path = sd_check_plot_path,
