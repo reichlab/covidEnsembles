@@ -25,8 +25,10 @@ read_plus <- function(flnm) {
 #read in files and add column with filenames 
 library(tidyselect)
 all_rows <-
-    list.files(path = "forecasts/trained_ensemble-metadata", pattern = "*.csv", 
-               full.names = T) %>% 
+    c(list.files("../../../../covid19-forecast-hub/trained_ensemble-metadata/", pattern = "*.csv", 
+           full.names = T),
+    list.files("forecasts/trained_ensemble-metadata/", pattern = "*.csv", 
+           full.names = T)) %>% 
     discard(grepl("thetas.csv",.)) %>% 
     map_df(~read_plus(.)) 
 
@@ -45,7 +47,8 @@ df_locations <- all_rows %>%
 df_long <- df_locations %>%
   select(-filename) %>%
   pivot_longer(!c(locations, target, date), names_to = "Model", values_to = "Weight") %>% 
-  filter(!is.na(Weight))
+  filter(!is.na(Weight)) %>% 
+  distinct()
 ```
 
 
