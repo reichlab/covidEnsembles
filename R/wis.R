@@ -252,7 +252,8 @@ get_all_wis_components <- function(
   return(row_index[!is.na(y_test), ])
 }
 
-calc_relative_wis <- function(y, qfm) {
+calc_relative_wis <- function(y, qfm, baseline = "COVIDhub-baseline", agg_method=c("geom_mean", "mean")) {
+  agg_method <- match.arg(agg_method)
   col_index <- attr(qfm, 'col_index')
   model_col <- attr(qfm, 'model_col')
   models <- unique(col_index[[model_col]])
@@ -274,16 +275,23 @@ calc_relative_wis <- function(y, qfm) {
   }
 
   rownames(pairwise_ratios) <- models
-  if ("COVIDhub-baseline" %in% models) {
-    ind_baseline <- which(rownames(pairwise_ratios) == "COVIDhub-baseline")
+  if (baseline %in% models) {
+    ind_baseline <- which(rownames(pairwise_ratios) == baseline)
   } else {
     ind_baseline <- 1L
   }
-  geom_mean_ratios <- exp(rowMeans(log(pairwise_ratios[, -ind_baseline]), na.rm = TRUE))
-  ratios_baseline2 <- geom_mean_ratios / geom_mean_ratios[ind_baseline]
+  if (agg_method == "geom_mean") {
+    geom_mean_ratios <- exp(rowMeans(log(pairwise_ratios[, -ind_baseline]), na.rm = TRUE))
+    ratios_baseline2 <- geom_mean_ratios / geom_mean_ratios[ind_baseline]
+    model_names <- names(geom_mean_ratios)
+  } else if (agg_method == "mean") {
+    mean_ratios <- rowMeans(pairwise_ratios[, -ind_baseline], na.rm = TRUE)
+    ratios_baseline2 <- mean_ratios / mean_ratios[ind_baseline]
+    model_names <- names(mean_ratios)
+  }
 
   tab <- data.frame(
-    model = names(geom_mean_ratios),
+    model = model_names,
     rel_wis = ratios_baseline2)
 
   tab <- tab[order(tab$rel_wis), ]

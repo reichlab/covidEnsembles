@@ -301,6 +301,10 @@ parse_model_case <- function(model_abbr) {
         return(data.frame(
           horizon_group = substr(case_part, 15, nc)
         ))
+      } else if (substr(case_part, 1, min(nc, 10)) == "max_weight") {
+        return(data.frame(
+          max_weight = substr(case_part, 12, nc)
+        ))
       } else {
         message(paste0("Unsupported case part: ", case_part))
       }

@@ -681,6 +681,7 @@ estimate_qra <- function(
     combine_method,
     choices = c("ew", "convex", "positive", "unconstrained", "median",
       "convex_median", "rel_wis_weighted_median", "rel_wis_weighted_mean",
+      "arith_rel_wis_weighted_median", "arith_rel_wis_weighted_mean",
       "mean_weights_weighted_median"))
   backend <- match.arg(
     backend,
@@ -835,6 +836,7 @@ estimate_qra_optimized <- function(
   qra_model <- match.arg(qra_model, choices = c('convex_per_model',
     'unconstrained_per_model', 'rescaled_convex_per_model',
     'rel_wis_weighted_median', 'rel_wis_weighted_mean',
+    'arith_rel_wis_weighted_median', 'arith_rel_wis_weighted_mean',
     'mean_weights_weighted_median'))
   backend <- match.arg(backend, choices = c('optim', 'NlcOptim', 'grid_search'))
 
@@ -910,14 +912,21 @@ estimate_qra_optimized <- function(
           objfun=wis_loss_wrapper
         )
       } else if (backend == 'grid_search') {
-        if (qra_model %in% c('rel_wis_weighted_median', 'rel_wis_weighted_mean')) {
+        if (qra_model %in% c('rel_wis_weighted_median', 'rel_wis_weighted_mean',
+                             'arith_rel_wis_weighted_median', 'arith_rel_wis_weighted_mean')) {
+          if (qra_model %in% c('rel_wis_weighted_median', 'rel_wis_weighted_mean')) {
+            wis_agg_method <- "geom_mean"
+          } else {
+            wis_agg_method <- "mean"
+          }
           optim_output <- grid_search_rel_wis_weights(
             par_grid = init_par,
             fn = wis_loss_rel_wis_weights,
             model_constructor = model_constructor,
             qfm_train = qg_qfm_train,
             y_train = y_train,
-            max_weight = max_weight)
+            max_weight = max_weight,
+            wis_agg_method = wis_agg_method)
         } else {
           stop('grid search backend is only available if model is rel_wis_weighted_median')
         }
@@ -989,6 +998,8 @@ estimate_qra_optimized <- function(
 #'    component models
 #' @param y_train numeric vector of responses for training set
 #' @param max_weight numeric value for maximum weight
+#' @param wis_agg_method string specifying method for aggregating WIS ratios
+#'   across model pairs. "mean" or "geom_mean"
 #' 
 #' @return single parameter value with lowest function value
 grid_search_rel_wis_weights <- function(
@@ -997,8 +1008,9 @@ grid_search_rel_wis_weights <- function(
   model_constructor,
   qfm_train,
   y_train,
-  max_weight) {
-  rel_wis <- calc_relative_wis(y_train, qfm_train)
+  max_weight,
+  wis_agg_method) {
+  rel_wis <- calc_relative_wis(y_train, qfm_train, agg_method = wis_agg_method)
 
   loss_by_par <- furrr::future_map_dbl(
     par_grid,
@@ -1261,6 +1273,7 @@ init_par_constructor_rel_wis_weighted_median <- function(qfm_train, ...) {
   return(0.0)
 }
 
+init_par_constructor_arith_rel_wis_weighted_median <- init_par_constructor_rel_wis_weighted_median
 
 #' Parameter search grid constructor for rel_wis_weighted_median approach
 #'
@@ -1273,6 +1286,7 @@ par_grid_constructor_rel_wis_weighted_median <- function(qfm_train, ...) {
   return(seq(from = 0.0, to = 20.0, by = 0.1))
 }
 
+par_grid_constructor_arith_rel_wis_weighted_median <- par_grid_constructor_rel_wis_weighted_median
 
 #' Model constructor for rel_wis_weighted_median approach
 #'
@@ -1309,6 +1323,7 @@ model_constructor_rel_wis_weighted_median <- function(par, qfm_train, y_train, r
   return(qra_fit)
 }
 
+model_constructor_arith_rel_wis_weighted_median <- model_constructor_rel_wis_weighted_median
 
 #' Initial parameter constructor for rel_wis_weighted_mean approach
 #'
@@ -1321,6 +1336,7 @@ init_par_constructor_rel_wis_weighted_mean <- function(qfm_train, ...) {
   return(0.0)
 }
 
+init_par_constructor_arith_rel_wis_weighted_mean <- init_par_constructor_rel_wis_weighted_mean
 
 #' Parameter search grid constructor for rel_wis_weighted_mean approach
 #'
@@ -1333,6 +1349,7 @@ par_grid_constructor_rel_wis_weighted_mean <- function(qfm_train, ...) {
   return(seq(from = 0.0, to = 20.0, by = 0.1))
 }
 
+par_grid_constructor_arith_rel_wis_weighted_mean <- par_grid_constructor_rel_wis_weighted_mean
 
 #' Model constructor for rel_wis_weighted_mean approach
 #'
@@ -1373,6 +1390,8 @@ model_constructor_rel_wis_weighted_mean <- function(par, qfm_train, y_train, rel
 
   return(qra_fit)
 }
+
+model_constructor_arith_rel_wis_weighted_mean <- model_constructor_rel_wis_weighted_mean
 
 
 #' Estimate qra model using quantgen package as backend
