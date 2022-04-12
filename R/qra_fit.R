@@ -1012,28 +1012,20 @@ grid_search_rel_wis_weights <- function(
   wis_agg_method) {
   rel_wis <- calc_relative_wis(y_train, qfm_train, agg_method = wis_agg_method)
 
-  loss_by_par <- furrr::future_map_dbl(
-    par_grid,
-    fn,
-    model_constructor = model_constructor,
-    qfm_train = qfm_train,
-    y_train = y_train,
-    rel_wis = rel_wis,
-    max_weight = max_weight,
-    .progress = TRUE)
-
-  min_ind <- which.min(loss_by_par)
-
-  num_exts <- 0
-  while (
-    (loss_by_par[length(par_grid)] - loss_by_par[min_ind] < .2*(loss_by_par[1] - loss_by_par[min_ind])) &
-    num_exts < 6
-  ) {
-    num_exts <- num_exts + 1
-    ext_grid <- par_grid[length(par_grid)] + (1:50)*min(diff(par_grid))
-    par_grid <- c(par_grid, ext_grid)
-    loss_by_par_ext <- furrr::future_map_dbl(
-      ext_grid,
+  num_models <- attr(qfm_train, 'col_index')[[attr(qfm_train, 'model_col')]] %>%
+    unique() %>%
+    length()
+  if (1 / num_models > max_weight) {
+    # handle a situation where 1 / num_models > max_weight.
+    # For example, if num_models is 3 and max_weight is 0.3, there is a problem
+    # because every model would have to have weight at least 0.33333 > 0.3.
+    # We just return the smallest value of the par_grid in that case. If the
+    # par_grid includes 0, that will effectively mean we use equal weighting.
+    min_ind <- which.min(par_grid)
+    loss_by_par <- rep(Inf, length(par_grid))
+  } else {
+    loss_by_par <- furrr::future_map_dbl(
+      par_grid,
       fn,
       model_constructor = model_constructor,
       qfm_train = qfm_train,
@@ -1041,8 +1033,29 @@ grid_search_rel_wis_weights <- function(
       rel_wis = rel_wis,
       max_weight = max_weight,
       .progress = TRUE)
-    loss_by_par <- c(loss_by_par, loss_by_par_ext)
+
     min_ind <- which.min(loss_by_par)
+
+    num_exts <- 0
+    while (
+      (loss_by_par[length(par_grid)] - loss_by_par[min_ind] < .2*(loss_by_par[1] - loss_by_par[min_ind])) &
+      num_exts < 6
+    ) {
+      num_exts <- num_exts + 1
+      ext_grid <- par_grid[length(par_grid)] + (1:50)*min(diff(par_grid))
+      par_grid <- c(par_grid, ext_grid)
+      loss_by_par_ext <- furrr::future_map_dbl(
+        ext_grid,
+        fn,
+        model_constructor = model_constructor,
+        qfm_train = qfm_train,
+        y_train = y_train,
+        rel_wis = rel_wis,
+        max_weight = max_weight,
+        .progress = TRUE)
+      loss_by_par <- c(loss_by_par, loss_by_par_ext)
+      min_ind <- which.min(loss_by_par)
+    }
   }
 
   return(list(
