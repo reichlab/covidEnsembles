@@ -281,11 +281,11 @@ calc_relative_wis <- function(y, qfm, baseline = "COVIDhub-baseline", agg_method
     ind_baseline <- 1L
   }
   if (agg_method == "geom_mean") {
-    geom_mean_ratios <- exp(rowMeans(log(pairwise_ratios[, -ind_baseline]), na.rm = TRUE))
+    geom_mean_ratios <- exp(rowMeans(log(pairwise_ratios[, -ind_baseline, drop = FALSE]), na.rm = TRUE))
     ratios_baseline2 <- geom_mean_ratios / geom_mean_ratios[ind_baseline]
     model_names <- names(geom_mean_ratios)
   } else if (agg_method == "mean") {
-    mean_ratios <- rowMeans(pairwise_ratios[, -ind_baseline], na.rm = TRUE)
+    mean_ratios <- rowMeans(pairwise_ratios[, -ind_baseline, drop = FALSE], na.rm = TRUE)
     ratios_baseline2 <- mean_ratios / mean_ratios[ind_baseline]
     model_names <- names(mean_ratios)
   }
