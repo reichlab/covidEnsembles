@@ -1,0 +1,1168 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"Ed",
+				"\\EndIf"
+			],
+			[
+				"righ",
+				"\\rightarrow"
+			],
+			[
+				"beg",
+				"\\begin"
+			],
+			[
+				"it",
+				"\\item"
+			],
+			[
+				"be",
+				"\\begin"
+			],
+			[
+				"ba",
+				"baa"
+			],
+			[
+				"begi",
+				"\\begin"
+			],
+			[
+				"fr",
+				"\\frac{}{}"
+			],
+			[
+				"fra",
+				"\\frac{}{}"
+			],
+			[
+				"alp",
+				"\\alpha"
+			],
+			[
+				"lo",
+				"locations"
+			],
+			[
+				"loc",
+				"locations"
+			],
+			[
+				"location",
+				"location_code"
+			],
+			[
+				"spat",
+				"spatial_resolution"
+			],
+			[
+				"axi",
+				"axis.title"
+			],
+			[
+				"plot_d",
+				"plot_dat_full"
+			],
+			[
+				"as_of",
+				"make_as_of_data"
+			],
+			[
+				"pivo",
+				"pivot_wider"
+			],
+			[
+				"unn",
+				"unnest"
+			],
+			[
+				"func",
+				"function"
+			],
+			[
+				"stat_v",
+				"stat_val"
+			],
+			[
+				"stat_",
+				"stat_val"
+			],
+			[
+				"past",
+				"paste0"
+			],
+			[
+				"las",
+				"last_monday"
+			],
+			[
+				"fir",
+				"first_monday"
+			],
+			[
+				"make_as",
+				"make_as_of_data"
+			],
+			[
+				"fun",
+				"function"
+			],
+			[
+				"est",
+				"est_stat"
+			],
+			[
+				"forec",
+				"forecast_date"
+			],
+			[
+				"as_",
+				"as_ofs"
+			],
+			[
+				"case",
+				"cases_w_plots1"
+			],
+			[
+				"y_",
+				"y_hat"
+			],
+			[
+				"ple",
+				"p_levs"
+			],
+			[
+				"p_",
+				"p_levs"
+			],
+			[
+				"bound",
+				"boundary_to_zero"
+			],
+			[
+				"weig",
+				"weight_transfer"
+			],
+			[
+				"X",
+				"Xps_tr"
+			],
+			[
+				"for",
+				"forecast_date"
+			],
+			[
+				"matri",
+				"as.matrix"
+			],
+			[
+				"bro",
+				"browser"
+			],
+			[
+				"tidy",
+				"tidyr"
+			],
+			[
+				"inspe",
+				"inspect_pre_prediction"
+			],
+			[
+				"imputed_qf",
+				"imputed_qfm_test"
+			],
+			[
+				"wei",
+				"weight_transfer"
+			],
+			[
+				"covid",
+				"covidEnsembles"
+			],
+			[
+				"imput",
+				"imputed_qfm_test"
+			],
+			[
+				"col",
+				".cols"
+			],
+			[
+				"compo",
+				"component_response_dim"
+			],
+			[
+				"len",
+				"length"
+			],
+			[
+				"combi",
+				"combine_method"
+			],
+			[
+				"hub",
+				"hub_repo_path"
+			],
+			[
+				"weigh",
+				"weight_transfer"
+			],
+			[
+				"mta",
+				"mutate"
+			],
+			[
+				"weight",
+				"weight_transfer"
+			],
+			[
+				"miss",
+				"missing"
+			],
+			[
+				"weight_tr",
+				"weight_transfer_test"
+			],
+			[
+				"suma",
+				"summarise"
+			],
+			[
+				"x",
+				"x_test_df"
+			],
+			[
+				"cvo",
+				"cov_factors"
+			],
+			[
+				"ret",
+				"return"
+			],
+			[
+				"trai",
+				"train_df"
+			],
+			[
+				"paste",
+				"paste0"
+			],
+			[
+				"forecast",
+				"forecast_week_end_date"
+			],
+			[
+				"piv",
+				"pivot_wider"
+			],
+			[
+				"vqr",
+				"estimate_vqra"
+			],
+			[
+				"retur",
+				"return_pre_estimate"
+			],
+			[
+				"y",
+				"y_train_df"
+			],
+			[
+				"y_T",
+				"y_train_df"
+			],
+			[
+				"targ_",
+				"targ_horizon_num"
+			],
+			[
+				"ensemble",
+				"ensemble_p_levs"
+			],
+			[
+				"arr",
+				"arrange"
+			],
+			[
+				"qr",
+				"qra_fit"
+			],
+			[
+				"Xt",
+				"Xtr"
+			],
+			[
+				"r",
+				"rbind2"
+			],
+			[
+				"res",
+				"response_dim"
+			],
+			[
+				"Ytr",
+				"Ytr_df"
+			],
+			[
+				"ife",
+				"ifelse"
+			],
+			[
+				"targ_t",
+				"targ_time_scale_chr"
+			],
+			[
+				"targ",
+				"target"
+			],
+			[
+				"yt",
+				"y_train_df_obs"
+			],
+			[
+				"y_tr",
+				"y_train_df_imp"
+			],
+			[
+				"targe",
+				"target_end_date"
+			],
+			[
+				"typ",
+				"types"
+			],
+			[
+				"last",
+				"last_forecast_date"
+			],
+			[
+				"target",
+				"target_end_date"
+			],
+			[
+				"qf",
+				"qfm_train"
+			],
+			[
+				"reru",
+				"return_df"
+			],
+			[
+				"ref",
+				"ref_date"
+			],
+			[
+				"NA",
+				"NA_real_"
+			],
+			[
+				"tar",
+				"target"
+			],
+			[
+				"resp",
+				"response_var"
+			],
+			[
+				"c",
+				"call"
+			],
+			[
+				"fac",
+				"factor"
+			],
+			[
+				"time",
+				"time_scale"
+			],
+			[
+				"drop",
+				"drop_missing_id_levels"
+			],
+			[
+				"response",
+				"response_dim"
+			],
+			[
+				"qfm",
+				"qfm_train"
+			],
+			[
+				"y_t",
+				"y_train_df"
+			],
+			[
+				"ma",
+				"as.matrix"
+			],
+			[
+				"qfm_",
+				"qfm_imp"
+			],
+			[
+				"foreca",
+				"forecast_date"
+			],
+			[
+				"pas",
+				"paste0"
+			],
+			[
+				"horio",
+				"horizon"
+			],
+			[
+				"model",
+				"model_abbrs"
+			],
+			[
+				"load",
+				"load_covid_forecasts_relative_horizon"
+			],
+			[
+				"locat",
+				"locations\t  [workspace]"
+			],
+			[
+				"refer",
+				"reference_date"
+			],
+			[
+				"rela",
+				"relative_horizon"
+			],
+			[
+				"forecaas",
+				"forecast_date\t  [workspace]"
+			],
+			[
+				"grou",
+				"group_by\t  {dplyr}"
+			],
+			[
+				"abbre",
+				"abbreviation"
+			],
+			[
+				"as.c",
+				"as.character\t  {base}"
+			],
+			[
+				"tiemze",
+				"timezero_window_size\t  [scope]"
+			],
+			[
+				"forecas",
+				"forecast_date_window_size"
+			],
+			[
+				"fors",
+				"forecast_date"
+			],
+			[
+				"fore",
+				"forecast_date"
+			],
+			[
+				"rig",
+				"\\right                                            \tlatex-document"
+			],
+			[
+				"le",
+				"\\left(                                            \tlatex-document"
+			],
+			[
+				"qra",
+				"qra_fit"
+			],
+			[
+				"imputed_q",
+				"imputed_qfm_test_per_group"
+			],
+			[
+				"rows",
+				"row_inds_per_proup"
+			],
+			[
+				"beta",
+				"betas"
+			],
+			[
+				"map",
+				"map2"
+			],
+			[
+				"imputed",
+				"imputed_qfm_test"
+			],
+			[
+				"comb",
+				"combine_method"
+			],
+			[
+				"exp",
+				"expected_weight_transfer_per_group"
+			],
+			[
+				"expec",
+				"expected_weight_transfer_a"
+			],
+			[
+				"wt_b",
+				"wt_b100"
+			]
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"syn la",
+				"Set Syntax: LaTeX"
+			],
+			[
+				"syn rm",
+				"Set Syntax: R Markdown"
+			],
+			[
+				"build",
+				"Build With: R-IDE"
+			],
+			[
+				"latexy ke",
+				"Preferences: LaTeXYZ Key Bindings"
+			],
+			[
+				"latexy",
+				"Preferences: LaTeXYZ Settings"
+			],
+			[
+				"synta la",
+				"Set Syntax: LaTeX"
+			],
+			[
+				"keyb",
+				"Preferences: LaTeXYZ Key Bindings"
+			],
+			[
+				"key",
+				"Preferences: Key Bindings"
+			],
+			[
+				" pakup",
+				"PackageResourceViewer: Open Resource"
+			],
+			[
+				"pack",
+				"View Package File"
+			],
+			[
+				"Package Control: l",
+				"Package Control: List Packages"
+			],
+			[
+				"fold",
+				"Code Folding: Fold"
+			],
+			[
+				"send",
+				"SendCode: Choose Program"
+			],
+			[
+				"sen",
+				"SendCode: Choose Program"
+			],
+			[
+				"vp",
+				"View Package File"
+			],
+			[
+				"lsp",
+				"Preferences: LSP Settings"
+			],
+			[
+				"rein",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"prv",
+				"PackageResourceViewer: Open Resource"
+			],
+			[
+				"sendcod",
+				"Preferences: SendCode Settings"
+			],
+			[
+				"package re",
+				"PackageResourceViewer: Open Resource"
+			],
+			[
+				"reind",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"ke",
+				"Preferences: Key Bindings"
+			],
+			[
+				"sencod",
+				"SendCode: Choose Program"
+			],
+			[
+				"color sch",
+				"UI: Customize Color Scheme"
+			],
+			[
+				"package",
+				"Package Control: Upgrade Package"
+			],
+			[
+				"updat",
+				"Package Control: Upgrade/Overwrite All Packages"
+			],
+			[
+				"lsp re",
+				"LSP: Restart Server"
+			],
+			[
+				"send cod",
+				"SendCode: Choose Program"
+			],
+			[
+				"sedn",
+				"SendCode: Choose Program"
+			],
+			[
+				"Package Control: ",
+				"Package Control: List Packages"
+			],
+			[
+				"lsp: ena",
+				"LSP: Enable Language Server in Project"
+			],
+			[
+				"ins",
+				"Package Control: Install Package"
+			],
+			[
+				"pa",
+				"Package Control: Remove Package"
+			],
+			[
+				"package ",
+				"Package Control: Remove Package"
+			],
+			[
+				"package up",
+				"Package Control: Upgrade Package"
+			],
+			[
+				"lsp:en",
+				"LSP: Enable Language Server in Project"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"update pack",
+				"Package Control: Upgrade/Overwrite All Packages"
+			],
+			[
+				"ui theme",
+				"UI: Select Theme"
+			],
+			[
+				"color",
+				"UI: Select Color Scheme"
+			],
+			[
+				"insta",
+				"Package Control: Install Package"
+			],
+			[
+				"chang",
+				"Help: Changelog"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"remove pack",
+				"Package Control: Remove Package"
+			],
+			[
+				"send code",
+				"Preferences: SendCode Settings"
+			],
+			[
+				"typo",
+				"Markdown: Open with Typora.app"
+			],
+			[
+				"colo",
+				"UI: Select Color Scheme"
+			],
+			[
+				"theme",
+				"UI: Select Theme"
+			],
+			[
+				"term them",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"term the",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"terminu them",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"termin the",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"terminus them",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"termin set",
+				"Preferences: Terminus Settings"
+			],
+			[
+				"terminus theme",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"terminus the",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"term",
+				"Terminus: List Shells"
+			],
+			[
+				"terminus col",
+				"Preferences: Terminus Command Palette"
+			],
+			[
+				"termi",
+				"Terminus: List Shells"
+			],
+			[
+				"terminus pre",
+				"Preferences: Terminus Settings"
+			],
+			[
+				"terminus sch",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"package disc",
+				"Package Control: Discover Packages"
+			],
+			[
+				"termin",
+				"Preferences: Terminus Settings"
+			],
+			[
+				"terminus sc",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"them",
+				"UI: Select Theme"
+			],
+			[
+				"inst",
+				"Package Control: Install Package"
+			],
+			[
+				"terminus key",
+				"Preferences: Terminus Key Bindings"
+			],
+			[
+				"terminus ",
+				"Terminus: Close"
+			],
+			[
+				"terminus clo",
+				"Terminus: Close"
+			],
+			[
+				"syntax setting",
+				"Preferences: Settings – Syntax Specific"
+			],
+			[
+				"restar",
+				"LSP: Restart Servers"
+			],
+			[
+				"langu",
+				"LSP: Enable Language Server Globally"
+			],
+			[
+				"synt",
+				"Set Syntax: MATLAB"
+			],
+			[
+				"syntax",
+				"Set Syntax: MATLAB"
+			],
+			[
+				"brack escape",
+				"BracketHighlighter: Toggle String Bracket Escape Mode"
+			],
+			[
+				"bra",
+				"BracketHighlighter: Settings"
+			],
+			[
+				"colorsche",
+				"UI: Select Color Scheme"
+			],
+			[
+				"sendc",
+				"Preferences: SendCode Settings"
+			],
+			[
+				"rei",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"re",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"dia",
+				"LSP: Toggle Diagnostics Panel"
+			],
+			[
+				"setting",
+				"Preferences: Settings – Syntax Specific"
+			],
+			[
+				"r-ide se",
+				"Preferences: R-IDE Settings"
+			],
+			[
+				"lsp sett",
+				"Preferences: LSP Settings"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 150.0,
+		"history":
+		[
+			"sublime.log_commands(False)",
+			"sublime.log_commands(True)",
+			"sublime.log_commands(False)",
+			"sublime.log_commands(True)",
+			"sublime.log_commands(False)",
+			"sublime.log_commands(True)",
+			"sublime.log_commands(False)",
+			"sublime.log_commands(True)",
+			"sublime.log_commands(False)",
+			"sublime.log_commands(True)",
+			"sublime.log_console(True)",
+			"sublime.log_cosole(True)",
+			"view.symbols()"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/Users/aaron_new/reichlab_repos/alloscore/.git/COMMIT_EDITMSG",
+		"/Users/aaron_new/Dropbox/radioambulante/su vida y la mia eng.txt",
+		"/Users/aaron_new/Dropbox/radioambulante/su vida y la mia.txt",
+		"/Users/aaron_new/Dropbox/radioambulante/el diablo no esta invitado eng.txt",
+		"/Users/aaron_new/Dropbox/radioambulante/el diablo no esta invitado.txt",
+		"/Users/aaron_new/Dropbox/Reich_lab/scoring_methodology/allocation.tex",
+		"/Users/aaron_new/Dropbox/Reich_lab/scoring_methodology/.git/COMMIT_EDITMSG",
+		"/Users/aaron_new/Dropbox/Reich_lab/scoring_methodology/cramer.Rmd",
+		"/Users/aaron_new/Dropbox/Reich_lab/scoring_methodology/pinball_loss_and_quantiles.Rmd",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/LaTeXTools/LaTeXTools (Advanced).sublime-settings",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/LaTeXYZ/completions/latex_commands.py",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/LaTeXYZ/completions/generate_commands.py",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/LaTeXYZ/arrow_complete.py",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/LaTeXYZ/README.md",
+		"/Users/aaron_new/Dropbox/Reich_lab/scoring_methodology/allocation.md",
+		"/Users/aaron_new/Dropbox/Reich_lab/scoring_methodology/tailored-1.md",
+		"/Users/aaron_new/Dropbox/radioambulante/jazylalay_eng.txt",
+		"/Users/aaron_new/Dropbox/radioambulante/jazylalay.txt",
+		"/Users/aaron_new/Dropbox/radioambulante/aeropiratas.txt",
+		"/Users/aaron_new/covid/covidEnsembles/R/qra_fit_convenience.R",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/makefile",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/fig-ensemble_weight.Rmd",
+		"/Users/aaron_new/.zsh_history",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/3332276312.md",
+		"/Users/aaron_new/covid/covidEnsembles/R/truth.R",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/3491418225.md",
+		"/Users/aaron_new/covid/covidEnsembles/DESCRIPTION",
+		"/Users/aaron_new/covid/covidEnsembles/covidEnsembles.Rproj",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/forecasts/trained_ensemble-metadata/thetas.csv",
+		"/Users/aaron_new/covid/covidEnsembles/R/plot_forecasts.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/QuantileForecastMatrix.R",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/build_trained_ensembles.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/model_eligibility.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/date_management.R",
+		"/Users/aaron_new/covid/covidEnsembles/man/build_covid_ensemble.Rd",
+		"/Users/aaron_new/covid/covidEnsembles/.gitignore",
+		"/Users/aaron_new/Dropbox/Reich_lab/peak_ideas/as_of_tools.R",
+		"/Users/aaron_new/Dropbox/Reich_lab/peak_ideas/peak_stats.rmd",
+		"/Users/aaron_new/Dropbox/Reich_lab/peak_ideas/copula_expers.R",
+		"/Users/aaron_new/covid/covidModels/weekly-submission/fit_baseline_model.R",
+		"/Users/aaron_new/Dropbox/Reich_lab/peak_ideas/as_of_build.R",
+		"/Users/aaron_new/Dropbox/Reich_lab/peak_ideas/calibration_tools.R",
+		"/Users/aaron_new/Dropbox/Reich_lab/peak_ideas/peak_ideas.R",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/R-IDE/Indentation Rules.tmPreferences",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/User/copy_block_below.sublime-macro",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/SendCode/code_getter/getter.py",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/SendCode/send_code.py",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/User/SendCode.sublime-settings",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/R/Symbol List - Methods.tmPreferences",
+		"/Users/aaron_new/Library/Application Support/Sublime Text 3/Packages/R/R.sublime-syntax",
+		"/Users/aaron_new/Dropbox/Reich_lab/peak_ideas/samp_est_tools.R",
+		"/Users/aaron_new/Dropbox/Reich_lab/peak_ideas/show_samp.R",
+		"/Users/aaron_new/Dropbox/Reich_lab/peak_ideas/other_code.rmd",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/build_ensembles.R",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/plot_median_vs_trained_ensemble_forecasts.R",
+		"/Users/aaron_new/covid/covidEnsembles/.git/MERGE_MSG",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/100101346.md",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/799681321.md",
+		"/Users/aaron_new/Dropbox/Reich_lab/transfer/ag_notes/exper1.R",
+		"/Users/aaron_new/covid/covidEnsembles/.here",
+		"/Users/aaron_new/covid/covidEnsembles/R/vqr.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/qra_fit.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/old_loading_code.R",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/plot_submissions.R",
+		"/Users/aaron_new/covid/covidEnsembles/man/load_covid_forecasts_relative_horizon_old.Rd",
+		"/Users/aaron_new/covid/covidEnsembles/R/train_test_split.R",
+		"/Users/aaron_new/Dropbox/Reich_lab/hosp_component_plots/.git/COMMIT_EDITMSG",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/541882837.md",
+		"/Users/aaron_new/covid/covidEnsembles/R/old_get_ensemble_code.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/math_utils.R",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/911603074.md",
+		"/Users/aaron_new/covid/covidEnsembles/.git/COMMIT_EDITMSG",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/880824683.md",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/044666429.md",
+		"/Users/aaron_new/covid/fork/covid19-forecast-hub/.git/rebase-merge/git-rebase-todo",
+		"/Users/aaron_new/covid/covidEnsembles/tests/testthat/test-QuantileForecastMatrix.R",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/retrospective-qra-comparison/run_fit_retrospective_model.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/wis.R",
+		"/Users/aaron_new/covid/covidEnsembles/man/grid_search_rel_wis_weighted_median.Rd",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/retrospective-qra-comparison/fit_retrospective_model.R",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/762674297.md",
+		"/Users/aaron_new/Dropbox/Reich_lab/notes/terms.md",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/retrospective-qra-comparison/run_fit_prospective_selection_model_ensemble_variations_locally.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/build_covid_ensemble.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/load_relative.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/qra_fit_convenience_legacy.R",
+		"/Users/aaron_new/.radian_profile",
+		"/Users/aaron_new/.zshrc",
+		"/Users/aaron_new/.Rprofile",
+		"/Users/aaron_new/.radian_",
+		"/Users/aaron_new/covid/covidHubUtils/R/load_latest_forecasts_repo.R",
+		"/Users/aaron_new/covid/covidEnsembles/tests/testthat/test-wis.R",
+		"/Users/aaron_new/covid/covidEnsembles/tests/testthat/test-impute.R",
+		"/Users/aaron_new/covid/fork/covid19-forecast-hub/.git/COMMIT_EDITMSG",
+		"/Users/aaron_new/covid/covidEnsembles/makefile",
+		"/Users/aaron_new/covid/covidEnsembles/tests/testthat/run-tests.R",
+		"/Users/aaron_new/covid/covidEnsembles/R/retrospective_utils.R",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/inc_vs_cum.R",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/baseline/fit_baseline_model.R",
+		"/Users/aaron_new/covid/covidEnsembles/tests/testthat/test-model-eligibility.R",
+		"/Users/aaron_new/covid/covid19-forecast-hub/.git/MERGE_MSG",
+		"/Users/aaron_new/covid/covid-19-iif-blog-post-code/post2/estimation/copy_files_from_covidEnsembles.R",
+		"/Users/aaron_new/.oh-my-zsh/lib/git.zsh",
+		"/Users/aaron_new/Dropbox/Reich_lab/exclusion_CDC/comp.R",
+		"/Users/aaron_new/covid/covid19-forecast-hub/2021-01-25-RobertWalraven-ESG.csv",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/build_ensembles_interactive.R",
+		"/Users/aaron_new/covid/covidEnsembles/.git/rebase-merge/git-rebase-todo",
+		"/Users/aaron_new/covid/covidData/code/data-processing/makefile",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-12.csv",
+		"/Users/aaron_new/covid/covidEnsembles/NAMESPACE",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/retrospective-qra-comparison/analyses/retrospective-peak-skill/retrospective_peak_skill_report.Rmd",
+		"/Users/aaron_new/covid/covidEnsembles/writing/manuscript/calibration.R",
+		"/var/folders/t2/y0g7696j45z3tf_85_rxcp100000gn/T/Rtmpwbf9P0/calc_model_eligibility_for_ensemble.R",
+		"/Users/aaron_new/covid/covidEnsembles/code/application/retrospective-qra-comparison/analyses/retrospective-scores-report/retrospective_scores_report.Rmd",
+		"/Applications/RStudio.app/Contents/Resources/resources/themes/twilight.rstheme",
+		"/Users/aaron_new/covid/fork/covid19-forecast-hub/code/validation/test_formatting.py",
+		"/Users/aaron_new/Dropbox/Reich_lab/notes/todo.md",
+		"/Users/aaron_new/covid/fork/covid19-forecast-hub/.git/MERGE_MSG",
+		"/Users/aaron_new/covid/covid19-forecast-hub/data-processed/JHU_IDD-CovidSP/2021-01-10-JHU_IDD-CovidSP.csv",
+		"/Users/aaron_new/covid/covidEnsembles/.git/info/exclude",
+		"/Users/aaron_new/Dropbox/Reich_lab/notes/nick code",
+		"/Users/aaron_new/covid/covidEnsembles/R/calc_4sd_hosp_check.R",
+		"/Users/aaron_new/covid/covidEnsembles/man/baseline_forecasts.Rd",
+		"/Users/aaron_new/covid/covidEnsembles/man/build_covid_ensemble_from_local_files.Rd",
+		"/Users/aaron_new/.zshrc.pre-oh-my-zsh"
+	],
+	"find":
+	{
+		"height": 27.0
+	},
+	"find_in_files":
+	{
+		"height": 101.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": true,
+		"find_history":
+		[
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 27.0
+	},
+	"input":
+	{
+		"height": 40.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.LSP Log Panel":
+	{
+		"height": 0.0
+	},
+	"output.diagnostics":
+	{
+		"height": 120.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "Packages/User/R-IDE/R-IDE.sublime-build",
+	"project": "covidEnsembles.sublime-project",
+	"replace":
+	{
+		"height": 50.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"",
+				".here"
+			],
+			[
+				"old",
+				"R/old_get_ensemble_code.R"
+			]
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 500.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 380.0
+	},
+	"select_symbol":
+	{
+		"height": 392.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 821.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 339.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
