@@ -2,6 +2,7 @@ context("model eligibility")
 library(covidEnsembles)
 library(dplyr)
 
+
 test_that("get_candidate_models works: all models", {
   actual <- get_candidate_models(
     submissions_root = "test-data/data-processed-test-get_candidate_models",
@@ -529,3 +530,108 @@ test_that("calc_sd_check works to upside", {
   )
 })
 
+
+
+test_that("drop_ineligible_forecasts works, all id cols", {
+  forecast_df <- expand.grid(
+    location = letters[1:4],
+    forecast_week_end_date = c('2020-04-18', '2020-04-25', '2020-05-02'),
+    target = paste0(1:4, ' wk ahead cum death'),
+    model = paste0('m', 1:3),
+    q_prob = c(0.025, 0.1, 0.5, 0.9, 0.975),
+    stringsAsFactors = FALSE
+  )
+
+  forecast_df$q_val <- rnorm(nrow(forecast_df))
+
+  eligibility <- tidyr::expand_grid(
+    location = letters[1:4],
+    forecast_week_end_date = c('2020-04-18', '2020-04-25', '2020-05-02'),
+    target = paste0(1:4, ' wk ahead cum death'),
+    model = paste0('m', 1:3),
+    overall_eligibility = 'eligible'
+  )
+  eligibility[
+    eligibility$location == "a" &
+    eligibility$forecast_week_end_date %in% c('2020-04-18', '2020-05-02') &
+    eligibility$target %in% paste0(c(1, 4), ' wk ahead cum death') &
+    eligibility$model == 'm2', 'overall_eligibility'] <- 'ineligible'
+  eligibility[
+    eligibility$location %in% c("c", "d") &
+    eligibility$forecast_week_end_date %in% c('2020-04-25') &
+    eligibility$target %in% paste0(1:4, ' wk ahead cum death') &
+    eligibility$model == 'm3', 'overall_eligibility'] <- 'ineligible'
+
+  actual <- covidEnsembles:::drop_ineligible_forecasts(
+    forecasts = forecast_df,
+    eligibility = eligibility
+  )
+
+  expected <- forecast_df[!(
+    forecast_df$location == "a" &
+    forecast_df$forecast_week_end_date %in% c('2020-04-18', '2020-05-02') &
+    forecast_df$target %in% paste0(c(1, 4), ' wk ahead cum death') &
+    forecast_df$model == 'm2'), ]
+  expected <- expected[!(
+    expected$location %in% c("c", "d") &
+    expected$forecast_week_end_date %in% c('2020-04-25') &
+    expected$target %in% paste0(1:4, ' wk ahead cum death') &
+    expected$model == 'm3'), ]
+
+  # reset row names before comparing; not an important attribute
+  attr(actual, "row.names") <- seq_len(nrow(actual))
+  attr(expected, "row.names") <- seq_len(nrow(expected))
+
+  expect_equal(
+    actual,
+    expected
+  )
+})
+
+
+
+test_that("drop_ineligible_forecasts works, subset of id cols", {
+  forecast_df <- expand.grid(
+    location = letters[1:4],
+    forecast_week_end_date = c('2020-04-18', '2020-04-25', '2020-05-02'),
+    target = paste0(1:4, ' wk ahead cum death'),
+    model = paste0('m', 1:3),
+    q_prob = c(0.025, 0.1, 0.5, 0.9, 0.975),
+    stringsAsFactors = FALSE
+  )
+
+  forecast_df$q_val <- rnorm(nrow(forecast_df))
+
+  eligibility <- tidyr::expand_grid(
+    location = letters[1:4],
+    model = paste0('m', 1:3),
+    overall_eligibility = 'eligible'
+  )
+  eligibility[
+    eligibility$location == "a" &
+    eligibility$model == 'm2', 'overall_eligibility'] <- 'ineligible'
+  eligibility[
+    eligibility$location %in% c("c", "d") &
+    eligibility$model == 'm3', 'overall_eligibility'] <- 'ineligible'
+
+  actual <- covidEnsembles:::drop_ineligible_forecasts(
+    forecasts = forecast_df,
+    eligibility = eligibility
+  )
+
+  expected <- forecast_df[!(
+    forecast_df$location == "a" &
+    forecast_df$model == 'm2'), ]
+  expected <- expected[!(
+    expected$location %in% c("c", "d") &
+    expected$model == 'm3'), ]
+
+  # reset row names before comparing; not an important attribute
+  attr(actual, "row.names") <- seq_len(nrow(actual))
+  attr(expected, "row.names") <- seq_len(nrow(expected))
+
+  expect_equal(
+    actual,
+    expected
+  )
+})

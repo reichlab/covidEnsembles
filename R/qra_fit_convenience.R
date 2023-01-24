@@ -1118,6 +1118,7 @@ get_imputed_ensemble_fits_and_predictions <- function(
     observed_by_location_target_end_date =
       observed_by_location_target_end_date %>%
         dplyr::filter(base_target %in% forecast_base_targets),
+    forecast_week_end_date = forecast_week_end_date,
     missingness_by_target = check_missingness_by_target,
     do_q10_check = do_q10_check,
     do_nondecreasing_quantile_check = do_nondecreasing_quantile_check,
@@ -1125,202 +1126,42 @@ get_imputed_ensemble_fits_and_predictions <- function(
     do_sd_check = do_sd_check,
     sd_check_table_path = sd_check_table_path,
     sd_check_plot_path = sd_check_plot_path,
+    manual_eligibility_adjust = manual_eligibility_adjust,
     baseline_tol = baseline_tol,
     window_size = window_size,
     decrease_tol = 0.0
   )
 
-  # insert manual adjustments into model eligibility results
-  # this code is different (and better) in get_by_location_... function above
-  # can we move this into calc_model_eligibility_for_ensemble?  and unit test it?
-  if (length(manual_eligibility_adjust) > 0) {
-    for (i in seq_len(nrow(manual_eligibility_adjust))) {
-      el_inds <- which(
-        model_eligibility$model == manual_eligibility_adjust$model[i] &
-          model_eligibility$location == manual_eligibility_adjust$location[i]
-      )
-      model_eligibility$overall_eligibility[el_inds] <-
-        'Visual misalignment of predictive quantiles with JHU reference data.'
-    }
-  }
+  # keep only eligible forecasts, operating on the data frame
+  forecasts <- drop_ineligible_forecasts(
+    forecasts = forecasts,
+    eligibility = model_eligibility
+  )
 
-  # this code should go in a separate function that is called and needs to be
-  # unit tested
-  # intention: remove models that fail to submit all forecasts, at some level
-  # of granularity specified by check_missingness_by_target
-  #  - check_missingness_by_target TRUE: drop a forecast for a combination of
-  #    model, location, forecast_date, target (horizon) if not all quantiles
-  #    provided
-  #  - check_missingness_by_target FALSE: drop a forecast for a combination of
-  #    model, location if not all combinations of forecast date, target
-  #    (horizon) and quantile are provided
-  # keep only models that are eligible for inclusion in at least one location,
-  # or one combination of location, forecast week, and target if
-  # check_missingness_by_target is TRUE
-  if (check_missingness_by_target) {
-    # convert model eligibility to wide format logical with human readable names
-    wide_model_eligibility <- model_eligibility %>%
-      dplyr::transmute(
-        model = model,
-        location = location,
-        forecast_week_end_date = forecast_week_end_date,
-        target = target,
-        eligibility = (overall_eligibility == "eligible"))
+  # reconstruct the QFM of forecasts, keeping only eligible ones
+  forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
+    forecast_df = forecasts,
+    model_col = "model",
+    id_cols = c("location", "forecast_week_end_date", "target"),
+    quantile_name_col = "quantile",
+    quantile_value_col = "value"
+  )
 
-    # keep only model-location-targets that are eligible
-    # here this is done by filtering the original forecasts data frame and
-    # recreating the QuantileForecastMatrix
-    forecasts <- forecasts %>%
-      dplyr::left_join(wide_model_eligibility,
-        by = c("model", "location", "forecast_week_end_date", "target")) %>%
-      dplyr::filter(eligibility) %>%
-      dplyr::select(-eligibility)
-    
-    forecast_matrix <- covidEnsembles::new_QuantileForecastMatrix_from_df(
-      forecast_df = forecasts,
-      model_col = "model",
-      id_cols = c("location", "forecast_week_end_date", "target"),
-      quantile_name_col = "quantile",
-      quantile_value_col = "value"
-    )
-  } else {
-    # convert model eligibility to wide format logical with human readable names
-    wide_model_eligibility <- model_eligibility %>%
-      dplyr::transmute(
-        model = model,
-        location = location,
-        eligibility = (overall_eligibility == "eligible")) %>%
-      tidyr::pivot_wider(names_from = "model", values_from = "eligibility")
+  # convert model eligibility to wide format logical with human readable names
+  wide_model_eligibility <- model_eligibility %>%
+    dplyr::transmute(
+      model = model,
+      location = location,
+      eligibility = (overall_eligibility == "eligible")) %>%
+    tidyr::pivot_wider(names_from = "model", values_from = "eligibility")
 
-    # keep only models that are eligible
-    models_to_keep <- apply(
-      wide_model_eligibility %>% select(-location),
-      2,
-      function(el) {any(el != FALSE)}) %>%
-      which() %>%
-      names()
+  wide_model_eligibility <- wide_model_eligibility[, c('location', models_to_keep)]
 
-    wide_model_eligibility <- wide_model_eligibility[, c('location', models_to_keep)]
-
-    col_index <- attr(forecast_matrix, 'col_index')
-    cols_to_keep <- which(col_index[['model']] %in% models_to_keep)
-    forecast_matrix <- forecast_matrix[, cols_to_keep]
-  }
-
-  # (in new function)
-  # drop rows with no eligible models
-  rows_to_keep <- apply(forecast_matrix, 1, function(qfm_row) any(!is.na(qfm_row))) %>%
-    which()
-
-  # (in new function)
-  if(length(rows_to_keep) != nrow(forecast_matrix)) {
-#    dropped_rows <- forecast_matrix[-rows_to_keep, ]
-    forecast_matrix <- forecast_matrix[rows_to_keep, ]
-  }
-
-  # refactor train/test split into its own unit tested function.
-  # get train/test inds
-  # train:
-  #  - if window_size >= 1, training set comprises only forecasts where
-  # target_end_date <= forecast_week_end_date
-  #  - else if window_size == 0, just keep horizon 1 for train set
-  col_index <- attr(forecast_matrix, 'col_index')
-  row_index <- attr(forecast_matrix, 'row_index')
-  if (window_size >= 1) {
-    # this should call a function that's tested
-    target_end_date <- row_index %>%
-      dplyr::mutate(
-        target_end_date = as.character(
-          lubridate::ymd(forecast_week_end_date) +
-            as.numeric(substr(target, 1, regexpr(" ", target, fixed = TRUE) - 1)) *
-              ifelse(grepl("day", target), 1, 7)
-        ),
-      ) %>%
-      pull(target_end_date)
-
-    train_row_inds <- which(target_end_date <= forecast_week_end_date)
-    test_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
-
-    # training set and test set QuantileForecastMatrix
-    qfm_train <- forecast_matrix[train_row_inds, ]
-    qfm_test <- forecast_matrix[test_row_inds, ]
-
-    # drop combinations of model and location that don't
-    # appear in the training set from the test set
-    # essentially, this requires at least one previous submission for a given
-    # location to use a model for test set predictions in that location
-    train_row_index <- attr(qfm_train, 'row_index')
-    test_row_index <- attr(qfm_test, 'row_index')
-    all_locations <- unique(row_index$location)
-    train_locations <- unique(train_row_index$location)
-    locations_to_check <- all_locations[all_locations %in% train_locations]
-    for (model in unique(col_index$model)) {
-      model_cols <- which(col_index$model == model)
-
-      # identify locations for which this model has no submissions within the training window
-      missing_locations <- all_locations[!(all_locations %in% train_locations)]
-      missing_locations <- c(
-        missing_locations,
-        purrr::map(
-          locations_to_check,
-          function(loc) {
-            train_row_inds <- which(train_row_index$location == loc)
-            if (all(is.na(qfm_train[train_row_inds, model_cols]))) {
-              return(loc)
-            } else {
-              return(NULL)
-            }
-          }
-        ) %>% unlist()
-      )
-
-      # if any missing locations were identified, set the corresponding model
-      # forecasts to NA in the test set.
-      if (length(missing_locations) > 0) {
-        test_row_inds <- which(test_row_index$location %in% missing_locations)
-        if (length(test_row_inds) > 0) {
-          qfm_test[test_row_inds, model_cols] <- NA_real_
-        }
-      }
-    }
-
-    # drop models that don't appear in the test set from the training set
-    # we don't give weight to models that didn't make any predictions this week
-    # even though we checked for missingness above, this is necessary here in
-    # case we dropped locations in the immediately preceeding check.
-    models_to_drop <- NULL
-    for (model in unique(col_index$model)) {
-      model_cols <- which(col_index$model == model)
-      if (all(is.na(qfm_test[, model_cols]))) {
-        models_to_drop <- c(models_to_drop, model)
-      }
-    }
-    all_models <- unique(col_index$model)
-    models_to_keep <- all_models[!(all_models %in% models_to_drop)]
-    cols_to_keep <- which(col_index$model %in% models_to_keep)
-    qfm_train <- qfm_train[, cols_to_keep]
-    qfm_test <- qfm_test[, cols_to_keep]
-
-    # finally, one last clean up of the training set to drop rows with no available models
-    # this is relevant because we just dropped some models that were missing in the test set
-    train_row_inds_to_keep <- apply(
-      qfm_train,
-      1,
-      function(x) {
-        !all(is.na(x))
-      }) %>%
-      which()
-    if (length(train_row_inds_to_keep) < nrow(qfm_train)) {
-      qfm_train <- qfm_train[train_row_inds_to_keep, ]
-    }
-  } else {
-    train_row_inds <- which(row_index[['forecast_week_end_date']] == forecast_week_end_date)
-    test_row_inds <- which(substr(row_index$target, 1, 4) == '1 wk')
-
-    # training set and test set QuantileForecastMatrix
-    qfm_train <- forecast_matrix[train_row_inds, ]
-    qfm_test <- forecast_matrix[test_row_inds, ]
-  }
+  # Do a train/test split of the forecasts
+  c(qfm_train, qfm_test) %<-%
+    train_test_split(forecast_matrix = forecast_matrix,
+                     forecast_week_end_date = forecast_week_end_date,
+                     window_size = window_size)
 
   # impute missing values
 
@@ -1501,4 +1342,171 @@ get_imputed_ensemble_fits_and_predictions <- function(
   }
 
   return(result)
+}
+
+
+# #' Split a QuantileForecastMatrix object into a training and test set
+# #'
+# #'  - if window_size >= 1, training set comprises only forecasts where
+# #' target_end_date <= forecast_week_end_date
+# #'  - else if window_size == 0, just keep horizon 1 for train set
+# #' This is not ideal behavior, but we need to rewrite the equal weighted
+# #' methods before we change this.
+# #'
+# #' @param qfm a QuantileForecastMatrix with all train/test forecasts
+# #' @param ref_date the reference date defining the test set
+# #' @param ref_date_col string giving the name of the column giving the reference
+# #' dates of forecasts
+# #' @param extra_train_horizons
+# #' @param window_size integer number of weeks in the training set
+# #'
+# #' @return named list with entries qfm_train and qfm_test
+# train_test_split <- function(
+#   qfm,
+#   ref_date = forecast_week_end_date,
+#   ref_date_col = "forecast_week_end_date",
+#   extra_train_horizons,
+#   return_df = FALSE,
+#   window_size
+# ) {
+#   # code to be eliminated once window_size = 0 situation dealt with
+#   if (window_size == 0) {
+#     return(list(
+#       qfm_train = 
+#         qfm[which(r_ind(qfm)[[ref_date_col]] == ref_date),],
+#       qfm_test = 
+#         qfm[which(targ_horizon_num(r_ind(qfm)$target) == 1),]
+#     ))
+#   }
+
+#   # main window_size >= 1 case
+#   all <- as.data.frame(qfm)
+#   attrs <- attributes(qfm)
+#   row_vars <- names(r_ind(qfm))
+#   col_vars <- names(c_ind(qfm))
+#   if (!("target_end_date" %in% names(all))) {
+#     all <- all %>% dplyr::mutate(
+#       target_end_date = !!sym(ref_date_col) + targ_horizon_tsp(target)
+#     )
+#   }
+
+#   if (any(all[[ref_date_col]] > ref_date)) {
+#   stop("Some forecasts have reference dates later than ensemble reference date")
+#   }
+
+#   all <- all %>% 
+#   dplyr::mutate(
+#     train = !!sym(ref_date_col) < ref_date,
+#     test = !!sym(ref_date_col) == ref_date
+#   ) %>% 
+#   # filter out training set forecasts for future outcomes 
+#   # unless they are necessary for forming component_response_dim > 1 
+#   # long sequences for each model location combination with 
+#   # ref date in the past (which are used in vqr)
+#   dplyr::filter(
+#     test | (
+#       target_end_date <= 
+#       ref_date + extra_train_horizons * targ_time_scale_tsp(target)
+#     )
+#   ) %>% 
+#   # if a model location combination only appears in
+#   # the test set, set it's values to missing
+#   dplyr::group_by(model, location) %>% 
+#   dplyr::mutate(
+#     value = case_when(
+#       all(test) ~ NA_real_,
+#       TRUE ~ value
+#     )
+#   ) %>% 
+#   # only keep models that appear at least once in 
+#   # the test set
+#   dplyr::ungroup(location) %>% 
+#   dplyr::filter(any(test)) %>% 
+#   # regroup wrt row index vars and drop any such
+#   # combinations with all missing values
+#   dplyr::ungroup(model) %>%
+#   dplyr::group_by(!!!syms(row_vars)) %>% 
+#   dplyr::filter(!(all(train) & all(is.na(value)))) %>% 
+#   dplyr::ungroup()
+
+#   train <- dplyr::filter(all, train) %>% 
+#   dplyr::select(-train, -test)
+
+#   test <- dplyr::filter(all, test) %>% 
+#   dplyr::select(-train, -test)
+
+#   if (return_df) {
+#     return(list(train = train, test = test))
+#   } else {
+#     return(purrr::map(
+#         list(train = train, test = test),
+#         covidEnsembles::new_QuantileForecastMatrix_from_df,
+#           model_col = attrs$model_col,
+#           id_cols = row_vars,
+#           quantile_name_col = attrs$quantile_name_col,
+#           quantile_value_col = attrs$quantile_value_col,
+#           drop_missing_id_levels = TRUE
+#       )
+#     )
+#   }
+# }
+
+
+#' Split a QuantileForecastMatrix object into a training and test set
+#'
+#'  - if window_size >= 1, training set comprises only forecasts where
+#' target_end_date <= forecast_week_end_date
+#'  - else if window_size == 0, just keep horizon 1 for train set
+#' This is not ideal behavior, but we need to rewrite the equal weighted
+#' methods before we change this.
+#'
+#' @param forecast_matrix a QuantileForecastMatrix with all train/test forecasts
+#' @param forecast_week_end_date the forecast week end date defining the test
+#' set
+#' @param window_size integer number of weeks in the training set
+#'
+#' @return named list with entries qfm_train and qfm_test
+train_test_split <- function(forecast_matrix,
+                             forecast_week_end_date,
+                             window_size) {
+  col_index <- attr(forecast_matrix, 'col_index')
+  row_index <- attr(forecast_matrix, 'row_index')
+  horizon <- as.integer(substr(row_index$target, 1, regexpr(" ", row_index$target, fixed = TRUE) - 1))
+  temporal_unit_days <- ifelse(grepl("day", row_index$target), 1, 7)
+
+  if (window_size >= 1) {
+    target_end_date <- row_index %>%
+      dplyr::mutate(
+        target_end_date = as.character(
+          lubridate::ymd(forecast_week_end_date) +
+            horizon * temporal_unit_days
+        ),
+      ) %>%
+      pull(target_end_date)
+
+    first_train_forecast_week_end_date <- as.Date(forecast_week_end_date) -
+      window_size * 7
+    train_row_inds <- which(
+      (target_end_date <= forecast_week_end_date) &
+      (as.Date(row_index[['forecast_week_end_date']]) >= first_train_forecast_week_end_date))
+    test_row_inds <- which(as.character(row_index[['forecast_week_end_date']]) == as.character(forecast_week_end_date))
+
+    # training set and test set QuantileForecastMatrix
+    qfm_train <- forecast_matrix[train_row_inds, ]
+    qfm_test <- forecast_matrix[test_row_inds, ]
+  } else {
+    train_row_inds <- which(
+      as.character(row_index[['forecast_week_end_date']]) == as.character(forecast_week_end_date) &
+      (horizon == 1L)
+    )
+    test_row_inds <- which(
+      as.character(row_index[['forecast_week_end_date']]) == as.character(forecast_week_end_date)
+    )
+  }
+
+  # training set and test set QuantileForecastMatrix
+  qfm_train <- forecast_matrix[train_row_inds, ]
+  qfm_test <- forecast_matrix[test_row_inds, ]
+
+  return(list(qfm_train = qfm_train, qfm_test = qfm_test))
 }

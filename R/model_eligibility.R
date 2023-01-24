@@ -3,6 +3,8 @@
 #'
 #' @param qfm matrix of model forecasts of class QuantileForecastMatrix
 #' @param observed_by_location_target_end_date data frame of observed values
+#' @param forecast_week_end_date Date object: date of the saturday for the end
+#' of the forecast week; week-ahead targets are with respect to this date
 #' @param missingness_by_target logical; if TRUE, check condition that
 #' forecasts are not missing for each combination of model, week, and target;
 #' otherwise, 
@@ -40,6 +42,7 @@
 calc_model_eligibility_for_ensemble <- function(
   qfm,
   observed_by_location_target_end_date,
+  forecast_week_end_date,
   missingness_by_target = FALSE,
   do_q10_check = TRUE,
   do_nondecreasing_quantile_check = TRUE,
@@ -47,6 +50,7 @@ calc_model_eligibility_for_ensemble <- function(
   do_sd_check = "exclude_none",
   sd_check_table_path = NULL,
   sd_check_plot_path = NULL,
+  manual_eligibility_adjust = NULL,
   window_size = 0,
   decrease_tol = 1.0,
   baseline_tol = 1.2
@@ -138,15 +142,187 @@ calc_model_eligibility_for_ensemble <- function(
     eligibility$sd_eligibility <- 'NA'
   }
 
+  # manual adjustments to eligibility
+  if (length(manual_eligibility_adjust) > 0) {
+    eligibility <- eligibility %>%
+      dplyr::left_join(
+        manual_eligibility %>%
+          dplyr::rename(manual_eligibility = message),
+        by = c("model", "location")
+      ) %>%
+      dplyr::mutate(
+        manual_eligibility = ifelse(
+          is.na(manual_eligibility),
+          "eligibile",
+          manual_eligibility
+        )
+      )
+  } else {
+    eligibility$manual_eligibility <- 'NA'
+  }
+
+  # "Stage 1" eligibility results, combining all of the above
   eligibility$overall_eligibility <- ifelse(
     eligibility$missingness_eligibility == 'eligible' &
       eligibility$q10_eligibility %in% c('eligible', 'NA') &
       eligibility$nondecreasing_quantiles_eligibility %in% c('eligible', 'NA') &
       eligibility$baseline_eligibility %in% c('eligible', 'NA') &
-      eligibility$sd_eligibility %in% c('eligible', 'NA'),
+      eligibility$sd_eligibility %in% c('eligible', 'NA') &
+      eligibility$manual_eligibility %in% c('eligible', 'NA'),
     'eligible',
     'ineligible'
   )
+
+  # Drop forecasts ruled as ineligible based on stage 1 forecasts
+  forecasts_eligible <- drop_ineligible_forecasts(
+    forecasts = as.data.frame(qfm),
+    eligibility = eligibility)
+  qfm_eligible <- covidEnsembles::new_QuantileForecastMatrix_from_df(
+    forecast_df = forecasts,
+    model_col = "model",
+    id_cols = c("location", "forecast_week_end_date", "target"),
+    quantile_name_col = "quantile",
+    quantile_value_col = "value",
+    drop_missing_id_levels = TRUE)
+
+  # train/test split
+  c(qfm_train, qfm_test) %<-%
+    train_test_split(forecast_matrix = qfm_eligible,
+                     forecast_week_end_date = forecast_week_end_date,
+                     window_size = window_size)
+
+  # validate num train set forecasts
+  num_train_check <- calc_num_train_set_forecasts_check(
+    qfm_full = qfm,
+    qfm_train = qfm_train,
+    eligibility = eligibility,
+    min_train_set_forecasts = min_train_set_forecasts)
+  # combine eligibility check results
+  eligibility <- eligibility %>%
+    dplyr::left_join(num_train_check,
+                     by = c("location", model_id_name))
+
+  # validate test set forecast exists
+  num_test_check <- calc_num_test_set_forecasts_check(
+    qfm_full = qfm,
+    qfm_test = qfm_test,
+    eligibility = eligibility)
+  # combine eligibility check results
+  eligibility <- eligibility %>%
+    dplyr::left_join(num_test_check,
+                     by = c("location", model_id_name))
+
+  # summarize results per (location, model) pair
+  # eligibility <- eligibility %>%
+  #   dplyr::group_by(location, model) %>%
+  #   dplyr::summarize(
+
+  #   )
+
+  return(eligibility)
+}
+
+
+calc_num_train_set_forecasts_check <- function(
+    qfm_full,
+    qfm_train,
+    min_train_set_forecasts) {
+  # calculate missingness for each combination of location, forecast week end
+  # date, and model.  Also group by target if requested.
+  row_index_full <- attr(qfm_full, 'row_index')
+  col_index_full <- attr(qfm_full, 'col_index')
+  model_id_name_full <- attr(qfm_full, 'model_col')
+  row_index_train <- attr(qfm_train, 'row_index')
+  col_index_train <- attr(qfm_train, 'col_index')
+  model_id_name_train <- attr(qfm_train, 'model_col')
+
+  eligibility <- purrr::map_dfr(
+    row_index_full %>% distinct(location), # results for every location
+    function(location) {
+      # results based on availability of train set forecasts
+      row_inds <- which(row_index_train$location == location)
+
+      purrr::map_dfr(
+        unique(col_index_full[[model_id_name]]), # results for every model
+        function(model_id) {
+          # results based on availability of train set forecasts
+          col_inds <- which(col_index_train[[model_id_name]] == model_id)
+
+          result <- data.frame(location = location)
+          result[[model_id_name]] <- model_id
+          if (length(row_inds) == 0 | length(col_inds) == 0) {
+            # no forecasts for this location/model combination
+            result[["n_train_eligibility"]] <- "ineligible"
+          } else {
+            # some forecasts? count them up and see if there are enough
+            num_forecasts <- apply(
+              unclass(qfm_train[row_inds, col_inds]),
+              1,
+              function(qfm_row) {
+                all(!is.na(qfm_row))
+              })
+            result[["n_train_eligibility"]] <- ifelse(
+              num_forecasts >= min_train_set_forecasts,
+              "eligible",
+              "ineligible")
+          }
+
+          return(result)
+        }
+      )
+    })
+
+  return(eligibility)
+}
+
+
+calc_num_test_set_forecasts_check <- function(
+    qfm_full,
+    qfm_train) {
+  # calculate missingness for each combination of location, forecast week end
+  # date, and model.  Also group by target if requested.
+  row_index_full <- attr(qfm_full, 'row_index')
+  col_index_full <- attr(qfm_full, 'col_index')
+  model_id_name_full <- attr(qfm_full, 'model_col')
+  row_index_train <- attr(qfm_train, 'row_index')
+  col_index_train <- attr(qfm_train, 'col_index')
+  model_id_name_train <- attr(qfm_train, 'model_col')
+
+  eligibility <- purrr::map_dfr(
+    row_index_full %>% distinct(location), # results for every location
+    function(location) {
+      # results based on availability of train set forecasts
+      row_inds <- which(row_index_train$location == location)
+
+      purrr::map_dfr(
+        unique(col_index_full[[model_id_name]]), # results for every model
+        function(model_id) {
+          # results based on availability of train set forecasts
+          col_inds <- which(col_index_train[[model_id_name]] == model_id)
+
+          result <- data.frame(location = location)
+          result[[model_id_name]] <- model_id
+          if (length(row_inds) == 0 | length(col_inds) == 0) {
+            # no forecasts for this location/model combination
+            result[["n_train_eligibility"]] <- "ineligible"
+          } else {
+            # some forecasts? count them up and see if there are enough
+            num_forecasts <- apply(
+              unclass(qfm_train[row_inds, col_inds]),
+              1,
+              function(qfm_row) {
+                all(!is.na(qfm_row))
+              })
+            result[["n_train_eligibility"]] <- ifelse(
+              num_forecasts == 1L,
+              "eligible",
+              "ineligible")
+          }
+
+          return(result)
+        }
+      )
+    })
 
   return(eligibility)
 }
@@ -266,7 +442,7 @@ calc_forecast_missingness <- function(
   by_week = FALSE
 ) {
   # validate that if by_target is TRUE, so is by_week
-  if(by_target & !by_week) {
+  if (by_target & !by_week) {
     stop("by_target may only be set to TRUE if by_week is TRUE.")
   }
   
@@ -276,7 +452,7 @@ calc_forecast_missingness <- function(
   col_index <- attr(qfm, 'col_index')
   model_id_name <- attr(qfm, 'model_col')
 
-  if(by_target) {
+  if (by_target) {
     missingness_by_location_forecast_week <- purrr::pmap_dfr(
       row_index %>% distinct(location, forecast_week_end_date, target),
       function(location, forecast_week_end_date, target) {
@@ -834,4 +1010,35 @@ calc_sd_check <- function(
   ## we wouldn't need to remove forecast_week_end_date
   return(eligibility %>% dplyr::select(-mean_ahead, -forecast_week_end_date))
 }
+
+
+#' drop ineligible forecasts
+#'
+#' @param forecasts data frame of forecasts
+#' @param model_eligibility data frame with model eligibility results as
+#' returned by calc_model_eligibility_for_ensemble
+#'
+#' @return data frame of forecasts that are eligible
+drop_ineligible_forecasts <- function(forecasts, eligibility) {
+  # keep just id columns and a logical indicator of overall eligibility
+  id_cols <- c("model", "location", "forecast_week_end_date", "target")
+  id_cols <- id_cols[id_cols %in% colnames(eligibility)]
+
+  eligibility <- eligibility[, c(id_cols, "overall_eligibility")] %>%
+    dplyr::mutate(overall_eligibility = (overall_eligibility == "eligible"))
+
+  # keep only model-location-targets that are eligible
+  # here this is done by filtering the original forecasts data frame and
+  # recreating the QuantileForecastMatrix
+  forecasts <- forecasts %>%
+    dplyr::left_join(eligibility, by = id_cols) %>%
+    dplyr::filter(overall_eligibility) %>%
+    dplyr::select(-overall_eligibility)
+
+  return(forecasts)
+}
+
+
+
+
 
