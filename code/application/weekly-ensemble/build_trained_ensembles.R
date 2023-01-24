@@ -64,9 +64,7 @@ candidate_model_abbreviations_to_include <-
 forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
 
 tic(msg = "all targets")
-for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
-#for (response_var in c("inc_case", "inc_hosp")) {
-#for (response_var in c("cum_death", "inc_death", "inc_case")) {
+for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
   # reset model_weights to NULL
   model_weights <- NULL
 
