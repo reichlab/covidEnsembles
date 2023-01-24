@@ -1,3 +1,5 @@
+message("starting build_4_week_ensembles.R")
+
 library(tidyverse)
 library(zeallot)
 library(covidHubUtils)
@@ -56,6 +58,7 @@ candidate_model_abbreviations_to_include <-
 forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
 
 for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
+  message("starting setup of ", response_var, " for 4-wk ensemble")
 #for (response_var in c("cum_death", "inc_death", "inc_case")) {
   if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
@@ -300,6 +303,8 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     }
   }
 
+  message("starting generation of full 4-week ensemble")
+
   c(model_eligibility, wide_model_eligibility, location_groups, component_forecasts) %<-%
     build_covid_ensemble(
       hub = "US",
@@ -341,6 +346,11 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
   location_groups <- location_groups[model_counts > 1, ]
   ensemble_predictions <- bind_rows(location_groups[['qra_forecast']])
 
+  ## instrumentation to try to identify problems, added Jan 24 2023
+  message("starting possibly problematic set of operations")
+  print(colnames(ensemble_predictions))
+  print(nrow(ensemble_predictions))
+  
   # save the results in required format
   formatted_ensemble_predictions <- ensemble_predictions %>%
     left_join(
@@ -417,8 +427,11 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
     )
   }
 
+  message("starting to write out 4-week ensemble data")
   for(root in save_roots) {
     if(final_run) {
+    
+      message("writing 4-week ensemble forecast file")
       save_dir <- paste0(root, 'data-processed/COVIDhub-4_week_ensemble/')
       if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
       write_csv(all_formatted_ensemble_predictions %>% select(-location_name),
@@ -427,6 +440,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
                        '-COVIDhub-4_week_ensemble.csv')
       )
 
+      message("writing 4-week ensemble model eligibility file")
       save_dir <- paste0(root, "4_week_ensemble-metadata/")
       if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
       write_csv(model_eligibility,
@@ -436,6 +450,7 @@ for (response_var in c("cum_death", "inc_death", "inc_case", "inc_hosp")) {
           response_var,
           '-model-eligibility.csv'))
 
+      message("writing 4-week ensemble weights file")
       write_csv(model_weights,
         paste0(save_dir,
           formatted_ensemble_predictions$forecast_date[1],
