@@ -1032,7 +1032,7 @@ grid_search_rel_wis_weights <- function(
       y_train = y_train,
       rel_wis = rel_wis,
       max_weight = max_weight,
-      .progress = TRUE)
+      .progress = FALSE)
 
     min_ind <- which.min(loss_by_par)
 
@@ -1052,7 +1052,7 @@ grid_search_rel_wis_weights <- function(
         y_train = y_train,
         rel_wis = rel_wis,
         max_weight = max_weight,
-        .progress = TRUE)
+        .progress = FALSE)
       loss_by_par <- c(loss_by_par, loss_by_par_ext)
       min_ind <- which.min(loss_by_par)
     }
