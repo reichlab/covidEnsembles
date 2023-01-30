@@ -70,8 +70,8 @@ all_forecasts <- purrr::map_dfr(
   })
 
 
-
-for(measure in c('deaths', 'cases', 'hospitalizations')) {
+# removing 'cases' 23-01-30
+for(measure in c('deaths', 'hospitalizations')) {
 #for(measure in c('hospitalizations')) {
   if (measure == "deaths") {
     target_variable_short <- "death"
