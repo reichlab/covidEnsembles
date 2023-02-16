@@ -6,6 +6,7 @@ covidEnsembles.Rproj
 .Rbuildignore
 .Rhistory
 code/application/weekly-ensemble/*.pdf
+code/application/weekly-ensemble/thetas-*
 code/application/weekly-ensemble/forecasts/
 code/application/weekly-ensemble/exclusion-outputs/
 code/application/weekly-ensemble/plots/
