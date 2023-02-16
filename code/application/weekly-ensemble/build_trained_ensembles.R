@@ -24,12 +24,10 @@ submissions_root <- '../covid19-forecast-hub/data-processed/'
 hub_repo_path <- '../covid19-forecast-hub/'
 
 # Where to save ensemble forecasts
-save_roots <- c('code/application/weekly-ensemble/forecasts/')
-for (root in save_roots) {
-  if (!file.exists(root)) dir.create(root, recursive = TRUE)
-  if (!file.exists(paste0(root,"trained_ensemble-metadata/"))) {
-    dir.create(paste0(root,"trained_ensemble-metadata/"), recursive = TRUE)
-  }
+root <- c('code/application/weekly-ensemble/forecasts/')
+if (!file.exists(root)) dir.create(root, recursive = TRUE)
+if (!file.exists(paste0(root,"trained_ensemble-metadata/"))) {
+  dir.create(paste0(root,"trained_ensemble-metadata/"), recursive = TRUE)
 }
 
 # Where to save plots
@@ -143,6 +141,7 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
   }
 
   combine_method <- 'rel_wis_weighted_median'
+  message("starting generation of full trained ensemble")
   for (spatial_resolution in spatial_resolutions) {
     # if (spatial_resolution == "national" & response_var %in% c("cum_death", "inc_death")) {
     #   max_weight = 0.3
@@ -280,26 +279,27 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
       )
     }
 
-    for(root in save_roots) {
-      if(final_run) {
-        save_dir <- paste0(root, 'data-processed/COVIDhub-trained_ensemble/')
-        if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
-        write_csv(all_formatted_ensemble_predictions %>% select(-location_name),
-                  paste0(save_dir,
-                        formatted_ensemble_predictions$forecast_date[1],
-                        '-COVIDhub-trained_ensemble.csv')
-        )
+    message("starting to write out trained ensemble data")
+    if(final_run) {
+      message("writing trained ensemble forecast file")
+      save_dir <- paste0(root, 'data-processed/COVIDhub-trained_ensemble/')
+      if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
+      write_csv(all_formatted_ensemble_predictions %>% select(-location_name),
+                paste0(save_dir,
+                      formatted_ensemble_predictions$forecast_date[1],
+                      '-COVIDhub-trained_ensemble.csv')
+      )
 
-        # not saving metadata for now
-        save_dir <- paste0(root, "trained_ensemble-metadata/")
-        if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
-        write_csv(model_weights,
-          paste0(save_dir,
-            formatted_ensemble_predictions$forecast_date[1],
-            '-',
-            response_var,
-            '-model-weights.csv'))
-      }
+      # not saving metadata for now
+      message("writing primary ensemble weights file")
+      save_dir <- paste0(root, "trained_ensemble-metadata/")
+      if (!file.exists(save_dir)) dir.create(save_dir, recursive = TRUE)
+      write_csv(model_weights,
+        paste0(save_dir,
+          formatted_ensemble_predictions$forecast_date[1],
+          '-',
+          response_var,
+          '-model-weights.csv'))
     }
   }
 }
@@ -323,5 +323,5 @@ plot_forecasts_single_model(
   plots_root = plots_root,
   forecast_date = forecast_date,
   model_abbrs = "COVIDhub-trained_ensemble",
-  target_variables = c("cases", "deaths", "hospitalizations")
+  target_variables = c("deaths", "hospitalizations")
 )
