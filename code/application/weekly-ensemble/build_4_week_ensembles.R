@@ -55,7 +55,8 @@ candidate_model_abbreviations_to_include <-
 # even if we are delayed and create it Tuesday morning.
 forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
 
-for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
+response_vars <- c("inc_hosp")
+for (response_var in response_vars) {
   message("starting setup of ", response_var, " for 4-wk ensemble")
   if (response_var == "cum_death") {
     do_q10_check <- do_nondecreasing_quantile_check <- TRUE
@@ -71,45 +72,6 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
     # date for which retrieved deaths truth data should be current
     data_as_of_date <- covidData::available_issue_dates("deaths") %>% max()
 
-    # adjustments based on plots
-    if (forecast_date == "2020-06-08") {
-      manual_eligibility_adjust <- c(
-        "Auquan-SEIR", "CAN-SEIR_CAN", "CU-select", "UA-EpiCovDA",
-        "SWC-TerminusCM"
-      )
-    } else if (forecast_date == "2020-06-15") {
-      manual_eligibility_adjust <- "Auquan-SEIR"
-    } else if (forecast_date == "2020-06-29") {
-      manual_eligibility_adjust <- data.frame(
-        model = c("epiforecasts-ensemble1", "NotreDame-mobility"),
-        location = "34",
-        message = "Visual misalignment of predictive quantiles with JHU reference data."
-      )
-    } else if (forecast_date == "2020-07-06") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "CU-select", "RobertWalraven-ESG",
-          "USACE-ERDC_SEIR", "MITCovAlliance-SIR"),
-        location = fips_codes$location,
-        message = "Visual misalignment of predictive quantiles with JHU reference data."
-      )
-    } else if (forecast_date == "2020-07-13") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
-          "MITCovAlliance-SIR"),
-        location = fips_codes$location,
-        message = "Visual misalignment of predictive quantiles with JHU reference data."
-      )
-    } else if (forecast_date == "2020-07-20") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c(
-          "COVIDhub-baseline", "MITCovAlliance-SIR", "RobertWalraven-ESG",
-          "USACE-ERDC_SEIR"),
-        location = fips_codes$location,
-        message = "Visual misalignment of predictive quantiles with JHU reference data."
-      )
-    } else {
-      manual_eligibility_adjust <- NULL
-    }
   } else if (response_var == 'inc_death') {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
     do_sd_check <- "exclude_none"
@@ -125,55 +87,6 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
     # repeated from cum_death block for clarity
     data_as_of_date <- covidData::available_issue_dates("deaths") %>% max()
 
-    # adjustments based on plots
-    if (forecast_date == "2020-06-08") {
-      manual_eligibility_adjust <- c(
-        "CAN-SEIR_CAN", "SWC-TerminusCM", "USACE-ERDC_SEIR", "IHME-CurveFit"
-      )
-    } else if (forecast_date == "2020-06-15") {
-      manual_eligibility_adjust <- c(
-        "USACE-ERDC_SEIR", "LANL-GrowthRate"
-      )
-    } else if (forecast_date == "2020-06-29") {
-      manual_eligibility_adjust <- bind_rows(
-        data.frame(
-          model = c("epiforecasts-ensemble1", "NotreDame-mobility"),
-          location = "34",
-          message = "Visual misalignment of predictive quantiles with JHU reference data.",
-          stringsAsFactors = FALSE
-        ),
-        data.frame(
-          model = "CU-select",
-          location = fips_codes$location,
-          message = "Visual misalignment of predictive quantiles with JHU reference data.",
-          stringsAsFactors = FALSE
-        )
-      )
-    } else if (forecast_date == "2020-07-06") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "CU-select", "RobertWalraven-ESG",
-          "USACE-ERDC_SEIR", "MITCovAlliance-SIR"),
-        location = fips_codes$location,
-        message = "Visual misalignment of predictive quantiles with JHU reference data."
-      )
-    } else if (forecast_date == "2020-07-13") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("COVIDhub-baseline", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
-          "MITCovAlliance-SIR"),
-        location = fips_codes$location,
-        message = "Visual misalignment of predictive quantiles with JHU reference data."
-      )
-    } else if (forecast_date == "2020-07-20") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c(
-          "COVIDhub-baseline", "MITCovAlliance-SIR", "MOBS-GLEAM_COVID",
-          "RobertWalraven-ESG", "USACE-ERDC_SEIR"),
-        location = fips_codes$location,
-        message = "Visual misalignment of predictive quantiles with JHU reference data."
-      )
-    } else {
-      manual_eligibility_adjust <- NULL
-    }
   } else if (response_var == "inc_case") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
     do_sd_check <- "exclude_none"
@@ -187,28 +100,6 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
     # date for which retrieved cases truth data should be current
     data_as_of_date <- covidData::available_issue_dates("cases") %>% max()
 
-    if (forecast_date == "2020-07-13") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("CU-select", "IowaStateLW-STEM", "JHU_IDD-CovidSP",
-                  "LANL-GrowthRate", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
-                  "Covid19Sim-Simulator", "MIT_CovidAnalytics-DELPHI",
-                  "CDDEP-SEIR"),
-        location = covidData::fips_codes$location,
-        message = "Visual misalignment of predictive quantiles with JHU reference data."
-      )
-    } else if (forecast_date == "2020-07-20") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c(
-          "CDDEP-SEIR_MCMC", "Covid19Sim-Simulator", "CovidAnalytics-DELPHI",
-          "CU-select", "IHME-CurveFit", "IowaStateLW-STEM", "JHU_IDD-CovidSP",
-          "MITCovAlliance-SIR", "RobertWalraven-ESG", "USACE-ERDC_SEIR",
-          "UVA-Ensemble"),
-        location = covidData::fips_codes$location,
-        message = "Visual misalignment of predictive quantiles with JHU reference data."
-      )
-    } else {
-      manual_eligibility_adjust <- NULL
-    }
   } else if (response_var == "inc_hosp") {
     do_q10_check <- do_nondecreasing_quantile_check <- FALSE
     do_sd_check <- "exclude_none"
@@ -221,83 +112,6 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
 
     # date for which retrieved hospitalization truth data should be current
     data_as_of_date <- covidData::available_issue_dates("hospitalizations") %>% max()
-
-    if (forecast_date == "2020-12-07") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("Google_Harvard-CPF"),
-        location = covidData::fips_codes$location,
-        message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
-      )
-    } else if (forecast_date == "2020-12-14") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("Google_Harvard-CPF", "IHME-CurveFit", "UCLA-SuEIR"),
-        location = covidData::fips_codes$location,
-        message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
-      )
-    } else if (forecast_date == "2020-12-21") {
-      manual_eligibility_adjust <- tidyr::expand_grid(
-        model = c("Google_Harvard-CPF", "IHME-CurveFit", "UCLA-SuEIR"),
-        location = covidData::fips_codes$location,
-        message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
-      )
-    } else if (forecast_date == "2020-12-28") {
-      manual_eligibility_adjust <- readr::read_csv(
-        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_2020-12-29.csv"
-      ) %>%
-        dplyr::mutate(
-          location_name =
-            ifelse(location_name == "National", "US", location_name),
-          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
-        ) %>%
-        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
-        dplyr::select(model, location, message)
-    } else if (forecast_date == "2021-01-04") {
-      manual_eligibility_adjust <- readr::read_csv(
-        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_2021-01-05.csv"
-      ) %>%
-        dplyr::mutate(
-          location_name =
-            ifelse(location_name == "National", "US", location_name),
-          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
-        ) %>%
-        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
-        dplyr::select(model, location, message)
-    } else if (forecast_date == "2021-01-11") {
-      manual_eligibility_adjust <- readr::read_csv(
-        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-12.csv"
-      ) %>%
-        dplyr::mutate(
-          location_name =
-            ifelse(location_name == "National", "US", location_name),
-          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
-        ) %>%
-        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
-        dplyr::select(model, location, message)
-    } else if (forecast_date == "2021-01-18") {
-      manual_eligibility_adjust <- readr::read_csv(
-        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-19.csv"
-      ) %>%
-        dplyr::mutate(
-          location_name =
-            ifelse(location_name == "National", "US", location_name),
-          message = "Mean daily point forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
-        ) %>%
-        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
-        dplyr::select(model, location, message)        
-    } else if (forecast_date == "2021-01-25") {
-      manual_eligibility_adjust <- readr::read_csv(
-        "code/application/weekly-ensemble/exclusion-inputs/Hosp_Models_Locations with Thresholds Below SD_updated_2021-01-26.csv"
-      ) %>%
-        dplyr::mutate(
-          location_name =
-            ifelse(location_name == "National", "US", location_name),
-          message = "Mean daily median forecast for first seven days less than mean reported hospitalizations over past two weeks minus four standard deviations."
-        ) %>%
-        dplyr::left_join(covidData::fips_codes, by = "location_name") %>%
-        dplyr::select(model, location, message)        
-    } else {
-      manual_eligibility_adjust <- NULL
-    }
   }
 
   message("starting generation of full 4-week ensemble")
@@ -329,7 +143,7 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
       do_sd_check = do_sd_check, # implement CDC exclusion requests
       sd_check_table_path = sd_check_table_path,
       sd_check_plot_path = sd_check_plot_path,
-      manual_eligibility_adjust = manual_eligibility_adjust,
+      manual_eligibility_adjust = NULL,
       return_eligibility = TRUE,
       return_all = TRUE
     )
@@ -415,7 +229,7 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
   #   arrange(location)
   # model_weights[is.na(model_weights)] <- 0.0
 
-  if(response_var == 'cum_death') {
+  if(response_var == response_vars[1]) {
     all_formatted_ensemble_predictions <- formatted_ensemble_predictions
   } else {
     all_formatted_ensemble_predictions <- bind_rows(
@@ -458,7 +272,7 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
 
 # Check that all models that had any submission for each target are in the
 # eligibility metadata file
-for (response_var in c("inc_death", "cum_death", "inc_hosp")) {
+for (response_var in c("inc_hosp")) {
   if (response_var == "inc_hosp") {
     targets <- paste0(1:28, " day ahead inc hosp")
   } else {
