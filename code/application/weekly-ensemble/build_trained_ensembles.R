@@ -61,8 +61,9 @@ candidate_model_abbreviations_to_include <-
 # even if we are delayed and create it Tuesday morning.
 forecast_date <- lubridate::floor_date(Sys.Date(), unit = "week") + 1
 
+response_vars <- c("inc_hosp")
 tic(msg = "all targets")
-for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
+for (response_var in response_vars) {
   # reset model_weights to NULL
   model_weights <- NULL
 
@@ -250,7 +251,7 @@ for (response_var in c("cum_death", "inc_death", "inc_hosp")) {
     model_weights <- dplyr::relocate(model_weights, locations, .after = dplyr::last_col())
     model_weights[is.na(model_weights)] <- 0.0
 
-    if(response_var == 'cum_death' && spatial_resolution == spatial_resolutions[1]) {
+    if(response_var == response_vars[1] && spatial_resolution == spatial_resolutions[1]) {
       all_formatted_ensemble_predictions <- formatted_ensemble_predictions
     } else {
       all_formatted_ensemble_predictions <- bind_rows(
