@@ -16,4 +16,4 @@ WORKDIR /app
 ADD "https://api.github.com/repos/reichlab/container-utils/commits?per_page=1" latest_commit
 RUN git clone https://github.com/reichlab/container-utils.git
 
-CMD ["bash", "/data/covidModels/ensemble_model_docker/run-ensemble.sh"]
+CMD ["bash", "/data/covidEnsembles/code/application/docker/run-ensemble.sh"]
