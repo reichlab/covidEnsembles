@@ -34,8 +34,9 @@ WEEKLY_ENSEMBLE_DIR=${ENSEMBLES_DIR}/code/application/weekly-ensemble
 
 # sync fork w/upstream and then push to the fork b/c sometimes a PR will fail to be auto-merged, which we think is
 # caused by an out-of-sync fork
-slack_message "updating forked HUB_DIR=${HUB_DIR}"
+HUB_DIR="/data/covid19-forecast-hub" # a fork
 cd "${HUB_DIR}"
+slack_message "updating forked HUB_DIR=${HUB_DIR}"
 git fetch upstream # pull down the latest source from original repo
 git checkout master
 git merge upstream/master # update fork from original repo to keep up with their changes
@@ -65,7 +66,6 @@ if [ -z "${DRY_RUN+x}" ]; then
 
   # delete old branches
   slack_message "deleting old branches"
-  HUB_DIR="/data/covid19-forecast-hub" # a fork
   cd "${HUB_DIR}"
   git checkout master
   BRANCHES="primary trained 4wk"
