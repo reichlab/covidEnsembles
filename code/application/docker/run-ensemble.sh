@@ -23,7 +23,7 @@ source "/app/container-utils/scripts/slack.sh"
 # start
 #
 
-slack_message "starting. id='$(id -u -n)', HOME='${HOME}', PWD='${PWD}'"
+slack_message "starting. id='$(id -u -n)', HOME='${HOME}', PWD='${PWD}', DRY_RUN='${DRY_RUN}'"
 
 TODAY_DATE=$(date +'%Y-%m-%d') # e.g., 2022-02-17
 OUT_FILE=/tmp/run-ensemble-out.txt
@@ -31,6 +31,15 @@ echo -n >${OUT_FILE} # truncate
 
 ENSEMBLES_DIR="/data/covidEnsembles"
 WEEKLY_ENSEMBLE_DIR=${ENSEMBLES_DIR}/code/application/weekly-ensemble
+
+# sync fork w/upstream and then push to the fork b/c sometimes a PR will fail to be auto-merged, which we think is
+# caused by an out-of-sync fork
+slack_message "updating forked HUB_DIR=${HUB_DIR}"
+cd "${HUB_DIR}"
+git fetch upstream # pull down the latest source from original repo
+git checkout master
+git merge upstream/master # update fork from original repo to keep up with their changes
+git push origin master    # sync with fork
 
 # update covidEnsembles repo
 cd ${ENSEMBLES_DIR}
@@ -64,15 +73,6 @@ if [ -z "${DRY_RUN+x}" ]; then
     git branch --delete --force ${BRANCH} # delete local branch
     git push origin --delete ${BRANCH}    # delete remote branch
   done
-
-  # sync fork w/upstream and then push to the fork b/c sometimes a PR will fail to be auto-merged, which we think is
-  # caused by an out-of-sync fork
-  slack_message "updating forked HUB_DIR=${HUB_DIR}"
-  cd "${HUB_DIR}"
-  git fetch upstream # pull down the latest source from original repo
-  git checkout master
-  git merge upstream/master # update fork from original repo to keep up with their changes
-  git push origin master    # sync with fork
 
   # tag build inputs
   slack_message "tagging inputs"
