@@ -23,7 +23,7 @@ source "/app/container-utils/scripts/slack.sh"
 # start
 #
 
-slack_message "starting. id='$(id -u -n)', HOME='${HOME}', PWD='${PWD}', DRY_RUN='${DRY_RUN}'"
+slack_message "starting. id='$(id -u -n)', HOME='${HOME}', PWD='${PWD}', DRY_RUN='${DRY_RUN+x}'"
 
 TODAY_DATE=$(date +'%Y-%m-%d') # e.g., 2022-02-17
 OUT_FILE=/tmp/run-ensemble-out.txt
@@ -59,11 +59,7 @@ rm -rf ${WEEKLY_ENSEMBLE_DIR}/plots/
 rm -f ${WEEKLY_ENSEMBLE_DIR}/thetas-*
 
 # delete old branches, sync w/upstream, and tag build inputs if not DRY_RUN
-if [ -z "${DRY_RUN+x}" ]; then
-
-  slack_message "todo xx DRY_RUN debug 1 caught"
-  exit 1 # fail
-
+if [ -z "${DRY_RUN+x}" ]; then # not DRY_RUN
   # delete old branches
   slack_message "deleting old branches"
   cd "${HUB_DIR}"
@@ -139,7 +135,7 @@ fi
 # exit if DRY_RUN
 #
 
-if [ -n "${DRY_RUN+x}" ]; then
+if [ -n "${DRY_RUN+x}" ]; then # yes DRY_RUN
   slack_message "DRY_RUN set, exiting"
   exit 0 # success
 fi
@@ -147,9 +143,6 @@ fi
 #
 # create PRs if not DRY_RUN
 #
-
-slack_message "todo xx DRY_RUN debug 2 caught"
-exit 1 # fail
 
 cd ${WEEKLY_ENSEMBLE_DIR}
 
